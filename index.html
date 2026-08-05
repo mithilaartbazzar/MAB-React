@@ -62,6 +62,99 @@
         }
         .animate-feedback-bounce { animation: feedback-bounce 0.5s cubic-bezier(0.36, 0, 0.66, -0.56); }
 
+        /* ── Marquee (infinite scroll strip) ── */
+        @keyframes marquee {
+            0% { transform: translateX(0); }
+            100% { transform: translateX(-50%); }
+        }
+        .animate-marquee {
+            animation: marquee 30s linear infinite;
+        }
+        .animate-marquee:hover { animation-play-state: paused; }
+
+        /* ── Slow Ken-Burns zoom for hero imagery ── */
+        @keyframes slow-zoom {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.08); }
+            100% { transform: scale(1); }
+        }
+        .animate-slow-zoom { animation: slow-zoom 25s ease-in-out infinite; }
+
+        /* ── Scroll-reveal (driven by Reveal.jsx via IntersectionObserver) ── */
+        .reveal {
+            opacity: 0;
+            transform: translateY(32px);
+            transition: opacity 0.9s cubic-bezier(0.16, 1, 0.3, 1), transform 0.9s cubic-bezier(0.16, 1, 0.3, 1);
+            will-change: opacity, transform;
+        }
+        .reveal.reveal-visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+        .reveal-left { transform: translateX(-40px); }
+        .reveal-left.reveal-visible { transform: translateX(0); }
+        .reveal-right { transform: translateX(40px); }
+        .reveal-right.reveal-visible { transform: translateX(0); }
+        .reveal-scale { transform: scale(0.94); }
+        .reveal-scale.reveal-visible { transform: scale(1); }
+
+        /* ── Mithila geometric pattern divider (traditional double-line + diamond motif) ── */
+        .mithila-divider {
+            height: 12px;
+            background-image: repeating-linear-gradient(90deg,
+                var(--brand-red) 0px, var(--brand-red) 2px,
+                transparent 2px, transparent 14px),
+                repeating-linear-gradient(90deg,
+                var(--brand-saffron) 7px, var(--brand-saffron) 9px,
+                transparent 9px, transparent 21px);
+            background-size: 21px 4px, 21px 4px;
+            background-position: 0 0, 0 8px;
+            background-repeat: repeat-x;
+            opacity: 0.5;
+        }
+
+        /* ── Subtle handmade-paper texture overlay ── */
+        .paper-texture {
+            position: relative;
+        }
+        .paper-texture::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            pointer-events: none;
+            opacity: 0.4;
+            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.06'/%3E%3C/svg%3E");
+        }
+
+        /* ── Decorative border frame for imagery ── */
+        .frame-double {
+            outline: 1px solid rgba(92, 17, 17, 0.15);
+            outline-offset: 8px;
+        }
+
+        /* ── Gold shimmer text accent ── */
+        @keyframes shimmer {
+            0% { background-position: -200% center; }
+            100% { background-position: 200% center; }
+        }
+        .text-shimmer {
+            background: linear-gradient(90deg, #b36b00 0%, #e3a857 25%, #b36b00 50%, #e3a857 75%, #b36b00 100%);
+            background-size: 200% auto;
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+            animation: shimmer 6s linear infinite;
+        }
+
+        /* ── Hide scrollbar utility ── */
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+        @media (prefers-reduced-motion: reduce) {
+            .reveal { opacity: 1; transform: none; transition: none; }
+            .animate-marquee, .animate-slow-zoom, .animate-subtle-float, .text-shimmer { animation: none; }
+        }
+
         /* Custom Scrollbar - Muted */
         ::-webkit-scrollbar { width: 6px; }
         ::-webkit-scrollbar-track { background: var(--brand-paper); }

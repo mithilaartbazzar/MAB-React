@@ -69,7 +69,7 @@ export const CartPage = ({ cart, updateQty, remove, clearCart, currentUser }) =>
                 status: 'pending',
                 customer_payment_status: 'pending',
                 customer_payment_verified: false,
-                mks_payment_status: 'pending',
+                mab_payment_status: 'pending',
                 commission_percentage: commissionPct,
                 commission_amount: commissionAmt,
                 seller_payable_amount: orderTotal - commissionAmt,

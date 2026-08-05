@@ -1,14 +1,23 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { ShoppingCart, User as UserIcon, LogOut, Shield, Store } from 'lucide-react';
+import { ShoppingCart, User as UserIcon, LogOut, Shield, Store, Heart } from 'lucide-react';
+
+const NavLink = ({ to, active, children }) => (
+    <Link
+        to={to}
+        className={`rounded-full px-4 py-2 text-[10px] font-semibold uppercase tracking-[0.24em] transition-all duration-300 ${active ? 'bg-[#5c1111] text-white shadow-sm shadow-[#5c1111]/20' : 'text-stone-500 hover:text-[#5c1111] hover:bg-[#f9f2ed]'}`}
+    >
+        {children}
+    </Link>
+);
 
 export const Navbar = ({ cartCount, currentUser, setCurrentUser }) => {
     const [scrolled, setScrolled] = useState(false);
     const location = useLocation();
-    const navigate = useNavigate(); 
+    const navigate = useNavigate();
 
     useEffect(() => {
-        const handleScroll = () => setScrolled(window.scrollY > 20);
+        const handleScroll = () => setScrolled(window.scrollY > 16);
         window.addEventListener('scroll', handleScroll);
         return () => window.removeEventListener('scroll', handleScroll);
     }, []);
@@ -19,51 +28,72 @@ export const Navbar = ({ cartCount, currentUser, setCurrentUser }) => {
     };
 
     return (
-        <nav className={`fixed top-0 w-full z-[100] transition-all duration-500 print:hidden ${scrolled ? 'glass-nav py-2 sm:py-3 shadow-md' : 'bg-transparent py-4 sm:py-6'}`}>
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 flex justify-between items-center">
-                <Link to="/" className="flex items-center gap-2 sm:gap-3 group">
-                    <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-[0.5rem] flex items-center justify-center text-white font-black text-lg sm:text-xl shadow-lg transition-all group-hover:rotate-6 group-hover:scale-105">
-                        <img 
-                          className="w-8 h-8 sm:w-10 sm:h-10 rounded-[0.5rem]"
-                          src="https://res.cloudinary.com/djmbuuz28/image/upload/v1761108817/logo.png" 
-                          alt="Logo" 
-                        />
-                    </div>
-                    <div className="flex flex-col">
-                        <span className="font-dancing text-xl sm:text-2xl font-bold text-[#2a2723] tracking-tight leading-none">Mithila</span>
-                        <span className="text-[8px] sm:text-[10px] font-black uppercase tracking-[0.2em] sm:tracking-[0.3em] text-[#5c1111]/70 leading-none mt-1">Art Bazzar</span>
-                    </div>
-                </Link>
-
-                <div className="hidden lg:flex gap-10 items-center">
-                    <Link to="/"><span className="text-[11px] font-bold uppercase tracking-[0.2em] transition-all hover:text-[#5c1111] text-stone-500">Home</span></Link>
-                    <Link to="/products" className={`text-[11px] font-bold uppercase tracking-[0.2em] transition-all hover:text-[#5c1111] ${location.pathname === '/products' ? 'text-[#5c1111] border-b-2 border-[#5c1111] pb-1' : 'text-stone-500'}`}>Gallery</Link>
-                    <Link to="/advice" className={`text-[11px] font-bold uppercase tracking-[0.2em] transition-all hover:text-[#5c1111] ${location.pathname === '/advice' ? 'text-[#5c1111] border-b-2 border-[#5c1111] pb-1' : 'text-stone-500'}`}>AI Art Consultant</Link>
-                    {currentUser && (currentUser.role === 'seller' || currentUser.role === 'admin') && (
-                        <Link to="/seller" className={`text-[11px] font-bold uppercase tracking-[0.2em] transition-all hover:text-[#5c1111] flex items-center gap-2 ${location.pathname === '/seller' ? 'text-[#5c1111] border-b-2 border-[#5c1111] pb-1' : 'text-stone-500'}`}>
-                            {currentUser.role === 'admin' ? <Shield size={14} /> : <Store size={14} />}
-                            {currentUser.role === 'admin' ? 'Administration' : 'Artisan Portal'}
-                        </Link>
-                    )}
+        <nav className="fixed inset-x-0 top-1 md:top-4 z-[100] px-4 sm:px-6 print:hidden">
+            <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-4">
+                <div className={`rounded-[1.75rem] border border-white/60 bg-white/85 shadow-[0_18px_60px_rgba(41,30,24,0.12)] backdrop-blur-xl transition-all duration-500  py-2 px-2 sm:px-6`}> 
+                    <Link to="/" className="flex items-center gap-2 group">
+                        <div className="relative flex h-10 w-10 md:h-12 md:w-12 items-center justify-center rounded-[1rem] bg-[#5c1111] text-white shadow-lg shadow-[#5c1111]/20 transition-transform duration-300 group-hover:-translate-y-0.5 group-hover:scale-[1.03]">
+                            <img
+                                className="h-8 w-8 md:h-10 md:w-10 rounded-[1rem] object-cover"
+                                src="https://res.cloudinary.com/djmbuuz28/image/upload/v1761108817/logo.png"
+                                alt="Logo"
+                            />
+                        </div>
+                        <div className="flex flex-col leading-none">
+                            <span className="font-dancing text-[18px] sm:text-xl font-bold text-[#2a2723] tracking-tight">Mithila</span>
+                            <span className="text-[7px] md:text-[9px] uppercase tracking-[0.35em] text-[#5c1111]/70">Art Bazzar</span>
+                        </div>
+                    </Link>
                 </div>
 
-                <div className="flex items-center gap-1 sm:gap-2">
-                    {currentUser ? (
-                        <div className="flex items-center gap-1 sm:gap-2">
-                             <Link to="/profile" className="p-2 sm:p-3 text-stone-600 hover:text-[#5c1111] transition-colors relative group">
-                                <UserIcon size={20} />
-                                <span className="absolute top-1 sm:top-2 right-1 sm:right-2 w-2 h-2 bg-green-500 rounded-full border border-white"></span>
+                <div className="hidden md:hidden lg:block rounded-[1.75rem] border border-white/60 bg-white/85 shadow-[0_18px_60px_rgba(41,30,24,0.12)] backdrop-blur-xl transition-all duration-500 py-3 px-4 sm:px-6">
+                    <div className="flex items-center gap-2">
+                        <NavLink to="/" active={location.pathname === '/'}>Home</NavLink>
+                        <NavLink to="/products" active={location.pathname === '/products'}>Gallery</NavLink>
+                        <NavLink to="/advice" active={location.pathname === '/advice'}>AI Art Consultant</NavLink>
+                        {currentUser && (currentUser.role === 'seller' || currentUser.role === 'admin') && (
+                            <Link
+                                to="/seller"
+                                className={`inline-flex items-center gap-2 rounded-full px-4 py-2 text-[10px] font-semibold uppercase tracking-[0.18em] transition-all duration-300 ${location.pathname === '/seller' ? 'bg-[#f7ece6] text-[#5c1111]' : 'text-stone-500 hover:bg-[#f9f2ed] hover:text-[#5c1111]'}`}
+                            >
+                                {currentUser.role === 'admin' ? <Shield size={14} /> : <Store size={14} />}
+                                {currentUser.role === 'admin' ? 'Administration' : 'Artisan Portal'}
                             </Link>
-                            <button onClick={logout} className="hidden lg:flex p-3 text-stone-400 hover:text-red-700 transition-colors"><LogOut size={18}/></button>
-                        </div>
-                    ) : (
-                        <Link to="/login" className="px-4 py-2 sm:px-6 sm:py-3 bg-[#f4f1ec] border border-stone-200 text-[#5c1111] rounded-2xl text-[9px] sm:text-[10px] font-black uppercase tracking-widest hover:bg-white transition-all">Sign In</Link>
-                    )}
-                    
-                    <Link to="/cart" className="relative p-2 sm:p-3 bg-[#5c1111] text-white rounded-2xl hover:bg-[#2a2723] transition-all shadow-xl premium-shadow group">
-                        <ShoppingCart size={18} className="transition-transform group-hover:-rotate-12" />
-                        {cartCount > 0 && <span className="absolute -top-1 -right-1 bg-amber-600 text-white text-[9px] sm:text-[10px] font-black w-4 h-4 sm:w-5 sm:h-5 flex items-center justify-center rounded-full border-2 border-[#5c1111] animate-in zoom-in duration-300">{cartCount}</span>}
-                    </Link>
+                        )}
+                    </div>
+                </div>
+
+                <div className="rounded-[1.75rem] border border-white/60 bg-white/85 shadow-[0_18px_60px_rgba(41,30,24,0.12)] backdrop-blur-xl transition-all duration-500 py-1 px-1 sm:px-6">
+                    <div className="flex flex-wrap items-center gap-2 justify-end">
+                        <Link to="/wishlist" className={`hidden sm:inline-flex items-center justify-center rounded-full border border-transparent p-3 text-stone-600 transition-all duration-300 ${location.pathname === '/wishlist' ? 'bg-[#f9f2ed] text-[#5c1111]' : 'hover:bg-[#f9f2ed] hover:text-[#5c1111]'}`} title="My Wishlist">
+                            <Heart size={20} fill={location.pathname === '/wishlist' ? 'currentColor' : 'none'} />
+                        </Link>
+
+                        {currentUser ? (
+                            <div className="flex items-center gap-2">
+                                <Link to="/profile" className="relative inline-flex items-center justify-center rounded-full border border-stone-200 bg-white p-3 text-stone-600 transition-all duration-300 hover:border-[#5c1111]/40 hover:text-[#5c1111]" title="My Profile">
+                                    <UserIcon size={20} />
+                                    <span className="absolute -top-1 -right-1 h-2.5 w-2.5 rounded-full bg-emerald-500 border border-white"></span>
+                                </Link>
+                                <button onClick={logout} className="hidden lg:inline-flex items-center justify-center rounded-full p-3 text-stone-500 transition-colors duration-300 hover:text-red-700" title="Sign Out">
+                                    <LogOut size={18} />
+                                </button>
+                            </div>
+                        ) : (
+                            <Link to="/login" className="rounded-full border border-stone-200 bg-[#f4f1ec] px-5 py-3 text-[10px] font-black uppercase tracking-widest text-[#5c1111] transition-all duration-300 hover:bg-white hover:border-[#5c1111]/30 hover:shadow-lg">
+                                Sign In
+                            </Link>
+                        )}
+
+                        <Link to="/cart" className="relative inline-flex items-center justify-center rounded-full bg-[#5c1111] px-4 py-3 text-white shadow-xl transition-all duration-300 hover:-translate-y-0.5 hover:bg-[#2a2723]" title="My Cart">
+                            <ShoppingCart size={18} className="transition-transform duration-300" />
+                            {cartCount > 0 && (
+                                <span className="absolute -right-2 -top-2 flex h-5 w-5 items-center justify-center rounded-full bg-amber-600 text-[9px] font-black text-white shadow-md border border-white">
+                                    {cartCount}
+                                </span>
+                            )}
+                        </Link>
+                    </div>
                 </div>
             </div>
         </nav>

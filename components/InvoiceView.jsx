@@ -87,7 +87,7 @@ export const InvoiceView = ({ order, onClose, role, isCombined, combinedOrders }
             // Store address & Invoice details
             setFont('helvetica', 'normal', 8);
             pdf.setTextColor(115, 115, 115);
-            pdf.text('MKS Central Hub, Ward 26', margin, y);
+            pdf.text('MAB Central Hub, Ward 26', margin, y);
             pdf.text('Janakpur Dham, Nepal', margin, y + 4);
             pdf.text('contact@mithilaartbazzar.com', margin, y + 8);
 
@@ -218,11 +218,11 @@ export const InvoiceView = ({ order, onClose, role, isCombined, combinedOrders }
                 pdf.roundedRect(totalsX - 2, y - 4, rightX - totalsX + 4, 10, 2, 2, 'F');
                 setFont('helvetica', 'bold', 7);
                 pdf.setTextColor(92, 17, 17);
-                pdf.text('INTERNAL MKS RECORDS', totalsX, y);
+                pdf.text('INTERNAL MAB RECORDS', totalsX, y);
                 y += 4;
                 setFont('helvetica', 'normal', 7);
                 pdf.setTextColor(100, 100, 100);
-                pdf.text(`MKS Commission (${displayData.commission_percentage}%)`, totalsX, y);
+                pdf.text(`MAB Commission (${displayData.commission_percentage}%)`, totalsX, y);
                 textRight(`-Rs ${displayData.commission_amount.toLocaleString()}`, y);
                 y += 10;
             }
@@ -371,9 +371,9 @@ export const InvoiceView = ({ order, onClose, role, isCombined, combinedOrders }
                                     </div>
                                 </div>
                                 <div className="text-[10px] text-stone-400 leading-relaxed font-medium">
-                                    MKS Central Hub, Ward 26<br/>
+                                    MAB Central Hub, Ward 13<br/>
                                     Janakpur Dham, Nepal<br/>
-                                    contact@mithilachitrakala.com
+                                    contact@mithilaartbazzar.com
                                 </div>
                             </div>
                             <div className="text-right space-y-2">
@@ -443,9 +443,9 @@ export const InvoiceView = ({ order, onClose, role, isCombined, combinedOrders }
                                 
                                 {(role === 'admin' || role === 'seller') && (
                                     <div className="bg-stone-50 p-3 rounded-xl border border-stone-100 space-y-2 opacity-60 print:hidden">
-                                        <p className="text-[8px] font-black uppercase tracking-[0.3em] text-[#5c1111]">Internal MKS Records</p>
+                                        <p className="text-[8px] font-black uppercase tracking-[0.3em] text-[#5c1111]">Internal MAB Records</p>
                                         <div className="flex justify-between text-[9px] font-bold text-stone-500">
-                                            <span>MKS Commission ({displayOrder.commission_percentage}%)</span>
+                                            <span>MAB Commission ({displayOrder.commission_percentage}%)</span>
                                             <span>-रु {displayOrder.commission_amount.toLocaleString()}</span>
                                         </div>
                                     </div>

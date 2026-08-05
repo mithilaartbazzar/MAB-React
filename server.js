@@ -1,6 +1,5 @@
 import express from 'express';
 import cors from 'cors';
-import bodyParser from 'body-parser';
 import dotenv from 'dotenv';
 import { createClient } from '@supabase/supabase-js';
 import { GoogleGenAI } from '@google/genai';
@@ -16,8 +15,8 @@ const app = express();
 const PORT = process.env.PORT || 10000;
 
 app.use(cors());
-app.use(bodyParser.json());
-app.use(bodyParser.urlencoded({ extended: true }));
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
 const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
 // We recommend using the SERVICE_ROLE_KEY here for secure backend operations
@@ -34,7 +33,7 @@ if (!geminiApiKey) {
 const supabase = createClient(supabaseUrl, supabaseKey);
 const genAI = new GoogleGenAI({ apiKey: geminiApiKey });
 
-const hashPassword = (pwd) => btoa(`mks-salt-${pwd}`);
+const hashPassword = (pwd) => btoa(`mab-salt-${pwd}`);
 
 const logAction = async (action, adminId) => {
     await supabase.from('logs').insert([{
@@ -72,17 +71,44 @@ app.post('/api/db', async (req, res) => {
         const { action, payload } = req.body;
         let result = null;
 
+        if (!action) {
+            console.error('DB Service Error: missing action', req.body);
+            return res.status(400).json({ error: 'Missing action' });
+        }
+
         switch (action) {
             case 'login': {
                 const { username, password } = payload;
-                const { data, error } = await supabase
+                let { data, error } = await supabase
                     .from('users')
                     .select('*')
                     .eq('username', username)
-                    .eq('password_hash', hashPassword(password))
-                    .single();
-                if (error || !data || data.status !== 'active') result = null;
-                else result = data;
+                    .maybeSingle();
+
+                if (!data && !error) {
+                    const alt = await supabase
+                        .from('users')
+                        .select('*')
+                        .eq('email', username)
+                        .maybeSingle();
+                    data = alt.data;
+                    error = alt.error;
+                }
+
+                if (error) {
+                    throw new Error(error.message);
+                }
+
+                const matchesPassword = data && (
+                    data.password_hash === hashPassword(password) ||
+                    data.password === password
+                );
+
+                if (!matchesPassword || !data || data.status !== 'active') {
+                    result = null;
+                } else {
+                    result = data;
+                }
                 break;
             }
             case 'register': {
@@ -180,6 +206,20 @@ app.post('/api/db', async (req, res) => {
                 result = data[0];
                 break;
             }
+            case 'updateProduct': {
+                const { productId, productData } = payload;
+                const { data, error } = await supabase.from('products').update(productData).eq('id', productId).select();
+                if (error) throw new Error(error.message);
+                result = data[0];
+                break;
+            }
+            case 'deleteProduct': {
+                const { productId } = payload;
+                const { error } = await supabase.from('products').delete().eq('id', productId);
+                if (error) throw new Error(error.message);
+                result = { success: true };
+                break;
+            }
             case 'getOrders': {
                 const { sellerId, customerId } = payload;
                 let query = supabase.from('orders').select('*').order('date', { ascending: false });
@@ -201,7 +241,7 @@ app.post('/api/db', async (req, res) => {
                 const dateStr = now.toISOString().slice(0, 10).replace(/-/g, '');
                 const invoiceSuffix = Math.random().toString(36).substr(2, 4).toUpperCase();
                 const invoiceNo = `INV-${dateStr}-${invoiceSuffix}`;
-                const trackingId = `MKS-TRK-${Math.random().toString(36).substr(2, 8).toUpperCase()}`;
+                const trackingId = `MAB-TRK-${Math.random().toString(36).substr(2, 8).toUpperCase()}`;
 
                 const orderData = {
                     ...order,
@@ -235,7 +275,7 @@ app.post('/api/db', async (req, res) => {
                 const { orderId, adminId } = payload;
                 const { error } = await supabase.from('orders').update({
                     payment_status: 'paid',
-                    mks_payment_status: 'done'
+                    mab_payment_status: 'done'
                 }).eq('id', orderId);
                 if (error) throw new Error(error.message);
                 if (adminId) await logAction(`Admin confirmed payout for order ${orderId}`, adminId);
@@ -264,8 +304,16 @@ app.post('/api/db', async (req, res) => {
                 const { data, error } = await supabase.from('reviews').insert([{
                     id: `r-${Math.random().toString(36).substr(2, 9)}`,
                     date: new Date().toISOString(),
+                    pinned: false,
                     ...reviewData
                 }]).select();
+                if (error) throw new Error(error.message);
+                result = data[0];
+                break;
+            }
+            case 'pinReview': {
+                const { reviewId, pinned } = payload;
+                const { data, error } = await supabase.from('reviews').update({ pinned }).eq('id', reviewId).select();
                 if (error) throw new Error(error.message);
                 result = data[0];
                 break;
@@ -276,6 +324,7 @@ app.post('/api/db', async (req, res) => {
                     .from('reviews')
                     .select('*')
                     .eq('productId', productId)
+                    .order('pinned', { ascending: false })
                     .order('date', { ascending: false });
                 
                 if (reviewError) throw new Error(reviewError.message);
@@ -331,6 +380,30 @@ app.post('/api/db', async (req, res) => {
                 const { userId, productId } = payload;
                 const { error } = await supabase.from('wishlists').delete().eq('userId', userId).eq('productId', productId);
                 if (error) throw new Error(error.message);
+                result = { success: true };
+                break;
+            }
+            case 'getHeroSlides': {
+                const { data, error } = await supabase.from('hero_slides').select('*').order('sort_order', { ascending: true });
+                if (error) throw new Error(error.message);
+                result = data;
+                break;
+            }
+            case 'saveHeroSlide': {
+                const { slide, adminId } = payload;
+                const slideData = { ...slide };
+                if (!slideData.id) slideData.id = `h-${Math.random().toString(36).substr(2, 9)}`;
+                const { data, error } = await supabase.from('hero_slides').upsert([slideData]).select();
+                if (error) throw new Error(error.message);
+                if (adminId) await logAction(`Admin saved hero slide "${slideData.title} ${slideData.highlight || ''}"`, adminId);
+                result = data[0];
+                break;
+            }
+            case 'deleteHeroSlide': {
+                const { id, adminId } = payload;
+                const { error } = await supabase.from('hero_slides').delete().eq('id', id);
+                if (error) throw new Error(error.message);
+                if (adminId) await logAction(`Admin deleted hero slide ${id}`, adminId);
                 result = { success: true };
                 break;
             }

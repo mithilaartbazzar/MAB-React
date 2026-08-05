@@ -40,7 +40,7 @@ export const ProductCard = ({ product, addToCart, isWishlisted, toggleWishlist }
     const handleShare = async (e) => {
         e.preventDefault();
         const shareData = {
-            title: `MKS - ${product.name}`,
+            title: `MAB - ${product.name}`,
             text: product.description,
             url: `${window.location.origin}/#/product/${product.slug}`
         };

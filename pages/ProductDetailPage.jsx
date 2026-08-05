@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { useLocation, useNavigate, Link } from 'react-router-dom';
-import { Star, Store, MapPin, Minus, Plus, ShoppingCart, Truck, ShieldCheck, RefreshCw, ArrowLeft, Heart, ChevronLeft, ChevronRight, MessageSquare, Send } from 'lucide-react';
+import { Star, Store, MapPin, Minus, Plus, ShoppingCart, Truck, ShieldCheck, RefreshCw, ArrowLeft, Heart, ChevronLeft, ChevronRight, MessageSquare, Send, Pin } from 'lucide-react';
 import { Badge } from '../components/Badge';
 import { ProductCard } from '../components/ProductCard';
 import { SectionHeading } from '../components/SectionHeading';
@@ -19,6 +19,7 @@ export const ProductDetailPage = ({ products, addToCart, wishlist, toggleWishlis
 
     const currentUser = JSON.parse(localStorage.getItem('mithila-user') || 'null');
     const isWishlisted = product ? wishlist.includes(product.id) : false;
+    const isModerator = currentUser?.role === 'admin' || currentUser?.role === 'seller';
 
     useEffect(() => {
         if (product) {
@@ -51,6 +52,13 @@ export const ProductDetailPage = ({ products, addToCart, wishlist, toggleWishlis
         setIsSubmittingReview(false);
         loadReviews();
     };
+
+    const handlePinReview = async (reviewId, pinned) => {
+        if (!isModerator) return;
+        await dbService.toggleReviewPinned(reviewId, pinned);
+        loadReviews();
+    };
+
 
     const scrollCarousel = (direction) => {
         if (carouselRef.current) {
@@ -301,21 +309,35 @@ export const ProductDetailPage = ({ products, addToCart, wishlist, toggleWishlis
                     ) : (
                         <div className="space-y-8">
                             {reviews.map(review => (
-                                <div key={review.id} className="bg-white p-4 rounded-[1.2rem] border border-stone-100 shadow-sm hover:shadow-xl transition-all group animate-in slide-in-from-bottom-4 duration-500">
-                                    <div className="flex justify-between items-start mb-4">
+                                <div key={review.id} className={`bg-white p-4 rounded-[1.2rem] border ${review.pinned ? 'border-[#5c1111] bg-[#fff5f0]' : 'border-stone-100'} shadow-sm hover:shadow-xl transition-all group animate-in slide-in-from-bottom-4 duration-500`}>
+                                    <div className="flex justify-between items-start mb-4 gap-4">
                                         <div className="flex items-center gap-4">
-                                            <div className="w-10 h-10 bg-[#efece6] rounded-xl flex items-center justify-center font-black text-[#5c1111] text-lg shadow-inner">
+                                            <div className="w-10 h-10 bg-[#efece6] rounded-xl flex items-center justify-center font-black text-[#5c1111] text-lg shadow-inner overflow-hidden">
                                                 <img src={review.user?.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(review.userName || 'User')}&background=5c1111&color=fff&size=128`} alt="" className='w-full h-full object-cover rounded-[0.75rem]'/>
                                             </div>
                                             <div>
-                                                <h5 className="font-black text-sm text-stone-900">{review.userName}</h5>
+                                                <div className="flex items-center gap-2">
+                                                    <h5 className="font-black text-sm text-stone-900">{review.userName}</h5>
+                                                    {review.pinned && <span className="text-[8px] font-black uppercase tracking-[0.2em] text-[#5c1111] bg-[#fff2ec] px-2 py-1 rounded-full">Pinned</span>}
+                                                </div>
                                                 <p className="text-[9px] font-black uppercase tracking-widest text-stone-400">{new Date(review.date).toLocaleDateString()}</p>
                                             </div>
                                         </div>
-                                        <div className="flex text-amber-500">
-                                            {[...Array(5)].map((_, i) => (
-                                                <Star key={i} size={14} fill={i < review.rating ? 'currentColor' : 'none'} className={i >= review.rating ? 'text-stone-200' : ''} />
-                                            ))}
+                                        <div className="flex items-center gap-2">
+                                            <div className="flex text-amber-500">
+                                                {[...Array(5)].map((_, i) => (
+                                                    <Star key={i} size={14} fill={i < review.rating ? 'currentColor' : 'none'} className={i >= review.rating ? 'text-stone-200' : ''} />
+                                                ))}
+                                            </div>
+                                            {isModerator && (
+                                                <button
+                                                    type="button"
+                                                    onClick={() => handlePinReview(review.id, !review.pinned)}
+                                                    className={`flex items-center gap-1 text-[10px] font-black uppercase tracking-[0.2em] px-3 py-2 rounded-2xl border ${review.pinned ? 'border-[#5c1111] bg-[#5c1111] text-white' : 'border-stone-200 bg-white text-stone-700 hover:border-[#5c1111] hover:text-[#5c1111]'}`}
+                                                >
+                                                    <Pin size={12} /> {review.pinned ? 'Unpin' : 'Pin'}
+                                                </button>
+                                            )}
                                         </div>
                                     </div>
                                     <p className="text-stone-600 font-playfair italic text-lg leading-relaxed pl-4 border-l-2 border-[#5c1111]/20">

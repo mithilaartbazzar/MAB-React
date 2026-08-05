@@ -11,7 +11,9 @@ export const ProfilePage = ({ currentUser, setCurrentUser, wishlist, products, t
     const [loading, setLoading] = useState(true);
     const [invoiceOrder, setInvoiceOrder] = useState(null);
     const [isEditing, setIsEditing] = useState(false);
+    const [name, setName] = useState(currentUser.name || '');
     const [phone, setPhone] = useState(currentUser.phone || '');
+    const [username, setUsername] = useState(currentUser.username || '');
     const [address, setAddress] = useState(currentUser.address || '');
     const [city, setCity] = useState(currentUser.city || '');
     const [saving, setSaving] = useState(false);
@@ -51,6 +53,8 @@ export const ProfilePage = ({ currentUser, setCurrentUser, wishlist, products, t
         setSaving(true);
         try {
             const updatedUser = await dbService.updateUser(currentUser.id, {
+                name: name || undefined,
+                username: username || undefined,
                 phone: phone || undefined,
                 address: address || undefined,
                 city: city || undefined
@@ -100,6 +104,36 @@ export const ProfilePage = ({ currentUser, setCurrentUser, wishlist, products, t
                                     <div className="w-8 h-8 bg-white rounded-lg flex items-center justify-center text-[#5c1111] shadow-sm"><Mail size={14} /></div>
                                     <p className="text-xs font-medium text-stone-600 truncate">{currentUser.email}</p>
                                 </div>
+
+                                <div className="flex items-center gap-4 text-left">
+                                    <div className="w-8 h-8 bg-white rounded-lg flex items-center justify-center text-[#5c1111] shadow-sm"><Mail size={14} /></div>
+                                    {isEditing ? (
+                                        <input
+                                            value={name}
+                                            onChange={e => setName(e.target.value)}
+                                            type="text"
+                                            placeholder="Name"
+                                            className="flex-1 text-xs font-medium text-stone-600 bg-[#efece6] rounded-lg px-3 py-2 outline-none focus:bg-white border border-transparent focus:border-[#5c1111]/20"
+                                        />
+                                    ) : (
+                                        <p className="text-xs font-medium text-stone-600">{currentUser.name || 'Not provided'}</p>
+                                    )}
+                                </div>
+
+                                <div className="flex items-center gap-4 text-left">
+                                    <div className="w-8 h-8 bg-white rounded-lg flex items-center justify-center text-[#5c1111] shadow-sm"><Mail size={14} /></div>
+                                    {isEditing ? (
+                                        <input
+                                            value={username}
+                                            onChange={e => setUsername(e.target.value)}
+                                            type="text"
+                                            placeholder="Username"
+                                            className="flex-1 text-xs font-medium text-stone-600 bg-[#efece6] rounded-lg px-3 py-2 outline-none focus:bg-white border border-transparent focus:border-[#5c1111]/20"
+                                        />
+                                    ) : (
+                                        <p className="text-xs font-medium text-stone-600">{currentUser.username || 'Not provided'}</p>
+                                    )}
+                                </div>
                                 <div className="flex items-center gap-4 text-left">
                                     <div className="w-8 h-8 bg-white rounded-lg flex items-center justify-center text-[#5c1111] shadow-sm"><Phone size={14} /></div>
                                     {isEditing ? (
@@ -124,13 +158,17 @@ export const ProfilePage = ({ currentUser, setCurrentUser, wishlist, products, t
                                             placeholder="Address"
                                             className="flex-1 text-xs font-medium text-stone-600 bg-[#efece6] rounded-lg px-3 py-2 outline-none focus:bg-white border border-transparent focus:border-[#5c1111]/20"
                                         />
+                                        
+
+                                        
                                     ) : (
-                                        <p className="text-xs font-medium text-stone-600">{currentUser.address || 'No address saved'}</p>
+                                        <p className="text-xs font-medium text-stone-600">{currentUser.address || 'No address saved'}, {currentUser.city || 'No city saved'}</p>
                                     )}
+                                    
                                 </div>
-                                <div className="flex items-center gap-4 text-left">
-                                    <div className="w-8 h-8 bg-white rounded-lg flex items-center justify-center text-[#5c1111] shadow-sm"><MapPin size={14} /></div>
-                                    {isEditing ? (
+                                {isEditing && (
+                                    <div className="flex items-center gap-4 text-left">
+                                        <div className="w-8 h-8 bg-white rounded-lg flex items-center justify-center text-[#5c1111] shadow-sm"><MapPin size={14} /></div>
                                         <input
                                             value={city}
                                             onChange={e => setCity(e.target.value)}
@@ -138,10 +176,8 @@ export const ProfilePage = ({ currentUser, setCurrentUser, wishlist, products, t
                                             placeholder="City"
                                             className="flex-1 text-xs font-medium text-stone-600 bg-[#efece6] rounded-lg px-3 py-2 outline-none focus:bg-white border border-transparent focus:border-[#5c1111]/20"
                                         />
-                                    ) : (
-                                        <p className="text-xs font-medium text-stone-600">{currentUser.city || 'No city saved'}</p>
-                                    )}
-                                </div>
+                                    </div>
+                                )}
                             </div>
 
                             <div className="flex flex-col w-full gap-3 pt-6">

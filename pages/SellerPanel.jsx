@@ -3,7 +3,7 @@ import {
     Package, Plus, Trash2, Box, TrendingUp, ShoppingBag, 
     Printer, Eye, X, Wallet, Shield, Users, AlertCircle,
     LayoutDashboard, MapPin, Search, ChevronRight, Settings, Info, Download,
-    Check, UserX, ShieldCheck, Heart, RotateCcw, Filter
+    Check, UserX, ShieldCheck, Heart, RotateCcw, Filter, Pencil
 } from 'lucide-react';
 import { dbService } from '../services/dbservices';
 import { SectionHeading } from '../components/SectionHeading';
@@ -47,7 +47,10 @@ export const SellerPanel = ({ currentUser }) => {
     const [globalCommission, setGlobalCommission] = useState(15);
     const [lowStockThreshold, setLowStockThreshold] = useState(5);
     const [showAddProductModal, setShowAddProductModal] = useState(false);
+    const [editingProductId, setEditingProductId] = useState(null);
     const [newProduct, setNewProduct] = useState({
+        id: null,
+        seller_id: null,
         name: '',
         description: '',
         price: 0,
@@ -61,6 +64,50 @@ export const SellerPanel = ({ currentUser }) => {
         instruction: '',
         authenticity: ''
     });
+
+    const [heroSlides, setHeroSlides] = useState([]);
+    const [heroDraft, setHeroDraft] = useState({
+        id: null,
+        tag: '',
+        title: '',
+        highlight: '',
+        text: '',
+        cta: '',
+        link: '',
+        image: '',
+        theme: 'maroon',
+        bg: 'from-[#5c1111] via-[#6d1414] to-[#3a0a0a]',
+        fade: 'from-[#5c1111]',
+        sort_order: 0,
+        active: true
+    });
+    const [editingHeroId, setEditingHeroId] = useState(null);
+
+    const HERO_THEME_GRADIENTS = {
+        maroon: { bg: 'from-[#5c1111] via-[#6d1414] to-[#3a0a0a]', fade: 'from-[#5c1111]' },
+        charcoal: { bg: 'from-[#2a2723] via-[#1e1c1a] to-[#0d0c0b]', fade: 'from-[#1e1c1a]' },
+        saffron: { bg: 'from-[#8a5200] via-[#7a4400] to-[#5c1111]', fade: 'from-[#8a5200]' }
+    };
+
+    const normalizeHeroSlide = (slide) => {
+        const theme = slide.theme || 'maroon';
+        const themeClasses = HERO_THEME_GRADIENTS[theme] || HERO_THEME_GRADIENTS.maroon;
+        return {
+            id: slide.id,
+            tag: slide.tag ?? '',
+            title: slide.title ?? '',
+            highlight: slide.highlight ?? '',
+            text: slide.text ?? slide.description ?? '',
+            cta: slide.cta ?? slide.cta_label ?? 'Shop Now',
+            link: slide.link ?? slide.cta_link ?? '/products',
+            image: slide.image ?? '',
+            theme,
+            bg: slide.bg || themeClasses.bg,
+            fade: slide.fade || themeClasses.fade,
+            sort_order: slide.sort_order ?? 0,
+            active: slide.active ?? true
+        };
+    };
 
     const [stats, setStats] = useState({ revenue: 0, payable: 0, paid: 0, pendingPayout: 0, orderCount: 0 });
 
@@ -83,19 +130,22 @@ export const SellerPanel = ({ currentUser }) => {
         if (!refreshing) setLoading(true);
         try {
             if (currentUser.role === 'admin') {
-                const [p, o, u, l, w] = await Promise.all([
+                const [p, o, u, l, w, h] = await Promise.all([
                     dbService.getProducts(),
                     dbService.getOrders(),
                     dbService.getUsers(),
                     dbService.getLogs(),
-                    dbService.getWishlists()
+                    dbService.getWishlists(),
+                    dbService.getHeroSlides()
                 ]);
                 setProducts(p);
                 setOrders(o);
                 setAllUsers(u);
                 setLogs(l);
                 setWishlists(w);
-                setGlobalCommission(dbService.getGlobalCommission());
+                setHeroSlides((h || []).map(normalizeHeroSlide));
+                const commissionData = await dbService.getGlobalCommission();
+                setGlobalCommission(commissionData?.globalCommission ?? 15);
             } else {
                 const [p, o, w] = await Promise.all([
                     dbService.getProducts(currentUser.id),
@@ -125,7 +175,7 @@ export const SellerPanel = ({ currentUser }) => {
                 s.revenue += o.total;
                 if (['packing', 'billing', 'arrived', 'delivered'].includes(o.status)) {
                     s.payable += o.seller_payable_amount;
-                    if (o.mks_payment_status === 'done') s.paid += o.seller_payable_amount;
+                    if (o.mab_payment_status === 'done') s.paid += o.seller_payable_amount;
                     else s.pendingPayout += o.seller_payable_amount;
                 }
             }
@@ -176,31 +226,147 @@ export const SellerPanel = ({ currentUser }) => {
         loadData();
     };
 
-    const handleAddProduct = async () => {
+    const resetProductForm = () => {
+        setEditingProductId(null);
+        setNewProduct({
+            id: null,
+            seller_id: null,
+            name: '',
+            description: '',
+            price: 0,
+            image: '',
+            category: '',
+            stock: 0,
+            location: '',
+            material: '',
+            length: '',
+            delivery: '',
+            instruction: '',
+            authenticity: ''
+        });
+    };
+
+    const handleEditProduct = (product) => {
+        setEditingProductId(product.id);
+        setNewProduct({
+            id: product.id,
+            seller_id: product.seller_id,
+            name: product.name || '',
+            description: product.description || '',
+            price: product.price || 0,
+            image: product.image || '',
+            category: product.category || '',
+            stock: product.stock || 0,
+            location: product.location || '',
+            material: product.material || '',
+            length: product.length || '',
+            delivery: product.delivery || '',
+            instruction: product.instruction || '',
+            authenticity: product.authenticity || ''
+        });
+        setShowAddProductModal(true);
+    };
+
+    const handleSaveProduct = async () => {
         try {
-            await dbService.addProduct({
-                ...newProduct,
-                seller_id: currentUser.id
-            });
+            if (editingProductId) {
+                await dbService.updateProduct(editingProductId, {
+                    ...newProduct,
+                    seller_id: newProduct.seller_id || currentUser.id
+                });
+            } else {
+                await dbService.addProduct({
+                    ...newProduct,
+                    seller_id: currentUser.id
+                });
+            }
             setShowAddProductModal(false);
-            setNewProduct({
-                name: '',
-                description: '',
-                price: 0,
-                image: '',
-                category: '',
-                stock: 0,
-                location: '',
-                material: '',
-                length: '',
-                delivery: '',
-                instruction: '',
-                authenticity: ''
-            });
+            resetProductForm();
             loadData();
         } catch (error) {
-            console.error('Error adding product:', error);
+            console.error('Error saving product:', error);
         }
+    };
+
+    const handleDeleteProduct = async (productId) => {
+        if (!window.confirm('Delete this product? This action cannot be undone.')) return;
+        try {
+            await dbService.deleteProduct(productId);
+            loadData();
+        } catch (error) {
+            console.error('Error deleting product:', error);
+        }
+    };
+
+    const handleEditHero = (slide) => {
+        setEditingHeroId(slide.id);
+        setHeroDraft({
+            ...slide,
+            id: slide.id,
+            sort_order: slide.sort_order ?? 0,
+            bg: slide.bg || 'from-[#5c1111] via-[#6d1414] to-[#3a0a0a]',
+            fade: slide.fade || 'from-[#5c1111]'
+        });
+    };
+
+    const handleResetHeroDraft = () => {
+        setEditingHeroId(null);
+        setHeroDraft({
+            id: null,
+            tag: '',
+            title: '',
+            highlight: '',
+            text: '',
+            cta: '',
+            link: '',
+            image: '',
+            bg: 'from-[#5c1111] via-[#6d1414] to-[#3a0a0a]',
+            fade: 'from-[#5c1111]',
+            sort_order: 0
+        });
+    };
+
+    const handleSaveHero = async () => {
+        try {
+            const slideData = {
+                id: heroDraft.id,
+                tag: heroDraft.tag,
+                title: heroDraft.title,
+                highlight: heroDraft.highlight,
+                description: heroDraft.text,
+                cta_label: heroDraft.cta,
+                cta_link: heroDraft.link,
+                image: heroDraft.image,
+                theme: heroDraft.theme,
+                sort_order: heroDraft.sort_order,
+                active: heroDraft.active
+            };
+            await dbService.saveHeroSlide(slideData, currentUser.id);
+            handleResetHeroDraft();
+            loadData();
+        } catch (error) {
+            console.error('Error saving hero slide:', error);
+        }
+    };
+
+    const handleDeleteHero = async (id) => {
+        if (!window.confirm('Delete this hero slide?')) return;
+        try {
+            await dbService.deleteHeroSlide(id, currentUser.id);
+            loadData();
+        } catch (error) {
+            console.error('Error deleting hero slide:', error);
+        }
+    };
+
+    const handleOpenNewHero = () => {
+        handleResetHeroDraft();
+        setActiveTab('admin_hero');
+    };
+
+    const handleOpenAddProduct = () => {
+        resetProductForm();
+        setShowAddProductModal(true);
     };
 
     const handleUserStatusUpdate = async (userId, status) => {
@@ -226,6 +392,7 @@ export const SellerPanel = ({ currentUser }) => {
                         {currentUser.role === 'admin' && (
                             <>
                                 <TabBtn active={activeTab === 'admin_users'} onClick={() => setActiveTab('admin_users')} icon={<Users size={14}/>}>Artisans</TabBtn>
+                                <TabBtn active={activeTab === 'admin_hero'} onClick={() => setActiveTab('admin_hero')} icon={<Pencil size={14}/>}>Hero</TabBtn>
                                 <TabBtn active={activeTab === 'admin_config'} onClick={() => setActiveTab('admin_config')} icon={<TrendingUp size={14}/>}>Policy</TabBtn>
                                 <TabBtn active={activeTab === 'admin_logs'} onClick={() => setActiveTab('admin_logs')} icon={<Shield size={14}/>}>Audit</TabBtn>
                             </>
@@ -257,7 +424,7 @@ export const SellerPanel = ({ currentUser }) => {
                         <div className="space-y-10">
                             <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-6">
                                 <StatCard label="Registry Volume" value={`रु ${stats.revenue.toLocaleString()}`} sub="Gross Market Sales" />
-                                <StatCard label="MKS Share" value={`रु ${(stats.revenue - stats.payable).toLocaleString()}`} sub="Revenue Retained" color="text-amber-600" />
+                                <StatCard label="MAB Share" value={`रु ${(stats.revenue - stats.payable).toLocaleString()}`} sub="Revenue Retained" color="text-amber-600" />
                                 <StatCard label="Due for Disbursement" value={`रु ${stats.pendingPayout.toLocaleString()}`} sub="Pending Clearance" color="text-blue-600" />
                                 <StatCard label="Settled Funds" value={`रु ${stats.paid.toLocaleString()}`} sub="Successfully Payout" color="text-green-600" />
                             </div>
@@ -304,7 +471,7 @@ export const SellerPanel = ({ currentUser }) => {
                                     </button>
                                 </div>
                                 <button
-                                    onClick={() => setShowAddProductModal(true)}
+                                    onClick={handleOpenAddProduct}
                                     className="px-6 py-3 bg-[#5c1111] text-white rounded-2xl font-black text-[10px] uppercase tracking-widest flex items-center gap-2 hover:bg-[#2a2723] transition-all"
                                 >
                                     <Plus size={16} /> Add New Product
@@ -332,12 +499,15 @@ export const SellerPanel = ({ currentUser }) => {
                                             </div>
                                             <p className="text-[9px] text-stone-400 font-bold uppercase tracking-widest mt-1">{p.category} &bull; रु {p.price.toLocaleString()}</p>
                                         </div>
-                                        <div className="flex items-center gap-8">
+                                        <div className="flex items-center gap-4">
                                             <div className="text-right">
                                                 <p className="text-[8px] uppercase font-bold text-stone-300 tracking-widest">Stock Level</p>
                                                 <p className={`text-base font-black ${isLow ? 'text-red-600' : 'text-stone-900'}`}>{p.stock}</p>
                                             </div>
-                                            <button className="p-3 text-stone-300 hover:text-red-700 transition-colors"><Trash2 size={18}/></button>
+                                            <button onClick={() => handleEditProduct(p)} className="p-3 text-stone-300 hover:text-[#5c1111] transition-colors" title="Edit product"><Pencil size={18}/></button>
+                                            {(currentUser.role === 'admin' || p.seller_id === currentUser.id) && (
+                                                <button onClick={() => handleDeleteProduct(p.id)} className="p-3 text-stone-300 hover:text-red-600 transition-colors" title="Delete product"><Trash2 size={18}/></button>
+                                            )}
                                         </div>
                                     </div>
                                 );
@@ -760,6 +930,158 @@ export const SellerPanel = ({ currentUser }) => {
                         </div>
                     )}
 
+                    {activeTab === 'admin_hero' && currentUser.role === 'admin' && (
+                        <div className="space-y-6 animate-in fade-in duration-300">
+                            <div className="bg-white p-2 md:p-12 rounded-[1rem] sm:rounded-[3.5rem] border border-stone-100 shadow-sm">
+                                <div className="flex items-center justify-between mb-8">
+                                    <div>
+                                        <h3 className="font-playfair text-2xl font-black text-stone-900 border-l-4 border-[#5c1111] pl-6 italic">Homepage Hero Slides</h3>
+                                        <p className="text-[10px] text-stone-400 font-bold uppercase tracking-widest mt-2">Create and edit the homepage hero carousel.</p>
+                                    </div>
+                                    <button
+                                        onClick={handleOpenNewHero}
+                                        className="px-6 py-3 bg-[#5c1111] text-white rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-[#2a2723] transition-all"
+                                    >
+                                        <Plus size={16} /> Add Slide
+                                    </button>
+                                </div>
+
+                                <div className="space-y-6">
+                                    {heroSlides.length === 0 ? (
+                                        <div className="text-center py-20 bg-stone-50 rounded-[3rem] border border-dashed border-stone-200">
+                                            <p className="text-stone-400 font-bold uppercase text-[10px] tracking-widest">No hero slides configured yet.</p>
+                                        </div>
+                                    ) : heroSlides.map((slide) => (
+                                        <div key={slide.id} className="bg-stone-50 p-4 rounded-3xl border border-stone-200 flex flex-col lg:flex-row justify-between gap-4">
+                                            <div>
+                                                <p className="text-[9px] uppercase tracking-[0.2em] text-stone-500 mb-2">{slide.tag || 'Hero Tag'}</p>
+                                                <h4 className="font-black text-lg text-stone-900">{slide.title} <span className="text-amber-600">{slide.highlight}</span></h4>
+                                                <p className="text-sm text-stone-500 mt-2">{slide.text}</p>
+                                                <p className="text-[10px] text-stone-400 uppercase tracking-[0.2em] mt-4">Link: {slide.link || '—'}</p>
+                                            </div>
+                                            <div className="flex items-center gap-3">
+                                                <button
+                                                    onClick={() => handleEditHero(slide)}
+                                                    className="px-4 py-3 bg-white border border-stone-200 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:border-[#5c1111] hover:text-[#5c1111] transition-all"
+                                                >Edit</button>
+                                                <button
+                                                    onClick={() => handleDeleteHero(slide.id)}
+                                                    className="px-4 py-3 bg-red-600 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-red-700 transition-all"
+                                                >Delete</button>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+
+                                <div className="mt-10 bg-[#f8f6f2] p-6 rounded-[2rem] border border-stone-100 shadow-sm">
+                                    <div className="flex flex-col md:flex-row justify-between gap-4 mb-6">
+                                        <div>
+                                            <h4 className="font-black text-xl text-stone-900">{editingHeroId ? 'Edit Slide' : 'New Slide'}</h4>
+                                            <p className="text-[10px] uppercase tracking-[0.2em] text-stone-400 mt-2">Fill the slide fields and save to update the homepage carousel.</p>
+                                        </div>
+                                        <div className="flex gap-3">
+                                            <button
+                                                onClick={handleSaveHero}
+                                                className="px-6 py-3 bg-[#5c1111] text-white rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-[#2a2723] transition-all"
+                                            >Save Slide</button>
+                                            <button
+                                                onClick={handleResetHeroDraft}
+                                                className="px-6 py-3 bg-white border border-stone-200 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-stone-50 transition-all"
+                                            >Reset</button>
+                                        </div>
+                                    </div>
+
+                                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                                        <div className="space-y-4">
+                                            <label className="block text-[10px] font-black uppercase tracking-widest text-stone-400">Tag</label>
+                                            <input
+                                                value={heroDraft.tag}
+                                                onChange={(e) => setHeroDraft(prev => ({ ...prev, tag: e.target.value }))}
+                                                className="w-full px-4 py-3 bg-white border border-stone-200 rounded-2xl outline-none focus:ring-2 focus:ring-[#5c1111]/20"
+                                            />
+
+                                            <label className="block text-[10px] font-black uppercase tracking-widest text-stone-400">Title</label>
+                                            <input
+                                                value={heroDraft.title}
+                                                onChange={(e) => setHeroDraft(prev => ({ ...prev, title: e.target.value }))}
+                                                className="w-full px-4 py-3 bg-white border border-stone-200 rounded-2xl outline-none focus:ring-2 focus:ring-[#5c1111]/20"
+                                            />
+
+                                            <label className="block text-[10px] font-black uppercase tracking-widest text-stone-400">Highlight</label>
+                                            <input
+                                                value={heroDraft.highlight}
+                                                onChange={(e) => setHeroDraft(prev => ({ ...prev, highlight: e.target.value }))}
+                                                className="w-full px-4 py-3 bg-white border border-stone-200 rounded-2xl outline-none focus:ring-2 focus:ring-[#5c1111]/20"
+                                            />
+
+                                            <label className="block text-[10px] font-black uppercase tracking-widest text-stone-400">Text</label>
+                                            <textarea
+                                                value={heroDraft.text}
+                                                onChange={(e) => setHeroDraft(prev => ({ ...prev, text: e.target.value }))}
+                                                className="w-full px-4 py-3 bg-white border border-stone-200 rounded-2xl outline-none focus:ring-2 focus:ring-[#5c1111]/20 h-28 resize-none"
+                                            />
+                                        </div>
+                                        <div className="space-y-4">
+                                            <label className="block text-[10px] font-black uppercase tracking-widest text-stone-400">CTA button text</label>
+                                            <input
+                                                value={heroDraft.cta}
+                                                onChange={(e) => setHeroDraft(prev => ({ ...prev, cta: e.target.value }))}
+                                                className="w-full px-4 py-3 bg-white border border-stone-200 rounded-2xl outline-none focus:ring-2 focus:ring-[#5c1111]/20"
+                                            />
+
+                                            <label className="block text-[10px] font-black uppercase tracking-widest text-stone-400">Link</label>
+                                            <input
+                                                value={heroDraft.link}
+                                                onChange={(e) => setHeroDraft(prev => ({ ...prev, link: e.target.value }))}
+                                                className="w-full px-4 py-3 bg-white border border-stone-200 rounded-2xl outline-none focus:ring-2 focus:ring-[#5c1111]/20"
+                                            />
+
+                                            <label className="block text-[10px] font-black uppercase tracking-widest text-stone-400">Image URL</label>
+                                            <input
+                                                value={heroDraft.image}
+                                                onChange={(e) => setHeroDraft(prev => ({ ...prev, image: e.target.value }))}
+                                                className="w-full px-4 py-3 bg-white border border-stone-200 rounded-2xl outline-none focus:ring-2 focus:ring-[#5c1111]/20"
+                                            />
+
+                                            <label className="block text-[10px] font-black uppercase tracking-widest text-stone-400">Theme</label>
+                                            <select
+                                                value={heroDraft.theme}
+                                                onChange={(e) => {
+                                                    const theme = e.target.value;
+                                                    const themeClasses = HERO_THEME_GRADIENTS[theme] || HERO_THEME_GRADIENTS.maroon;
+                                                    setHeroDraft(prev => ({ ...prev, theme, bg: themeClasses.bg, fade: themeClasses.fade }));
+                                                }}
+                                                className="w-full px-4 py-3 bg-white border border-stone-200 rounded-2xl outline-none focus:ring-2 focus:ring-[#5c1111]/20"
+                                            >
+                                                <option value="maroon">Maroon</option>
+                                                <option value="charcoal">Charcoal</option>
+                                                <option value="saffron">Saffron</option>
+                                            </select>
+
+                                            <label className="flex items-center gap-3 text-[10px] font-black uppercase tracking-widest text-stone-400">
+                                                <input
+                                                    type="checkbox"
+                                                    checked={heroDraft.active}
+                                                    onChange={(e) => setHeroDraft(prev => ({ ...prev, active: e.target.checked }))}
+                                                    className="w-4 h-4 accent-[#5c1111]"
+                                                />
+                                                Active slide
+                                            </label>
+
+                                            <label className="block text-[10px] font-black uppercase tracking-widest text-stone-400">Sort order</label>
+                                            <input
+                                                type="number"
+                                                value={heroDraft.sort_order}
+                                                onChange={(e) => setHeroDraft(prev => ({ ...prev, sort_order: parseInt(e.target.value) || 0 }))}
+                                                className="w-full px-4 py-3 bg-white border border-stone-200 rounded-2xl outline-none focus:ring-2 focus:ring-[#5c1111]/20"
+                                            />
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
                     {activeTab === 'admin_logs' && currentUser.role === 'admin' && (
                         <div className="space-y-6 animate-in fade-in duration-300">
                             <div className="flex justify-between items-center mb-6">
@@ -858,7 +1180,7 @@ export const SellerPanel = ({ currentUser }) => {
                                             <span className="font-black text-stone-900">रु {selectedOrder.total.toLocaleString()}</span>
                                         </div>
                                         <div className="flex justify-between text-xs font-medium">
-                                            <span className="text-stone-400 uppercase tracking-tighter">MKS Commission</span>
+                                            <span className="text-stone-400 uppercase tracking-tighter">MAB Commission</span>
                                             <span className="font-black text-red-700">- रु {selectedOrder.commission_amount.toLocaleString()}</span>
                                         </div>
                                         <div className="pt-6 border-t border-stone-100 flex justify-between items-baseline">
@@ -874,9 +1196,9 @@ export const SellerPanel = ({ currentUser }) => {
                                             <p className="text-[9px] font-black uppercase mb-1">Collector</p>
                                             <p className="text-[10px] font-black">{selectedOrder.customer_payment_status === 'done' ? 'SETTLED' : 'AWAITING'}</p>
                                         </div>
-                                        <div className={`flex-1 p-5 rounded-2xl border text-center ${selectedOrder.mks_payment_status === 'done' ? 'bg-blue-50 border-blue-100 text-blue-700' : 'bg-white border-stone-100 text-stone-400'}`}>
+                                        <div className={`flex-1 p-5 rounded-2xl border text-center ${selectedOrder.mab_payment_status === 'done' ? 'bg-blue-50 border-blue-100 text-blue-700' : 'bg-white border-stone-100 text-stone-400'}`}>
                                             <p className="text-[9px] font-black uppercase mb-1">Disbursement</p>
-                                            <p className="text-[10px] font-black">{selectedOrder.mks_payment_status === 'done' ? 'COMPLETED' : 'PENDING'}</p>
+                                            <p className="text-[10px] font-black">{selectedOrder.mab_payment_status === 'done' ? 'COMPLETED' : 'PENDING'}</p>
                                         </div>
                                     </div>
 
@@ -917,7 +1239,7 @@ export const SellerPanel = ({ currentUser }) => {
                                         </button>
                                     )}
                                     
-                                    {currentUser.role === 'admin' && selectedOrder.mks_payment_status === 'pending' && (
+                                    {currentUser.role === 'admin' && selectedOrder.mab_payment_status === 'pending' && (
                                         <button onClick={() => handleConfirmPayout(selectedOrder.id)} className="w-full bg-stone-900 text-white py-6 rounded-[2rem] font-black text-[10px] uppercase tracking-[0.3em] shadow-lg flex items-center justify-center gap-3 hover:bg-[#5c1111] transition-all">
                                             <Wallet size={18} /> Confirm Studio Payout
                                         </button>
@@ -949,7 +1271,7 @@ export const SellerPanel = ({ currentUser }) => {
                         <button onClick={() => setShowAddProductModal(false)} className="absolute top-6 right-6 sm:top-10 sm:right-10 p-3 sm:p-4 bg-white/80 rounded-full hover:text-red-800 transition-all active:scale-90 z-10 shadow-sm"><X size={18} className="w-4 h-4 sm:w-5 sm:h-5"/></button>
 
                         <div className="p-3 sm:p-10 md:p-12 space-y-6 overflow-y-auto max-h-[85vh]">
-                            <SectionHeading subtitle="Product Registry" title="Add New Artifact" />
+                            <SectionHeading subtitle="Product Registry" title={editingProductId ? 'Edit Artifact' : 'Add New Artifact'} />
 
                             <div className="space-y-6">
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-6">
@@ -970,7 +1292,7 @@ export const SellerPanel = ({ currentUser }) => {
                                             value={newProduct.category}
                                             onChange={(e) => setNewProduct({...newProduct, category: e.target.value})}
                                             className="w-full px-4 py-3 bg-white border border-stone-200 rounded-2xl focus:ring-2 focus:ring-[#5c1111]/20 focus:border-[#5c1111] outline-none transition-all"
-                                            placeholder="e.g., Painting, Sculpture"
+                                            placeholder="e.g., Paintings, Sculpture"
                                         />
                                     </div>
                                 </div>
@@ -1089,16 +1411,19 @@ export const SellerPanel = ({ currentUser }) => {
 
                                 <div className="flex gap-4 pt-6">
                                     <button
-                                        onClick={() => setShowAddProductModal(false)}
+                                        onClick={() => {
+                                            setShowAddProductModal(false);
+                                            resetProductForm();
+                                        }}
                                         className="flex-1 px-6 py-4 bg-stone-100 text-stone-600 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-stone-200 transition-all"
                                     >
                                         Cancel
                                     </button>
                                     <button
-                                        onClick={handleAddProduct}
+                                        onClick={handleSaveProduct}
                                         className="flex-1 px-6 py-4 bg-[#5c1111] text-white rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-[#2a2723] transition-all"
                                     >
-                                        Add Product
+                                        {editingProductId ? 'Save Changes' : 'Add Product'}
                                     </button>
                                 </div>
                             </div>
