@@ -52,6 +52,7 @@ export const dbService = {
     getHeroSlides: () => callDbService('getHeroSlides'),
     saveHeroSlide: (slide, adminId) => callDbService('saveHeroSlide', { slide, adminId }),
     deleteHeroSlide: (id, adminId) => callDbService('deleteHeroSlide', { id, adminId }),
+    subscribeJournalEmail: (email) => callDbService('subscribeJournalEmail', { email }),
     getJournalPosts: () => callDbService('getJournalPosts'),
     saveJournalPost: (post, adminId) => callDbService('saveJournalPost', { post, adminId }),
     deleteJournalPost: (id, adminId) => callDbService('deleteJournalPost', { id, adminId })

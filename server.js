@@ -477,6 +477,24 @@ app.post('/api/db', async (req, res) => {
                 result = { success: true };
                 break;
             }
+            case 'subscribeJournalEmail': {
+                const email = String(payload.email || '').trim().toLowerCase();
+                if (!email || !email.includes('@') || !email.includes('.')) {
+                    throw new Error('Enter a valid email address.');
+                }
+
+                const { data, error } = await supabase.from('journal_subscribers').upsert([
+                    {
+                        id: `js-${Math.random().toString(36).substr(2, 9)}`,
+                        email,
+                        created_at: new Date().toISOString()
+                    }
+                ], { onConflict: 'email' }).select();
+
+                if (error) throw new Error(error.message);
+                result = { success: true, email: data?.[0]?.email || email };
+                break;
+            }
             default:
                 throw new Error('Invalid action');
         }
