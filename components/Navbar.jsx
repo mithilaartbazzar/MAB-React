@@ -8,8 +8,6 @@ import {
     Store,
     Heart,
     Search,
-    Menu,
-    X,
 } from 'lucide-react';
 
 
@@ -36,21 +34,14 @@ const DesktopNavLink = ({ to, active, children }) => (
 );
 
 export const Navbar = ({ cartCount, currentUser, setCurrentUser }) => {
-    const [mobileOpen, setMobileOpen] = useState(false);
     const [searchOpen, setSearchOpen] = useState(false);
     const [query, setQuery] = useState('');
     const location = useLocation();
     const navigate = useNavigate();
 
     useEffect(() => {
-        setMobileOpen(false);
         setSearchOpen(false);
     }, [location.pathname]);
-
-    useEffect(() => {
-        document.body.style.overflow = mobileOpen ? 'hidden' : '';
-        return () => { document.body.style.overflow = ''; };
-    }, [mobileOpen]);
 
     const logout = () => {
         setCurrentUser(null);
@@ -79,31 +70,20 @@ export const Navbar = ({ cartCount, currentUser, setCurrentUser }) => {
         <header className="fixed inset-x-0 top-0 z-[100] print:hidden">
 
             <div className="border-b border-[#E7E0D2] bg-[#FAF7F2]/95 backdrop-blur-md shadow-[0_4px_24px_-8px_rgba(36,31,26,0.08)]">
-                <div className="mx-auto grid max-w-[1280px] grid-cols-[1fr_auto_1fr] items-center gap-2 px-4 py-3 sm:px-6 lg:flex lg:gap-4 lg:py-3.5">
-                    <div className="flex items-center justify-start lg:flex-1">
-                        <button
-                            type="button"
-                            className="inline-flex h-10 w-10 items-center justify-center rounded-lg text-[#241F1A] hover:bg-[#E7E0D2]/50 lg:hidden"
-                            onClick={() => setMobileOpen(true)}
-                            aria-label="Open menu"
-                        >
-                            <Menu size={22} />
-                        </button>
-
-                        <Link to="/" className="hidden items-center gap-2.5 group shrink-0 lg:flex">
-                            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#7C2020] shadow-md shadow-[#7C2020]/25 transition-transform group-hover:scale-[1.03] lg:h-10 lg:w-10">
-                                <img
-                                    className="h-8 w-8 rounded-full object-cover"
-                                    src="https://res.cloudinary.com/djmbuuz28/image/upload/v1761108817/logo.png"
-                                    alt="Mithila Chitrakala Store"
-                                />
-                            </div>
-                            <div className="flex flex-col leading-tight">
-                                <span className="font-playfair text-lg font-bold text-[#241F1A] sm:text-xl">Mithila Chitrakala</span>
-                                <span className="text-[9px] font-semibold uppercase tracking-[0.22em] text-[#8B8378]">Store</span>
-                            </div>
-                        </Link>
-                    </div>
+                <div className="mx-auto flex max-w-[1280px] items-center justify-between gap-2 px-4 py-3 sm:px-6 lg:gap-4 lg:py-3.5">
+                    <Link to="/" className="hidden items-center gap-2.5 group shrink-0 lg:flex">
+                        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#7C2020] shadow-md shadow-[#7C2020]/25 transition-transform group-hover:scale-[1.03] lg:h-10 lg:w-10">
+                            <img
+                                className="h-8 w-8 rounded-full object-cover"
+                                src="https://res.cloudinary.com/djmbuuz28/image/upload/v1761108817/logo.png"
+                                alt="Mithila Chitrakala Store"
+                            />
+                        </div>
+                        <div className="flex flex-col leading-tight">
+                            <span className="font-playfair text-lg font-bold text-[#241F1A] sm:text-xl">Mithila Chitrakala</span>
+                            <span className="text-[9px] font-semibold uppercase tracking-[0.22em] text-[#8B8378]">Store</span>
+                        </div>
+                    </Link>
 
                     <Link to="/" className="flex items-center justify-center gap-2 group lg:hidden">
                         <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[#7C2020] shadow-md shadow-[#7C2020]/20">
@@ -219,70 +199,6 @@ export const Navbar = ({ cartCount, currentUser, setCurrentUser }) => {
                 )}
             </div>
 
-            {mobileOpen && (
-                <div className="fixed inset-0 z-[120] lg:hidden">
-                    <button
-                        type="button"
-                        className="absolute inset-0 bg-[#241F1A]/40 backdrop-blur-sm"
-                        aria-label="Close menu"
-                        onClick={() => setMobileOpen(false)}
-                    />
-                    <div className="absolute left-0 top-0 flex h-full w-[min(100%,320px)] flex-col bg-[#FAF7F2] shadow-2xl">
-                        <div className="flex items-center justify-between border-b border-[#E7E0D2] px-4 py-4">
-                            <span className="font-playfair text-lg font-bold text-[#241F1A]">Menu</span>
-                            <button type="button" onClick={() => setMobileOpen(false)} aria-label="Close">
-                                <X size={22} />
-                            </button>
-                        </div>
-                        <form onSubmit={runSearch} className="border-b border-[#E7E0D2] p-4">
-                            <div className="relative">
-                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-[#8B8378]" size={18} />
-                                <input
-                                    type="search"
-                                    value={query}
-                                    onChange={(e) => setQuery(e.target.value)}
-                                    placeholder="Search..."
-                                    className="w-full rounded-xl border border-[#E7E0D2] py-2.5 pl-10 pr-3 text-sm"
-                                />
-                            </div>
-                        </form>
-                        <nav className="flex flex-col p-2">
-                            {NAV_LINKS.map((link) => (
-                                <Link
-                                    key={link.label}
-                                    to={link.to}
-                                    className="rounded-lg px-4 py-3 text-[15px] font-medium text-[#241F1A] hover:bg-[#E7E0D2]/40"
-                                >
-                                    {link.label}
-                                </Link>
-                            ))}
-                            {sellerLink && (
-                                <Link to="/seller" className="rounded-lg px-4 py-3 text-[15px] font-medium text-[#7C2020]">
-                                    {currentUser.role === 'admin' ? 'Administration' : 'Artisan Portal'}
-                                </Link>
-                            )}
-                        </nav>
-                        <div className="mt-auto border-t border-[#E7E0D2] p-4">
-                            {currentUser ? (
-                                <button
-                                    type="button"
-                                    onClick={logout}
-                                    className="flex w-full items-center justify-center gap-2 rounded-xl border border-[#E7E0D2] py-3 text-sm font-semibold text-[#7C2020]"
-                                >
-                                    <LogOut size={16} /> Sign Out
-                                </button>
-                            ) : (
-                                <Link
-                                    to="/login"
-                                    className="flex w-full items-center justify-center rounded-xl bg-[#7C2020] py-3 text-sm font-semibold text-white"
-                                >
-                                    Sign In
-                                </Link>
-                            )}
-                        </div>
-                    </div>
-                </div>
-            )}
         </header>
     );
 };
