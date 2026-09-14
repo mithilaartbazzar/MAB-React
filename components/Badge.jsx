@@ -7,7 +7,7 @@ export const Badge = ({ children, variant = 'primary' }) => {
         cancelled: 'bg-red-100 text-red-800 border-red-200'
     };
     return (
-        <span className={`px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-[0.15em] shadow-md border backdrop-blur-sm ${styles[variant]}`}>
+        <span className={`px-2 py-1 rounded-full text-[7px] sm:text-[9px] font-black uppercase tracking-[0.15em] shadow-md border backdrop-blur-sm ${styles[variant]}`}>
             {children}
         </span>
     );

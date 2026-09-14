@@ -48,6 +48,9 @@ export const SellerPanel = ({ currentUser }) => {
     const [lowStockThreshold, setLowStockThreshold] = useState(5);
     const [showAddProductModal, setShowAddProductModal] = useState(false);
     const [editingProductId, setEditingProductId] = useState(null);
+    const [uploadingImage, setUploadingImage] = useState(false);
+    const [showNewCategory, setShowNewCategory] = useState(false);
+    const [newCategoryName, setNewCategoryName] = useState('');
     const [newProduct, setNewProduct] = useState({
         id: null,
         seller_id: null,
@@ -55,6 +58,7 @@ export const SellerPanel = ({ currentUser }) => {
         description: '',
         price: 0,
         image: '',
+        images: [],
         category: '',
         stock: 0,
         location: '',
@@ -68,42 +72,31 @@ export const SellerPanel = ({ currentUser }) => {
     const [heroSlides, setHeroSlides] = useState([]);
     const [heroDraft, setHeroDraft] = useState({
         id: null,
-        tag: '',
-        title: '',
-        highlight: '',
-        text: '',
         cta: '',
         link: '',
         image: '',
-        theme: 'maroon',
-        bg: 'from-[#5c1111] via-[#6d1414] to-[#3a0a0a]',
-        fade: 'from-[#5c1111]',
         sort_order: 0,
         active: true
     });
     const [editingHeroId, setEditingHeroId] = useState(null);
-
-    const HERO_THEME_GRADIENTS = {
-        maroon: { bg: 'from-[#5c1111] via-[#6d1414] to-[#3a0a0a]', fade: 'from-[#5c1111]' },
-        charcoal: { bg: 'from-[#2a2723] via-[#1e1c1a] to-[#0d0c0b]', fade: 'from-[#1e1c1a]' },
-        saffron: { bg: 'from-[#8a5200] via-[#7a4400] to-[#5c1111]', fade: 'from-[#8a5200]' }
-    };
+    const [journalPosts, setJournalPosts] = useState([]);
+    const [editingJournalId, setEditingJournalId] = useState(null);
+    const [journalDraft, setJournalDraft] = useState({
+        id: null,
+        slug: '',
+        title: '',
+        excerpt: '',
+        body: '',
+        image: '',
+        published: true,
+    });
 
     const normalizeHeroSlide = (slide) => {
-        const theme = slide.theme || 'maroon';
-        const themeClasses = HERO_THEME_GRADIENTS[theme] || HERO_THEME_GRADIENTS.maroon;
         return {
             id: slide.id,
-            tag: slide.tag ?? '',
-            title: slide.title ?? '',
-            highlight: slide.highlight ?? '',
-            text: slide.text ?? slide.description ?? '',
-            cta: slide.cta ?? slide.cta_label ?? 'Shop Now',
+            cta: slide.cta ?? slide.cta_label ?? 'Explore Collection',
             link: slide.link ?? slide.cta_link ?? '/products',
             image: slide.image ?? '',
-            theme,
-            bg: slide.bg || themeClasses.bg,
-            fade: slide.fade || themeClasses.fade,
             sort_order: slide.sort_order ?? 0,
             active: slide.active ?? true
         };
@@ -130,13 +123,14 @@ export const SellerPanel = ({ currentUser }) => {
         if (!refreshing) setLoading(true);
         try {
             if (currentUser.role === 'admin') {
-                const [p, o, u, l, w, h] = await Promise.all([
+                const [p, o, u, l, w, h, j] = await Promise.all([
                     dbService.getProducts(),
                     dbService.getOrders(),
                     dbService.getUsers(),
                     dbService.getLogs(),
                     dbService.getWishlists(),
-                    dbService.getHeroSlides()
+                    dbService.getHeroSlides(),
+                    dbService.getJournalPosts()
                 ]);
                 setProducts(p);
                 setOrders(o);
@@ -144,6 +138,7 @@ export const SellerPanel = ({ currentUser }) => {
                 setLogs(l);
                 setWishlists(w);
                 setHeroSlides((h || []).map(normalizeHeroSlide));
+                setJournalPosts(j || []);
                 const commissionData = await dbService.getGlobalCommission();
                 setGlobalCommission(commissionData?.globalCommission ?? 15);
             } else {
@@ -228,6 +223,8 @@ export const SellerPanel = ({ currentUser }) => {
 
     const resetProductForm = () => {
         setEditingProductId(null);
+        setShowNewCategory(false);
+        setNewCategoryName('');
         setNewProduct({
             id: null,
             seller_id: null,
@@ -235,6 +232,7 @@ export const SellerPanel = ({ currentUser }) => {
             description: '',
             price: 0,
             image: '',
+            images: [],
             category: '',
             stock: 0,
             location: '',
@@ -248,6 +246,8 @@ export const SellerPanel = ({ currentUser }) => {
 
     const handleEditProduct = (product) => {
         setEditingProductId(product.id);
+        setShowNewCategory(false);
+        setNewCategoryName('');
         setNewProduct({
             id: product.id,
             seller_id: product.seller_id,
@@ -255,6 +255,7 @@ export const SellerPanel = ({ currentUser }) => {
             description: product.description || '',
             price: product.price || 0,
             image: product.image || '',
+            images: Array.isArray(product.images) ? product.images : [],
             category: product.category || '',
             stock: product.stock || 0,
             location: product.location || '',
@@ -265,6 +266,26 @@ export const SellerPanel = ({ currentUser }) => {
             authenticity: product.authenticity || ''
         });
         setShowAddProductModal(true);
+    };
+
+    const productCategories = [...new Set(products.map((product) => product.category?.trim()).filter(Boolean))]
+        .sort((a, b) => a.localeCompare(b));
+
+    const handleCategorySelect = (value) => {
+        if (value === '__new__') {
+            setShowNewCategory(true);
+            return;
+        }
+        setShowNewCategory(false);
+        setNewProduct((previous) => ({ ...previous, category: value }));
+    };
+
+    const addNewCategory = () => {
+        const category = newCategoryName.trim();
+        if (!category) return;
+        setNewProduct((previous) => ({ ...previous, category }));
+        setNewCategoryName('');
+        setShowNewCategory(false);
     };
 
     const handleSaveProduct = async () => {
@@ -288,6 +309,70 @@ export const SellerPanel = ({ currentUser }) => {
         }
     };
 
+    const handleProductImageUpload = async (event) => {
+        const files = Array.from(event.target.files || []);
+        if (!files.length) return;
+
+        if (files.some((file) => !file.type.startsWith('image/'))) {
+            window.alert('Please choose an image file.');
+            event.target.value = '';
+            return;
+        }
+
+        setUploadingImage(true);
+        try {
+            const signatureResponse = await fetch('/api/cloudinary/signature');
+            const signatureData = await signatureResponse.json();
+            if (!signatureResponse.ok) throw new Error(signatureData.error || 'Cloudinary signed upload is not configured.');
+
+            const uploadedUrls = [];
+            for (const file of files) {
+                const formData = new FormData();
+                formData.append('file', file);
+                formData.append('api_key', signatureData.apiKey);
+                formData.append('timestamp', String(signatureData.timestamp));
+                formData.append('folder', signatureData.folder);
+                formData.append('signature', signatureData.signature);
+
+                const response = await fetch(`https://api.cloudinary.com/v1_1/${signatureData.cloudName}/image/upload`, {
+                    method: 'POST',
+                    body: formData,
+                });
+                const result = await response.json();
+                if (!response.ok || !result.secure_url) {
+                    const cloudinaryError = result.error?.message || 'Cloudinary upload failed';
+                    throw new Error(cloudinaryError);
+                }
+                uploadedUrls.push(result.secure_url);
+            }
+
+            setNewProduct((previous) => {
+                const primaryImage = previous.image || uploadedUrls[0] || '';
+                const secondaryImages = [
+                    ...(previous.images || []),
+                    ...(previous.image ? uploadedUrls : uploadedUrls.slice(1)),
+                ];
+                return { ...previous, image: primaryImage, images: [...new Set(secondaryImages)] };
+            });
+        } catch (error) {
+            console.error('Product image upload failed:', error);
+            window.alert(error.message || 'Product image upload failed.');
+        } finally {
+            setUploadingImage(false);
+            event.target.value = '';
+        }
+    };
+
+    const removeProductImage = (imageUrl) => {
+        setNewProduct((previous) => {
+            if (previous.image === imageUrl) {
+                const [nextPrimary, ...remainingImages] = previous.images || [];
+                return { ...previous, image: nextPrimary || '', images: remainingImages };
+            }
+            return { ...previous, images: (previous.images || []).filter((image) => image !== imageUrl) };
+        });
+    };
+
     const handleDeleteProduct = async (productId) => {
         if (!window.confirm('Delete this product? This action cannot be undone.')) return;
         try {
@@ -301,11 +386,13 @@ export const SellerPanel = ({ currentUser }) => {
     const handleEditHero = (slide) => {
         setEditingHeroId(slide.id);
         setHeroDraft({
-            ...slide,
+            ...heroDraft,
             id: slide.id,
+            cta: slide.cta ?? '',
+            link: slide.link ?? '',
+            image: slide.image ?? '',
             sort_order: slide.sort_order ?? 0,
-            bg: slide.bg || 'from-[#5c1111] via-[#6d1414] to-[#3a0a0a]',
-            fade: slide.fade || 'from-[#5c1111]'
+            active: slide.active ?? true
         });
     };
 
@@ -313,16 +400,11 @@ export const SellerPanel = ({ currentUser }) => {
         setEditingHeroId(null);
         setHeroDraft({
             id: null,
-            tag: '',
-            title: '',
-            highlight: '',
-            text: '',
             cta: '',
             link: '',
             image: '',
-            bg: 'from-[#5c1111] via-[#6d1414] to-[#3a0a0a]',
-            fade: 'from-[#5c1111]',
-            sort_order: 0
+            sort_order: 0,
+            active: true
         });
     };
 
@@ -330,16 +412,11 @@ export const SellerPanel = ({ currentUser }) => {
         try {
             const slideData = {
                 id: heroDraft.id,
-                tag: heroDraft.tag,
-                title: heroDraft.title,
-                highlight: heroDraft.highlight,
-                description: heroDraft.text,
-                cta_label: heroDraft.cta,
-                cta_link: heroDraft.link,
-                image: heroDraft.image,
-                theme: heroDraft.theme,
-                sort_order: heroDraft.sort_order,
-                active: heroDraft.active
+                cta_label: heroDraft.cta || 'Explore Collection',
+                cta_link: heroDraft.link || '/products',
+                image: heroDraft.image || '',
+                sort_order: heroDraft.sort_order ?? 0,
+                active: heroDraft.active ?? true
             };
             await dbService.saveHeroSlide(slideData, currentUser.id);
             handleResetHeroDraft();
@@ -362,6 +439,41 @@ export const SellerPanel = ({ currentUser }) => {
     const handleOpenNewHero = () => {
         handleResetHeroDraft();
         setActiveTab('admin_hero');
+    };
+
+    const resetJournalDraft = () => {
+        setEditingJournalId(null);
+        setJournalDraft({ id: null, slug: '', title: '', excerpt: '', body: '', image: '', published: true });
+    };
+
+    const editJournalPost = (post) => {
+        setEditingJournalId(post.id);
+        setJournalDraft({ ...post });
+        setActiveTab('admin_blog');
+    };
+
+    const saveJournalPost = async () => {
+        try {
+            const post = {
+                ...journalDraft,
+                slug: journalDraft.slug || journalDraft.title.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, ''),
+            };
+            await dbService.saveJournalPost(post, currentUser.id);
+            resetJournalDraft();
+            loadData();
+        } catch (error) {
+            console.error('Error saving journal post:', error);
+        }
+    };
+
+    const deleteJournalPost = async (id) => {
+        if (!window.confirm('Delete this journal post?')) return;
+        try {
+            await dbService.deleteJournalPost(id, currentUser.id);
+            loadData();
+        } catch (error) {
+            console.error('Error deleting journal post:', error);
+        }
     };
 
     const handleOpenAddProduct = () => {
@@ -393,6 +505,7 @@ export const SellerPanel = ({ currentUser }) => {
                             <>
                                 <TabBtn active={activeTab === 'admin_users'} onClick={() => setActiveTab('admin_users')} icon={<Users size={14}/>}>Artisans</TabBtn>
                                 <TabBtn active={activeTab === 'admin_hero'} onClick={() => setActiveTab('admin_hero')} icon={<Pencil size={14}/>}>Hero</TabBtn>
+                                <TabBtn active={activeTab === 'admin_blog'} onClick={() => setActiveTab('admin_blog')} icon={<Pencil size={14}/>}>Blog</TabBtn>
                                 <TabBtn active={activeTab === 'admin_config'} onClick={() => setActiveTab('admin_config')} icon={<TrendingUp size={14}/>}>Policy</TabBtn>
                                 <TabBtn active={activeTab === 'admin_logs'} onClick={() => setActiveTab('admin_logs')} icon={<Shield size={14}/>}>Audit</TabBtn>
                             </>
@@ -930,6 +1043,45 @@ export const SellerPanel = ({ currentUser }) => {
                         </div>
                     )}
 
+                    {activeTab === 'admin_blog' && currentUser.role === 'admin' && (
+                        <div className="space-y-6 animate-in fade-in duration-300">
+                            <div className="rounded-[1rem] border border-stone-100 bg-white p-4 shadow-sm sm:rounded-[3.5rem] md:p-12">
+                                <div className="mb-8 flex flex-wrap items-center justify-between gap-4">
+                                    <div>
+                                        <h3 className="border-l-4 border-[#5c1111] pl-6 font-playfair text-2xl font-black italic text-stone-900">Cultural Journal</h3>
+                                        <p className="mt-2 text-[10px] font-bold uppercase tracking-widest text-stone-400">Add, edit, publish, or remove journal stories.</p>
+                                    </div>
+                                    <button type="button" onClick={resetJournalDraft} className="flex items-center gap-2 rounded-2xl bg-[#5c1111] px-4 py-3 text-[10px] font-black uppercase tracking-widest text-white">
+                                        <Plus size={14} /> New Post
+                                    </button>
+                                </div>
+                                <div className="space-y-3">
+                                    {journalPosts.length === 0 ? <p className="rounded-2xl border border-dashed border-stone-200 p-8 text-center text-[10px] font-bold uppercase tracking-widest text-stone-400">No journal posts yet.</p> : journalPosts.map((post) => (
+                                        <div key={post.id} className="flex flex-col justify-between gap-4 rounded-3xl border border-stone-200 bg-stone-50 p-4 lg:flex-row lg:items-center">
+                                            <div className="min-w-0">
+                                                <div className="flex items-center gap-2"><h4 className="truncate font-black text-stone-900">{post.title}</h4><span className={`rounded-full px-2 py-1 text-[8px] font-black uppercase ${post.published ? 'bg-green-100 text-green-700' : 'bg-stone-200 text-stone-500'}`}>{post.published ? 'Published' : 'Draft'}</span></div>
+                                                <p className="mt-1 truncate text-[10px] text-stone-400">/{post.slug}</p>
+                                            </div>
+                                            <div className="flex gap-2">
+                                                <button type="button" onClick={() => editJournalPost(post)} className="rounded-xl border border-stone-200 bg-white px-4 py-2 text-[10px] font-black uppercase tracking-widest text-stone-700">Edit</button>
+                                                <button type="button" onClick={() => deleteJournalPost(post.id)} className="rounded-xl bg-red-600 px-4 py-2 text-[10px] font-black uppercase tracking-widest text-white">Delete</button>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                                <div className="mt-8 grid gap-4 rounded-[2rem] bg-[#f8f6f2] p-5 sm:grid-cols-2 sm:p-8">
+                                    <input value={journalDraft.title} onChange={(e) => setJournalDraft({ ...journalDraft, title: e.target.value })} placeholder="Title" className="rounded-xl border border-stone-200 bg-white px-4 py-3 text-sm outline-none focus:border-[#5c1111]" />
+                                    <input value={journalDraft.slug} onChange={(e) => setJournalDraft({ ...journalDraft, slug: e.target.value })} placeholder="Slug (optional)" className="rounded-xl border border-stone-200 bg-white px-4 py-3 text-sm outline-none focus:border-[#5c1111]" />
+                                    <input value={journalDraft.image} onChange={(e) => setJournalDraft({ ...journalDraft, image: e.target.value })} placeholder="Image URL" className="rounded-xl border border-stone-200 bg-white px-4 py-3 text-sm outline-none focus:border-[#5c1111] sm:col-span-2" />
+                                    <textarea value={journalDraft.excerpt} onChange={(e) => setJournalDraft({ ...journalDraft, excerpt: e.target.value })} placeholder="Short excerpt" rows={2} className="rounded-xl border border-stone-200 bg-white px-4 py-3 text-sm outline-none focus:border-[#5c1111] sm:col-span-2" />
+                                    <textarea value={journalDraft.body} onChange={(e) => setJournalDraft({ ...journalDraft, body: e.target.value })} placeholder="Article body" rows={6} className="rounded-xl border border-stone-200 bg-white px-4 py-3 text-sm outline-none focus:border-[#5c1111] sm:col-span-2" />
+                                    <label className="flex items-center gap-2 text-xs font-bold text-stone-600"><input type="checkbox" checked={journalDraft.published} onChange={(e) => setJournalDraft({ ...journalDraft, published: e.target.checked })} /> Publish this post</label>
+                                    <div className="flex justify-end gap-2 sm:col-span-2"><button type="button" onClick={resetJournalDraft} className="rounded-xl border border-stone-200 bg-white px-5 py-3 text-[10px] font-black uppercase tracking-widest">Clear</button><button type="button" onClick={saveJournalPost} disabled={!journalDraft.title.trim() || !journalDraft.body.trim()} className="rounded-xl bg-[#5c1111] px-5 py-3 text-[10px] font-black uppercase tracking-widest text-white disabled:opacity-40">{editingJournalId ? 'Update Post' : 'Save Post'}</button></div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
                     {activeTab === 'admin_hero' && currentUser.role === 'admin' && (
                         <div className="space-y-6 animate-in fade-in duration-300">
                             <div className="bg-white p-2 md:p-12 rounded-[1rem] sm:rounded-[3.5rem] border border-stone-100 shadow-sm">
@@ -954,10 +1106,12 @@ export const SellerPanel = ({ currentUser }) => {
                                     ) : heroSlides.map((slide) => (
                                         <div key={slide.id} className="bg-stone-50 p-4 rounded-3xl border border-stone-200 flex flex-col lg:flex-row justify-between gap-4">
                                             <div>
-                                                <p className="text-[9px] uppercase tracking-[0.2em] text-stone-500 mb-2">{slide.tag || 'Hero Tag'}</p>
-                                                <h4 className="font-black text-lg text-stone-900">{slide.title} <span className="text-amber-600">{slide.highlight}</span></h4>
-                                                <p className="text-sm text-stone-500 mt-2">{slide.text}</p>
+                                                <p className="text-[9px] uppercase tracking-[0.2em] text-stone-500 mb-2">Image Hero</p>
+                                                <div className="h-20 w-40 overflow-hidden rounded-xl border border-stone-200 bg-white">
+                                                    <img src={slide.image} alt="" className="h-full w-full object-cover" />
+                                                </div>
                                                 <p className="text-[10px] text-stone-400 uppercase tracking-[0.2em] mt-4">Link: {slide.link || '—'}</p>
+                                                <p className="text-[10px] text-stone-400 uppercase tracking-[0.2em] mt-2">Button: {slide.cta || 'Explore Collection'}</p>
                                             </div>
                                             <div className="flex items-center gap-3">
                                                 <button
@@ -993,35 +1147,6 @@ export const SellerPanel = ({ currentUser }) => {
 
                                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                                         <div className="space-y-4">
-                                            <label className="block text-[10px] font-black uppercase tracking-widest text-stone-400">Tag</label>
-                                            <input
-                                                value={heroDraft.tag}
-                                                onChange={(e) => setHeroDraft(prev => ({ ...prev, tag: e.target.value }))}
-                                                className="w-full px-4 py-3 bg-white border border-stone-200 rounded-2xl outline-none focus:ring-2 focus:ring-[#5c1111]/20"
-                                            />
-
-                                            <label className="block text-[10px] font-black uppercase tracking-widest text-stone-400">Title</label>
-                                            <input
-                                                value={heroDraft.title}
-                                                onChange={(e) => setHeroDraft(prev => ({ ...prev, title: e.target.value }))}
-                                                className="w-full px-4 py-3 bg-white border border-stone-200 rounded-2xl outline-none focus:ring-2 focus:ring-[#5c1111]/20"
-                                            />
-
-                                            <label className="block text-[10px] font-black uppercase tracking-widest text-stone-400">Highlight</label>
-                                            <input
-                                                value={heroDraft.highlight}
-                                                onChange={(e) => setHeroDraft(prev => ({ ...prev, highlight: e.target.value }))}
-                                                className="w-full px-4 py-3 bg-white border border-stone-200 rounded-2xl outline-none focus:ring-2 focus:ring-[#5c1111]/20"
-                                            />
-
-                                            <label className="block text-[10px] font-black uppercase tracking-widest text-stone-400">Text</label>
-                                            <textarea
-                                                value={heroDraft.text}
-                                                onChange={(e) => setHeroDraft(prev => ({ ...prev, text: e.target.value }))}
-                                                className="w-full px-4 py-3 bg-white border border-stone-200 rounded-2xl outline-none focus:ring-2 focus:ring-[#5c1111]/20 h-28 resize-none"
-                                            />
-                                        </div>
-                                        <div className="space-y-4">
                                             <label className="block text-[10px] font-black uppercase tracking-widest text-stone-400">CTA button text</label>
                                             <input
                                                 value={heroDraft.cta}
@@ -1035,7 +1160,8 @@ export const SellerPanel = ({ currentUser }) => {
                                                 onChange={(e) => setHeroDraft(prev => ({ ...prev, link: e.target.value }))}
                                                 className="w-full px-4 py-3 bg-white border border-stone-200 rounded-2xl outline-none focus:ring-2 focus:ring-[#5c1111]/20"
                                             />
-
+                                        </div>
+                                        <div className="space-y-4">
                                             <label className="block text-[10px] font-black uppercase tracking-widest text-stone-400">Image URL</label>
                                             <input
                                                 value={heroDraft.image}
@@ -1043,20 +1169,13 @@ export const SellerPanel = ({ currentUser }) => {
                                                 className="w-full px-4 py-3 bg-white border border-stone-200 rounded-2xl outline-none focus:ring-2 focus:ring-[#5c1111]/20"
                                             />
 
-                                            <label className="block text-[10px] font-black uppercase tracking-widest text-stone-400">Theme</label>
-                                            <select
-                                                value={heroDraft.theme}
-                                                onChange={(e) => {
-                                                    const theme = e.target.value;
-                                                    const themeClasses = HERO_THEME_GRADIENTS[theme] || HERO_THEME_GRADIENTS.maroon;
-                                                    setHeroDraft(prev => ({ ...prev, theme, bg: themeClasses.bg, fade: themeClasses.fade }));
-                                                }}
+                                            <label className="block text-[10px] font-black uppercase tracking-widest text-stone-400">Sort order</label>
+                                            <input
+                                                type="number"
+                                                value={heroDraft.sort_order}
+                                                onChange={(e) => setHeroDraft(prev => ({ ...prev, sort_order: parseInt(e.target.value) || 0 }))}
                                                 className="w-full px-4 py-3 bg-white border border-stone-200 rounded-2xl outline-none focus:ring-2 focus:ring-[#5c1111]/20"
-                                            >
-                                                <option value="maroon">Maroon</option>
-                                                <option value="charcoal">Charcoal</option>
-                                                <option value="saffron">Saffron</option>
-                                            </select>
+                                            />
 
                                             <label className="flex items-center gap-3 text-[10px] font-black uppercase tracking-widest text-stone-400">
                                                 <input
@@ -1067,14 +1186,6 @@ export const SellerPanel = ({ currentUser }) => {
                                                 />
                                                 Active slide
                                             </label>
-
-                                            <label className="block text-[10px] font-black uppercase tracking-widest text-stone-400">Sort order</label>
-                                            <input
-                                                type="number"
-                                                value={heroDraft.sort_order}
-                                                onChange={(e) => setHeroDraft(prev => ({ ...prev, sort_order: parseInt(e.target.value) || 0 }))}
-                                                className="w-full px-4 py-3 bg-white border border-stone-200 rounded-2xl outline-none focus:ring-2 focus:ring-[#5c1111]/20"
-                                            />
                                         </div>
                                     </div>
                                 </div>
@@ -1287,13 +1398,32 @@ export const SellerPanel = ({ currentUser }) => {
                                     </div>
                                     <div>
                                         <label className="block text-[10px] font-black uppercase tracking-widest text-stone-400 mb-2">Category</label>
-                                        <input
-                                            type="text"
-                                            value={newProduct.category}
-                                            onChange={(e) => setNewProduct({...newProduct, category: e.target.value})}
-                                            className="w-full px-4 py-3 bg-white border border-stone-200 rounded-2xl focus:ring-2 focus:ring-[#5c1111]/20 focus:border-[#5c1111] outline-none transition-all"
-                                            placeholder="e.g., Paintings, Sculpture"
-                                        />
+                                        <select
+                                            value={showNewCategory ? '__new__' : newProduct.category}
+                                            onChange={(e) => handleCategorySelect(e.target.value)}
+                                            className="w-full rounded-2xl border border-stone-200 bg-white px-4 py-3 outline-none transition-all focus:border-[#5c1111] focus:ring-2 focus:ring-[#5c1111]/20"
+                                        >
+                                            <option value="">Choose a category</option>
+                                            {newProduct.category && !productCategories.includes(newProduct.category) && !showNewCategory && (
+                                                <option value={newProduct.category}>{newProduct.category}</option>
+                                            )}
+                                            {productCategories.map((category) => <option key={category} value={category}>{category}</option>)}
+                                            <option value="__new__">+ Add new category</option>
+                                        </select>
+                                        {showNewCategory && (
+                                            <div className="mt-2 flex gap-2">
+                                                <input
+                                                    type="text"
+                                                    value={newCategoryName}
+                                                    onChange={(e) => setNewCategoryName(e.target.value)}
+                                                    onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addNewCategory(); } }}
+                                                    className="min-w-0 flex-1 rounded-xl border border-stone-200 bg-white px-3 py-2 text-sm outline-none focus:border-[#5c1111]"
+                                                    placeholder="New category name"
+                                                    autoFocus
+                                                />
+                                                <button type="button" onClick={addNewCategory} className="rounded-xl bg-[#5c1111] px-3 py-2 text-[10px] font-black uppercase tracking-widest text-white">Add</button>
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
 
@@ -1331,14 +1461,27 @@ export const SellerPanel = ({ currentUser }) => {
                                 </div>
 
                                 <div>
-                                    <label className="block text-[10px] font-black uppercase tracking-widest text-stone-400 mb-2">Image URL</label>
+                                    <div className="mb-2 flex items-center justify-between gap-3">
+                                        <label className="block text-[10px] font-black uppercase tracking-widest text-stone-400">Product Images</label>
+                                        <label className={`cursor-pointer rounded-xl px-3 py-2 text-[9px] font-black uppercase tracking-widest transition-all ${uploadingImage ? 'pointer-events-none bg-stone-200 text-stone-400' : 'bg-[#5c1111] text-white hover:bg-[#2a2723]'}`}>
+                                            {uploadingImage ? 'Uploading...' : 'Upload Images'}
+                                            <input type="file" accept="image/*" multiple onChange={handleProductImageUpload} className="hidden" disabled={uploadingImage} />
+                                        </label>
+                                    </div>
                                     <input
                                         type="url"
                                         value={newProduct.image}
                                         onChange={(e) => setNewProduct({...newProduct, image: e.target.value})}
                                         className="w-full px-4 py-3 bg-white border border-stone-200 rounded-2xl focus:ring-2 focus:ring-[#5c1111]/20 focus:border-[#5c1111] outline-none transition-all"
-                                        placeholder="https://example.com/image.jpg"
+                                        placeholder="Primary image URL, or paste an image URL"
                                     />
+                                    {(newProduct.image || newProduct.images?.length > 0) && <div className="mt-3 flex flex-wrap gap-3">
+                                        {[newProduct.image, ...(newProduct.images || [])].filter(Boolean).map((imageUrl, index) => <div key={`${imageUrl}-${index}`} className="group relative">
+                                            <img src={imageUrl} alt={`Product preview ${index + 1}`} className="h-24 w-24 rounded-2xl border border-stone-200 object-cover" />
+                                            {index === 0 && <span className="absolute bottom-1 left-1 rounded bg-[#5c1111] px-1.5 py-0.5 text-[8px] font-bold uppercase text-white">Primary</span>}
+                                            <button type="button" onClick={() => removeProductImage(imageUrl)} className="absolute -right-2 -top-2 flex h-6 w-6 items-center justify-center rounded-full bg-white text-stone-500 shadow hover:text-[#5c1111]" aria-label={`Remove image ${index + 1}`}><X size={12} /></button>
+                                        </div>)}
+                                    </div>}
                                 </div>
 
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

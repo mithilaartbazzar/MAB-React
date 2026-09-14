@@ -39,6 +39,7 @@ import { WishlistPage } from './pages/WishlistPage';
 import { SellerPanel } from './pages/SellerPanel';
 import { LoginPage } from './pages/LoginPage';
 import { PrivacyPolicy } from "./pages/PrivacyPolicy";
+import CulturalJournalPage from './pages/CulturalJournalPage';
 
 
 const Preloader = () => (
@@ -60,7 +61,7 @@ const Preloader = () => (
         <div className="mt-12 text-center space-y-4">
             <div className="flex flex-col items-center">
                 <span className="font-dancing text-4xl font-bold text-[#2a2723] tracking-tight animate-pulse">Mithila</span>
-                <span className="text-[10px] font-black uppercase tracking-[0.5em] text-[#5c1111]/70 mt-1">Art Bazzar</span>
+                <span className="text-[10px] font-black uppercase tracking-[0.5em] text-[#5c1111]/70 mt-1">Chitrakala Store</span>
             </div>
             
             <div className="pt-8 flex flex-col items-center gap-3">
@@ -203,6 +204,8 @@ export default function App() {
                         <Route path="/product/:slug" element={<ProductDetailPage products={products} addToCart={addToCart} wishlist={wishlist} toggleWishlist={toggleWishlist} />} />
                         <Route path="/cart" element={currentUser ? <CartPage cart={cart} updateQty={updateQty} remove={remove} clearCart={clearCart} currentUser={currentUser} /> : <Navigate to="/login" />} />
                         <Route path="/advice" element={<ArtAdvicePage />} />
+                        <Route path="/journal" element={<CulturalJournalPage />} />
+                        <Route path="/journal/:slug" element={<CulturalJournalPage />} />
                         <Route path="/login" element={currentUser ? <Navigate to="/profile" /> : <LoginPage onLogin={setCurrentUser} />} />
                         <Route path="/profile" element={currentUser ? <ProfilePage currentUser={currentUser} setCurrentUser={setCurrentUser} wishlist={wishlist} products={products} toggleWishlist={toggleWishlist} addToCart={addToCart} /> : <Navigate to="/login" />} />
                         <Route path="/wishlist" element={<WishlistPage products={products} wishlist={wishlist} toggleWishlist={toggleWishlist} addToCart={addToCart} />} />

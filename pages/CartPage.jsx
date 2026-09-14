@@ -35,58 +35,63 @@ export const CartPage = ({ cart, updateQty, remove, clearCart, currentUser }) =>
         name: '', email: '', phone: '', address: '', city: ''
     });
     const [promo, setPromo] = useState('');
+    const [checkoutError, setCheckoutError] = useState('');
 
     const handleCheckout = async (e) => {
         e.preventDefault();
+        setCheckoutError('');
 
-        // Group cart items by seller
-        const itemsBySeller = cart.reduce((acc, item) => {
-            if (!acc[item.seller_id]) {
-                acc[item.seller_id] = [];
+        try {
+            // Group cart items by seller
+            const itemsBySeller = cart.reduce((acc, item) => {
+                if (!acc[item.seller_id]) acc[item.seller_id] = [];
+                acc[item.seller_id].push(item);
+                return acc;
+            }, {});
+
+            const commissionConfig = await dbService.getGlobalCommission();
+            const commissionPct = Number(commissionConfig?.globalCommission ?? 12);
+            const orders = [];
+
+            // Create separate orders for each seller
+            for (const [sellerId, items] of Object.entries(itemsBySeller)) {
+                const orderId = 'MITH-' + Math.random().toString(36).substr(2, 8).toUpperCase();
+                const sellerSubtotal = items.reduce((acc, item) => acc + item.price * item.quantity, 0);
+                const sellerShippingFee = sellerSubtotal > 5000 ? 0 : 250;
+                const orderTotal = sellerSubtotal + sellerShippingFee;
+                const commissionAmt = (orderTotal * commissionPct) / 100;
+
+                const newOrder = {
+                    id: orderId,
+                    date: new Date().toISOString(),
+                    items: items,
+                    total: orderTotal,
+                    customer_id: currentUser.id,
+                    seller_id: sellerId,
+                    status: 'pending',
+                    customer_payment_status: 'pending',
+                    customer_payment_verified: false,
+                    mab_payment_status: 'pending',
+                    commission_percentage: commissionPct,
+                    commission_amount: commissionAmt,
+                    seller_payable_amount: orderTotal - commissionAmt,
+                    customer: {
+                        ...shippingDetails
+                    }
+                };
+
+                await dbService.saveOrder(newOrder);
+                orders.push(newOrder);
             }
-            acc[item.seller_id].push(item);
-            return acc;
-        }, {});
 
-        const commissionPct = await dbService.getGlobalCommission();
-        const orders = [];
-
-        // Create separate orders for each seller
-        for (const [sellerId, items] of Object.entries(itemsBySeller)) {
-            const orderId = 'MITH-' + Math.random().toString(36).substr(2, 8).toUpperCase();
-            const subtotal = items.reduce((acc, item) => acc + item.price * item.quantity, 0);
-            const shippingFee = subtotal > 5000 ? 0 : 250;
-            const orderTotal = subtotal + shippingFee;
-            const commissionAmt = (orderTotal * commissionPct) / 100;
-
-            const newOrder = {
-                id: orderId,
-                date: new Date().toISOString(),
-                items: items,
-                total: orderTotal,
-                customer_id: currentUser.id,
-                seller_id: sellerId,
-                status: 'pending',
-                customer_payment_status: 'pending',
-                customer_payment_verified: false,
-                mab_payment_status: 'pending',
-                commission_percentage: commissionPct,
-                commission_amount: commissionAmt,
-                seller_payable_amount: orderTotal - commissionAmt,
-                customer: {
-                    ...shippingDetails
-                }
-            };
-
-            // Persist order to DB
-            await dbService.saveOrder(newOrder);
-            orders.push(newOrder);
+            setOrderInfos(orders);
+            clearCart();
+            setStep('tracking');
+            window.scrollTo(0, 0);
+        } catch (error) {
+            console.error('Checkout failed:', error);
+            setCheckoutError('We could not complete your order right now. Please try again.');
         }
-
-        setOrderInfos(orders);
-        clearCart();
-        setStep('tracking');
-        window.scrollTo(0, 0);
     };
 
     const handleInputChange = (e) => {
@@ -105,6 +110,9 @@ export const CartPage = ({ cart, updateQty, remove, clearCart, currentUser }) =>
                         <h2 className="font-playfair text-2xl sm:text-4xl font-black text-[#2a2723]">Greatness Awaits.</h2>
                         <p className="text-stone-500 font-light text-sm sm:text-base">Your {orderInfos.length > 1 ? 'orders' : 'order'} <span className="text-[#5c1111] font-black tracking-widest">#{orderInfos.map(o => o.id).join(', #')}</span> {orderInfos.length > 1 ? 'are' : 'is'} confirmed.</p>
                         <p className="text-xs text-stone-400">Receipt sent to: <span className="font-bold text-[#2a2723]">{orderInfos[0].customer.email}</span></p>
+                        <p className="mx-auto max-w-md rounded-lg border border-green-100 bg-green-50 px-4 py-3 text-xs font-semibold text-green-800">
+                            We will contact you soon via your WhatsApp number: {orderInfos[0].customer.phone}
+                        </p>
                     </div>
 
                     <div className="relative py-6 px-4 border-y border-[#e5e1d8]">
@@ -222,8 +230,12 @@ export const CartPage = ({ cart, updateQty, remove, clearCart, currentUser }) =>
                             </div>
                             <div className="md:col-span-2 pt-4">
                                 <button type="submit" className="w-full bg-[#5c1111] text-white py-3 sm:py-4 rounded-xl font-black text-[11px] uppercase tracking-[0.2em] shadow-lg hover:bg-[#2a2723] hover:-translate-y-0.5 transition-all flex items-center justify-center gap-3 active:scale-[0.98]">
-                                    <CreditCard size={16} /> Pay Now रु {total.toLocaleString()}
-                                </button> 
+                                    <CreditCard size={16} /> Order Now रु {total.toLocaleString()}
+                                </button>
+                                <p className="text-center text-[10px] leading-relaxed text-stone-400">
+                                    We will contact you soon via your WhatsApp number.
+                                </p>
+                                {checkoutError && <p role="alert" className="text-center text-xs font-semibold text-red-300">{checkoutError}</p>}
                             </div>
                         </form>
                     </div>
@@ -358,6 +370,9 @@ export const CartPage = ({ cart, updateQty, remove, clearCart, currentUser }) =>
                                 >
                                     Proceed to Checkout <ArrowRight size={14} />
                                 </button>
+                                <p className="text-center text-[9px] leading-relaxed text-white/55">
+                                    We will contact you soon via your WhatsApp number.
+                                </p>
                                 <p className="text-center text-[8px] font-bold uppercase tracking-widest text-white/30 italic">Secure checkout with Mithila-Pay</p>
                             </div>
                         </div>

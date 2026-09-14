@@ -8,7 +8,7 @@ export const WishlistPage = ({ products, wishlist, toggleWishlist, addToCart }) 
     const wishlistProducts = products.filter(p => wishlist.includes(p.id));
 
     return (
-        <div className="pt-40 pb-32 px-6 max-w-7xl mx-auto min-h-screen">
+        <div className="pt-20 pb-32 px-4 max-w-7xl mx-auto min-h-screen">
             <SectionHeading 
                 subtitle="Your Curated Collection" 
                 title="My Wishlist" 
@@ -45,7 +45,7 @@ export const WishlistPage = ({ products, wishlist, toggleWishlist, addToCart }) 
                         </Link>
                     </div>
 
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 lg:gap-8">
+                    <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 lg:gap-8">
                         {wishlistProducts.map(product => (
                             <ProductCard
                                 key={product.id}

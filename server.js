@@ -1,6 +1,7 @@
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
+import crypto from 'crypto';
 import { createClient } from '@supabase/supabase-js';
 import { GoogleGenAI } from '@google/genai';
 import path from 'path';
@@ -20,8 +21,11 @@ app.use(express.urlencoded({ extended: true }));
 
 const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
 // We recommend using the SERVICE_ROLE_KEY here for secure backend operations
-const supabaseKey = process.env.VITE_SUPABASE_ANON_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY;
+const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_ANON_KEY;
 const geminiApiKey = process.env.VITE_GEMINI_API_KEY || process.env.GEMINI_API_KEY;
+const cloudinaryApiKey = process.env.CLOUDINARY_API_KEY;
+const cloudinaryApiSecret = process.env.CLOUDINARY_API_SECRET;
+const cloudinaryCloudName = process.env.CLOUDINARY_CLOUD_NAME || process.env.VITE_CLOUDINARY_CLOUD_NAME;
 
 if (!supabaseUrl || !supabaseKey) {
     console.error("Missing Supabase credentials in .env");
@@ -34,6 +38,12 @@ const supabase = createClient(supabaseUrl, supabaseKey);
 const genAI = new GoogleGenAI({ apiKey: geminiApiKey });
 
 const hashPassword = (pwd) => btoa(`mab-salt-${pwd}`);
+
+const createSlug = (value) => String(value || '')
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-|-$/g, '');
 
 const logAction = async (action, adminId) => {
     await supabase.from('logs').insert([{
@@ -63,6 +73,19 @@ app.post('/api/gemini', async (req, res) => {
         console.error("Gemini Error:", error);
         res.status(500).json({ error: error.message });
     }
+});
+
+app.get('/api/cloudinary/signature', (req, res) => {
+    if (!cloudinaryApiKey || !cloudinaryApiSecret || !cloudinaryCloudName) {
+        return res.status(503).json({ error: 'Cloudinary signed upload is not configured on the server.' });
+    }
+
+    const timestamp = Math.floor(Date.now() / 1000);
+    const folder = 'mithila-products';
+    const signatureBase = `folder=${folder}&timestamp=${timestamp}`;
+    const signature = crypto.createHash('sha1').update(`${signatureBase}${cloudinaryApiSecret}`).digest('hex');
+
+    res.json({ apiKey: cloudinaryApiKey, cloudName: cloudinaryCloudName, timestamp, folder, signature });
 });
 
 // --- Supabase DB Proxy Route ---
@@ -201,7 +224,13 @@ app.post('/api/db', async (req, res) => {
             }
             case 'addProduct': {
                 const { productData } = payload;
-                const { data, error } = await supabase.from('products').insert([productData]).select();
+                const id = productData.id || `p-${Math.random().toString(36).substr(2, 9)}`;
+                const product = {
+                    ...productData,
+                    slug: createSlug(productData.slug) || createSlug(productData.name) || id,
+                    id,
+                };
+                const { data, error } = await supabase.from('products').insert([product]).select();
                 if (error) throw new Error(error.message);
                 result = data[0];
                 break;
@@ -268,6 +297,17 @@ app.post('/api/db', async (req, res) => {
                 const { error } = await supabase.from('orders').update(updateData).eq('id', id);
                 if (error) throw new Error(error.message);
                 if (role === 'admin') await logAction(`Admin forced status ${status} on order ${id}`, userId);
+                result = { success: true };
+                break;
+            }
+            case 'updateOrderDetails': {
+                const { orderId, customer, userId } = payload;
+                const { data: order, error: orderError } = await supabase.from('orders').select('customer_id, status').eq('id', orderId).single();
+                if (orderError) throw new Error(orderError.message);
+                if (order.customer_id !== userId) throw new Error('You can only edit your own order.');
+                if (order.status !== 'pending') throw new Error('Only pending orders can be edited.');
+                const { error } = await supabase.from('orders').update({ customer }).eq('id', orderId);
+                if (error) throw new Error(error.message);
                 result = { success: true };
                 break;
             }
@@ -391,11 +431,17 @@ app.post('/api/db', async (req, res) => {
             }
             case 'saveHeroSlide': {
                 const { slide, adminId } = payload;
-                const slideData = { ...slide };
-                if (!slideData.id) slideData.id = `h-${Math.random().toString(36).substr(2, 9)}`;
+                const slideData = {
+                    id: slide.id || `h-${Math.random().toString(36).substr(2, 9)}`,
+                    cta_label: slide.cta_label || slide.cta || 'Explore Collection',
+                    cta_link: slide.cta_link || slide.link || '/products',
+                    image: slide.image || '',
+                    sort_order: slide.sort_order ?? 0,
+                    active: slide.active ?? true
+                };
                 const { data, error } = await supabase.from('hero_slides').upsert([slideData]).select();
                 if (error) throw new Error(error.message);
-                if (adminId) await logAction(`Admin saved hero slide "${slideData.title} ${slideData.highlight || ''}"`, adminId);
+                if (adminId) await logAction(`Admin saved hero slide "${slideData.cta_label}"`, adminId);
                 result = data[0];
                 break;
             }
@@ -404,6 +450,30 @@ app.post('/api/db', async (req, res) => {
                 const { error } = await supabase.from('hero_slides').delete().eq('id', id);
                 if (error) throw new Error(error.message);
                 if (adminId) await logAction(`Admin deleted hero slide ${id}`, adminId);
+                result = { success: true };
+                break;
+            }
+            case 'getJournalPosts': {
+                const { data, error } = await supabase.from('journal_posts').select('*').order('created_at', { ascending: false });
+                if (error) throw new Error(error.message);
+                result = data;
+                break;
+            }
+            case 'saveJournalPost': {
+                const { post, adminId } = payload;
+                const postData = { ...post };
+                if (!postData.id) postData.id = `j-${Math.random().toString(36).substr(2, 9)}`;
+                const { data, error } = await supabase.from('journal_posts').upsert([postData]).select();
+                if (error) throw new Error(error.message);
+                if (adminId) await logAction(`Admin saved journal post "${postData.title}"`, adminId);
+                result = data[0];
+                break;
+            }
+            case 'deleteJournalPost': {
+                const { id, adminId } = payload;
+                const { error } = await supabase.from('journal_posts').delete().eq('id', id);
+                if (error) throw new Error(error.message);
+                if (adminId) await logAction(`Admin deleted journal post ${id}`, adminId);
                 result = { success: true };
                 break;
             }

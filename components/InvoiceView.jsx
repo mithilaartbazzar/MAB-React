@@ -7,10 +7,12 @@ export const InvoiceView = ({ order, onClose, role, isCombined, combinedOrders }
     const [downloading, setDownloading] = useState(false);
 
     const handlePrint = () => {
+        if (role !== 'admin' && role !== 'seller') return;
         window.print();
     };
 
     const handleDownloadPDF = async () => {
+        if (role !== 'admin' && role !== 'seller') return;
         setDownloading(true);
         try {
             const displayData = isCombined && combinedOrders && combinedOrders.length > 0 ? {
@@ -70,7 +72,7 @@ export const InvoiceView = ({ order, onClose, role, isCombined, combinedOrders }
             pdf.setFont('times', 'bold');
             pdf.setFontSize(24);
             pdf.setTextColor(42, 39, 35);
-            pdf.text('Mithila Art Bazzar', logoEndX, y + 2);
+            pdf.text('Mithila Chitrakala Store', logoEndX, y + 2);
             
             setFont('helvetica', 'bold', 8);
             pdf.setTextColor(92, 17, 17);
@@ -337,14 +339,14 @@ export const InvoiceView = ({ order, onClose, role, isCombined, combinedOrders }
                 
                 {/* Header Actions - Hidden during print */}
                 <div className="p-6 border-b border-stone-100 flex justify-between items-center print:hidden">
-                    <div className="flex gap-4">
+                    {(role === 'admin' || role === 'seller') && <div className="flex gap-4">
                         <button onClick={handlePrint} className="bg-[#5c1111] text-white px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center gap-2 hover:bg-stone-900 transition-all">
                             <Printer size={16} /> Print Bill
                         </button>
                         <button onClick={handleDownloadPDF} disabled={downloading} className="bg-stone-100 text-stone-600 px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center gap-2 hover:bg-stone-200 transition-all disabled:opacity-50">
                             {downloading ? <><Loader2 size={16} className="animate-spin" /> Generating...</> : <><Download size={16} /> PDF</>}
                         </button>
-                    </div>
+                    </div>}
                     <button onClick={onClose} className="p-2 text-stone-400 hover:text-red-800 transition-colors">
                         <X size={24} />
                     </button>
@@ -366,7 +368,7 @@ export const InvoiceView = ({ order, onClose, role, isCombined, combinedOrders }
                                         />
                                     </div>
                                     <div>
-                                        <h1 className="font-playfair text-3xl font-black text-stone-900 tracking-tight">Mithila Art Bazzar</h1>
+                                        <h1 className="font-playfair text-3xl font-black text-stone-900 tracking-tight">Mithila Chitrakala Store</h1>
                                         <p className="text-[9px] font-black uppercase tracking-[0.3em] text-[#5c1111]/70">Premium Heritage Registry</p>
                                     </div>
                                 </div>

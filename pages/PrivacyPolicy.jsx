@@ -4,7 +4,7 @@ export const PrivacyPolicy=()=> {
       <h1 className="text-3xl font-bold mb-6">Privacy Policy</h1>
 
       <p className="mb-4">
-        At Mithila Art Bazzar, we value your privacy and are committed to
+        At Mithila Chitrakala Store, we value your privacy and are committed to
         protecting your personal information. This Privacy Policy explains how
         we collect, use, and safeguard your information when you visit or make a
         purchase from our website.

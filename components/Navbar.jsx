@@ -1,101 +1,288 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { ShoppingCart, User as UserIcon, LogOut, Shield, Store, Heart } from 'lucide-react';
+import {
+    ShoppingCart,
+    User as UserIcon,
+    LogOut,
+    Shield,
+    Store,
+    Heart,
+    Search,
+    Menu,
+    X,
+} from 'lucide-react';
 
-const NavLink = ({ to, active, children }) => (
+
+
+const NAV_LINKS = [
+    { to: '/', label: 'Home', match: (path) => path === '/' },
+    { to: '/products', label: 'Shop', match: (path) => path.startsWith('/products') || path.startsWith('/product/') },
+    { to: '/journal', label: 'Journal', match: (path) => path.startsWith('/journal') },
+    { to: '/advice', label: 'AI Art Consultant', match: (path) => path.startsWith('/advice') },
+];
+
+const DesktopNavLink = ({ to, active, children }) => (
     <Link
         to={to}
-        className={`rounded-full px-4 py-2 text-[10px] font-semibold uppercase tracking-[0.24em] transition-all duration-300 ${active ? 'bg-[#5c1111] text-white shadow-sm shadow-[#5c1111]/20' : 'text-stone-500 hover:text-[#5c1111] hover:bg-[#f9f2ed]'}`}
+        className={`relative px-3 py-2 text-[13px] font-medium tracking-wide transition-colors ${
+            active ? 'text-[#7C2020]' : 'text-[#5B5449] hover:text-[#241F1A]'
+        }`}
     >
         {children}
+        {active && (
+            <span className="absolute bottom-0 left-3 right-3 h-[2px] rounded-full bg-[#7C2020]" aria-hidden />
+        )}
     </Link>
 );
 
 export const Navbar = ({ cartCount, currentUser, setCurrentUser }) => {
-    const [scrolled, setScrolled] = useState(false);
+    const [mobileOpen, setMobileOpen] = useState(false);
+    const [searchOpen, setSearchOpen] = useState(false);
+    const [query, setQuery] = useState('');
     const location = useLocation();
     const navigate = useNavigate();
 
     useEffect(() => {
-        const handleScroll = () => setScrolled(window.scrollY > 16);
-        window.addEventListener('scroll', handleScroll);
-        return () => window.removeEventListener('scroll', handleScroll);
-    }, []);
+        setMobileOpen(false);
+        setSearchOpen(false);
+    }, [location.pathname]);
+
+    useEffect(() => {
+        document.body.style.overflow = mobileOpen ? 'hidden' : '';
+        return () => { document.body.style.overflow = ''; };
+    }, [mobileOpen]);
 
     const logout = () => {
         setCurrentUser(null);
         navigate('/');
     };
 
+    const runSearch = (e) => {
+        e.preventDefault();
+        const q = query.trim();
+        if (q) navigate(`/products?q=${encodeURIComponent(q)}`);
+        else navigate('/products');
+        setSearchOpen(false);
+        setQuery('');
+    };
+
+    const isActive = (link) => {
+        if (typeof link.to === 'object' && link.to.hash) {
+            return link.match(location.pathname, location.hash);
+        }
+        return link.match(location.pathname, location.hash);
+    };
+
+    const sellerLink = currentUser && (currentUser.role === 'seller' || currentUser.role === 'admin');
+
     return (
-        <nav className="fixed inset-x-0 top-1 md:top-4 z-[100] px-4 sm:px-6 print:hidden">
-            <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-4">
-                <div className={`rounded-[1.75rem] border border-white/60 bg-white/85 shadow-[0_18px_60px_rgba(41,30,24,0.12)] backdrop-blur-xl transition-all duration-500  py-2 px-2 sm:px-6`}> 
-                    <Link to="/" className="flex items-center gap-2 group">
-                        <div className="relative flex h-10 w-10 md:h-12 md:w-12 items-center justify-center rounded-[1rem] bg-[#5c1111] text-white shadow-lg shadow-[#5c1111]/20 transition-transform duration-300 group-hover:-translate-y-0.5 group-hover:scale-[1.03]">
+        <header className="fixed inset-x-0 top-0 z-[100] print:hidden">
+
+            <div className="border-b border-[#E7E0D2] bg-[#FAF7F2]/95 backdrop-blur-md shadow-[0_4px_24px_-8px_rgba(36,31,26,0.08)]">
+                <div className="mx-auto grid max-w-[1280px] grid-cols-[1fr_auto_1fr] items-center gap-2 px-4 py-3 sm:px-6 lg:flex lg:gap-4 lg:py-3.5">
+                    <div className="flex items-center justify-start lg:flex-1">
+                        <button
+                            type="button"
+                            className="inline-flex h-10 w-10 items-center justify-center rounded-lg text-[#241F1A] hover:bg-[#E7E0D2]/50 lg:hidden"
+                            onClick={() => setMobileOpen(true)}
+                            aria-label="Open menu"
+                        >
+                            <Menu size={22} />
+                        </button>
+
+                        <Link to="/" className="hidden items-center gap-2.5 group shrink-0 lg:flex">
+                            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#7C2020] shadow-md shadow-[#7C2020]/25 transition-transform group-hover:scale-[1.03] lg:h-10 lg:w-10">
+                                <img
+                                    className="h-8 w-8 rounded-full object-cover"
+                                    src="https://res.cloudinary.com/djmbuuz28/image/upload/v1761108817/logo.png"
+                                    alt="Mithila Chitrakala Store"
+                                />
+                            </div>
+                            <div className="flex flex-col leading-tight">
+                                <span className="font-playfair text-lg font-bold text-[#241F1A] sm:text-xl">Mithila Chitrakala</span>
+                                <span className="text-[9px] font-semibold uppercase tracking-[0.22em] text-[#8B8378]">Store</span>
+                            </div>
+                        </Link>
+                    </div>
+
+                    <Link to="/" className="flex items-center justify-center gap-2 group lg:hidden">
+                        <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[#7C2020] shadow-md shadow-[#7C2020]/20">
                             <img
-                                className="h-8 w-8 md:h-10 md:w-10 rounded-[1rem] object-cover"
+                                className="h-7 w-7 rounded-full object-cover"
                                 src="https://res.cloudinary.com/djmbuuz28/image/upload/v1761108817/logo.png"
-                                alt="Logo"
+                                alt=""
                             />
                         </div>
                         <div className="flex flex-col leading-none">
-                            <span className="font-dancing text-[18px] sm:text-xl font-bold text-[#2a2723] tracking-tight">Mithila</span>
-                            <span className="text-[7px] md:text-[9px] uppercase tracking-[0.35em] text-[#5c1111]/70">Art Bazzar</span>
+                            <span className="font-playfair text-[15px] font-bold text-[#241F1A]">Mithila Chitrakala</span>
+                            <span className="text-[8px] font-semibold uppercase tracking-[0.2em] text-[#8B8378]">Store</span>
                         </div>
                     </Link>
-                </div>
 
-                <div className="hidden md:hidden lg:block rounded-[1.75rem] border border-white/60 bg-white/85 shadow-[0_18px_60px_rgba(41,30,24,0.12)] backdrop-blur-xl transition-all duration-500 py-3 px-4 sm:px-6">
-                    <div className="flex items-center gap-2">
-                        <NavLink to="/" active={location.pathname === '/'}>Home</NavLink>
-                        <NavLink to="/products" active={location.pathname === '/products'}>Gallery</NavLink>
-                        <NavLink to="/advice" active={location.pathname === '/advice'}>AI Art Consultant</NavLink>
-                        {currentUser && (currentUser.role === 'seller' || currentUser.role === 'admin') && (
+                    <nav className="hidden flex-1 items-center justify-center gap-1 lg:flex" aria-label="Main">
+                        {NAV_LINKS.map((link) => (
+                            <DesktopNavLink key={link.label} to={link.to} active={isActive(link)}>
+                                {link.label}
+                            </DesktopNavLink>
+                        ))}
+                        {sellerLink && (
                             <Link
                                 to="/seller"
-                                className={`inline-flex items-center gap-2 rounded-full px-4 py-2 text-[10px] font-semibold uppercase tracking-[0.18em] transition-all duration-300 ${location.pathname === '/seller' ? 'bg-[#f7ece6] text-[#5c1111]' : 'text-stone-500 hover:bg-[#f9f2ed] hover:text-[#5c1111]'}`}
+                                className={`inline-flex items-center gap-1.5 px-3 py-2 text-[13px] font-medium ${
+                                    location.pathname === '/seller' ? 'text-[#7C2020]' : 'text-[#5B5449] hover:text-[#241F1A]'
+                                }`}
                             >
                                 {currentUser.role === 'admin' ? <Shield size={14} /> : <Store size={14} />}
-                                {currentUser.role === 'admin' ? 'Administration' : 'Artisan Portal'}
+                                {currentUser.role === 'admin' ? 'Admin' : 'Seller'}
                             </Link>
                         )}
-                    </div>
-                </div>
+                    </nav>
 
-                <div className="rounded-[1.75rem] border border-white/60 bg-white/85 shadow-[0_18px_60px_rgba(41,30,24,0.12)] backdrop-blur-xl transition-all duration-500 py-1 px-1 sm:px-6">
-                    <div className="flex flex-wrap items-center gap-2 justify-end">
-                        <Link to="/wishlist" className={`hidden sm:inline-flex items-center justify-center rounded-full border border-transparent p-3 text-stone-600 transition-all duration-300 ${location.pathname === '/wishlist' ? 'bg-[#f9f2ed] text-[#5c1111]' : 'hover:bg-[#f9f2ed] hover:text-[#5c1111]'}`} title="My Wishlist">
+                    <div className="flex items-center justify-end gap-0.5 sm:gap-2 lg:flex-1">
+                        <button
+                            type="button"
+                            onClick={() => setSearchOpen((v) => !v)}
+                            className="inline-flex h-10 w-10 items-center justify-center rounded-full text-[#5B5449] transition-colors hover:bg-[#E7E0D2]/60 hover:text-[#241F1A]"
+                            aria-label="Search"
+                        >
+                            <Search size={20} />
+                        </button>
+
+                        <Link
+                            to={currentUser ? '/profile' : '/login'}
+                            className="hidden h-10 w-10 items-center justify-center rounded-full text-[#5B5449] transition-colors hover:bg-[#E7E0D2]/60 hover:text-[#241F1A] md:inline-flex"
+                            title={currentUser ? 'Account' : 'Sign in'}
+                        >
+                            <UserIcon size={20} />
+                        </Link>
+
+                        <Link
+                            to="/wishlist"
+                            className={`hidden h-10 w-10 items-center justify-center rounded-full transition-colors md:inline-flex ${
+                                location.pathname === '/wishlist'
+                                    ? 'bg-[#7C2020]/10 text-[#7C2020]'
+                                    : 'text-[#5B5449] hover:bg-[#E7E0D2]/60 hover:text-[#241F1A]'
+                            }`}
+                            title="Wishlist"
+                        >
                             <Heart size={20} fill={location.pathname === '/wishlist' ? 'currentColor' : 'none'} />
                         </Link>
 
-                        {currentUser ? (
-                            <div className="flex items-center gap-2">
-                                <Link to="/profile" className="relative inline-flex items-center justify-center rounded-full border border-stone-200 bg-white p-3 text-stone-600 transition-all duration-300 hover:border-[#5c1111]/40 hover:text-[#5c1111]" title="My Profile">
-                                    <UserIcon size={20} />
-                                    <span className="absolute -top-1 -right-1 h-2.5 w-2.5 rounded-full bg-emerald-500 border border-white"></span>
-                                </Link>
-                                <button onClick={logout} className="hidden lg:inline-flex items-center justify-center rounded-full p-3 text-stone-500 transition-colors duration-300 hover:text-red-700" title="Sign Out">
-                                    <LogOut size={18} />
-                                </button>
-                            </div>
-                        ) : (
-                            <Link to="/login" className="rounded-full border border-stone-200 bg-[#f4f1ec] px-5 py-3 text-[10px] font-black uppercase tracking-widest text-[#5c1111] transition-all duration-300 hover:bg-white hover:border-[#5c1111]/30 hover:shadow-lg">
-                                Sign In
-                            </Link>
-                        )}
-
-                        <Link to="/cart" className="relative inline-flex items-center justify-center rounded-full bg-[#5c1111] px-4 py-3 text-white shadow-xl transition-all duration-300 hover:-translate-y-0.5 hover:bg-[#2a2723]" title="My Cart">
-                            <ShoppingCart size={18} className="transition-transform duration-300" />
+                        <Link
+                            to="/cart"
+                            className="relative inline-flex h-10 w-10 items-center justify-center rounded-full bg-[#7C2020] text-white shadow-md transition-transform hover:scale-[1.03]"
+                            title="Cart"
+                        >
+                            <ShoppingCart size={20} />
                             {cartCount > 0 && (
-                                <span className="absolute -right-2 -top-2 flex h-5 w-5 items-center justify-center rounded-full bg-amber-600 text-[9px] font-black text-white shadow-md border border-white">
+                                <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-[#241F1A] px-1 text-[9px] font-bold text-white ring-2 ring-[#FAF7F2]">
                                     {cartCount}
                                 </span>
                             )}
                         </Link>
+
+                        {currentUser && (
+                            <button
+                                type="button"
+                                onClick={logout}
+                                className="hidden h-10 w-10 items-center justify-center rounded-full text-[#8B8378] hover:text-[#7C2020] lg:inline-flex"
+                                title="Sign out"
+                            >
+                                <LogOut size={18} />
+                            </button>
+                        )}
                     </div>
                 </div>
+
+                {searchOpen && (
+                    <div className="border-t border-[#E7E0D2] bg-[#FCF9F2] px-4 py-3 sm:px-6">
+                        <form onSubmit={runSearch} className="mx-auto flex max-w-xl gap-2">
+                            <div className="relative flex-1">
+                                <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-[#8B8378]" size={18} />
+                                <input
+                                    type="search"
+                                    value={query}
+                                    onChange={(e) => setQuery(e.target.value)}
+                                    placeholder="Search art, artists, motifs..."
+                                    className="w-full rounded-full border border-[#E7E0D2] bg-white py-2.5 pl-11 pr-4 text-sm text-[#241F1A] outline-none focus:border-[#7C2020]/40 focus:ring-2 focus:ring-[#7C2020]/10"
+                                    autoFocus
+                                />
+                            </div>
+                            <button
+                                type="submit"
+                                className="rounded-full bg-[#7C2020] px-5 text-sm font-semibold text-white hover:bg-[#5E1717]"
+                            >
+                                Search
+                            </button>
+                        </form>
+                    </div>
+                )}
             </div>
-        </nav>
+
+            {mobileOpen && (
+                <div className="fixed inset-0 z-[120] lg:hidden">
+                    <button
+                        type="button"
+                        className="absolute inset-0 bg-[#241F1A]/40 backdrop-blur-sm"
+                        aria-label="Close menu"
+                        onClick={() => setMobileOpen(false)}
+                    />
+                    <div className="absolute left-0 top-0 flex h-full w-[min(100%,320px)] flex-col bg-[#FAF7F2] shadow-2xl">
+                        <div className="flex items-center justify-between border-b border-[#E7E0D2] px-4 py-4">
+                            <span className="font-playfair text-lg font-bold text-[#241F1A]">Menu</span>
+                            <button type="button" onClick={() => setMobileOpen(false)} aria-label="Close">
+                                <X size={22} />
+                            </button>
+                        </div>
+                        <form onSubmit={runSearch} className="border-b border-[#E7E0D2] p-4">
+                            <div className="relative">
+                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-[#8B8378]" size={18} />
+                                <input
+                                    type="search"
+                                    value={query}
+                                    onChange={(e) => setQuery(e.target.value)}
+                                    placeholder="Search..."
+                                    className="w-full rounded-xl border border-[#E7E0D2] py-2.5 pl-10 pr-3 text-sm"
+                                />
+                            </div>
+                        </form>
+                        <nav className="flex flex-col p-2">
+                            {NAV_LINKS.map((link) => (
+                                <Link
+                                    key={link.label}
+                                    to={link.to}
+                                    className="rounded-lg px-4 py-3 text-[15px] font-medium text-[#241F1A] hover:bg-[#E7E0D2]/40"
+                                >
+                                    {link.label}
+                                </Link>
+                            ))}
+                            {sellerLink && (
+                                <Link to="/seller" className="rounded-lg px-4 py-3 text-[15px] font-medium text-[#7C2020]">
+                                    {currentUser.role === 'admin' ? 'Administration' : 'Artisan Portal'}
+                                </Link>
+                            )}
+                        </nav>
+                        <div className="mt-auto border-t border-[#E7E0D2] p-4">
+                            {currentUser ? (
+                                <button
+                                    type="button"
+                                    onClick={logout}
+                                    className="flex w-full items-center justify-center gap-2 rounded-xl border border-[#E7E0D2] py-3 text-sm font-semibold text-[#7C2020]"
+                                >
+                                    <LogOut size={16} /> Sign Out
+                                </button>
+                            ) : (
+                                <Link
+                                    to="/login"
+                                    className="flex w-full items-center justify-center rounded-xl bg-[#7C2020] py-3 text-sm font-semibold text-white"
+                                >
+                                    Sign In
+                                </Link>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            )}
+        </header>
     );
 };

@@ -1,0 +1,222 @@
+@import "tailwindcss";
+
+.mithila-hero-section {
+    position: relative;
+    width: 100%;
+    padding: 0 16px;
+}
+
+.mithila-hero-shell {
+    width: min(1280px, calc(100vw - 32px));
+    height: clamp(250px, 30vw, 380px);
+    margin: 0 auto;
+    background: #251f1d;
+    border: 1px solid rgba(124, 32, 32, 0.14);
+    box-shadow: 0 24px 80px -30px rgba(36, 31, 26, 0.56);
+    border-radius: 1.75rem;
+    overflow: hidden;
+}
+
+.mithila-hero-image {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    background: transparent;
+    overflow: hidden;
+}
+
+.mithila-hero-image-layer {
+    position: absolute;
+    inset: -1%;
+    background-repeat: no-repeat;
+    background-size: cover;
+    background-position: center center;
+    transform: scale(1.04);
+}
+
+.mithila-hero-image-layer-current {
+    opacity: 1;
+    z-index: 2;
+    transform: translateX(0);
+}
+
+.mithila-hero-image-layer-previous {
+    opacity: 1;
+    z-index: 1;
+    transform: translateX(0);
+}
+
+.mithila-hero-image-is-sliding .mithila-hero-image-layer-current {
+    animation: heroSlideFromRightToLeft 760ms ease forwards;
+}
+
+.mithila-hero-image-is-sliding .mithila-hero-image-layer-previous {
+    animation: heroSlideOutLeft 760ms ease forwards;
+}
+
+@keyframes heroSlideFromRightToLeft {
+    from {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+    50% {
+        opacity: 1;
+    }
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+@keyframes heroSlideOutLeft {
+    from {
+        transform: translateX(0);
+        opacity: 1;
+    }
+    to {
+        transform: translateX(-100%);
+        opacity: 0;
+    }
+}
+
+.mithila-hero-vignette {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(90deg, rgba(0, 0, 0, 0.4), transparent 50%), radial-gradient(circle at 40%, transparent, rgba(0, 0, 0, 0.32));
+    z-index: 3;
+}
+
+.mithila-hero-overlay-row {
+    position: absolute;
+    left: clamp(14px, 2vw, 24px);
+    right: clamp(14px, 2vw, 24px);
+    bottom: clamp(14px, 2vw, 24px);
+    z-index: 3;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.mithila-hero-controls {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    z-index: 3;
+}
+
+.mithila-hero-control {
+    width: 34px;
+    height: 34px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    border: 1px solid rgba(255,255,255,0.8);
+    background: rgba(20, 20, 20, 0.45);
+    color: #fff;
+    cursor: pointer;
+}
+
+.mithila-hero-dots {
+    flex: 1 1 auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+}
+
+.mithila-hero-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    border: none;
+    background: rgba(255,255,255,0.55);
+    cursor: pointer;
+}
+
+.mithila-hero-dot.is-current {
+    width: 26px;
+    height: 4px;
+    border-radius: 20px;
+    background: #fff;
+}
+
+.mithila-hero-button-wrap {
+    margin-left: auto;
+}
+
+.mithila-hero-cta-primary {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    min-height: 42px;
+    padding: 11px 20px;
+    background: #7c2020;
+    color: #fff;
+    border-radius: 8px;
+    border: 1px solid #7c2020;
+    font-size: clamp(11px, 1vw, 14px);
+    font-weight: 800;
+    text-decoration: none;
+    box-shadow: 0 12px 20px -14px rgba(124, 32, 32, 0.8);
+    transition: transform 220ms ease, background 220ms ease;
+}
+
+.mithila-hero-cta-primary:hover {
+    background: #5c1111;
+    transform: translateY(-2px);
+}
+
+@media (min-width: 1200px) {
+    .mithila-hero-shell {
+        height: 380px;
+    }
+}
+
+@media (max-width: 1024px) {
+    .mithila-hero-shell {
+        height: 330px;
+    }
+}
+
+@media (max-width: 768px) {
+    .mithila-hero-section {
+        padding: 0;
+    }
+
+    .mithila-hero-shell {
+        width: min(100%, 768px);
+        height: 280px;
+        border-radius: 1.2rem;
+    }
+
+    .mithila-hero-controls {
+        top: 68px;
+    }
+}
+
+@media (max-width: 480px) {
+    .mithila-hero-shell {
+        height: 220px;
+        border-radius: 1rem;
+    }
+
+    .mithila-hero-image {
+        background-size: cover;
+        background-position: center center;
+    }
+
+    .mithila-hero-cta-primary {
+        min-height: 34px;
+        padding: 8px 12px;
+        font-size: 11px;
+    }
+
+    .mithila-hero-controls {
+        top: 58px;
+        transform: scale(0.85);
+        transform-origin: left center;
+    }
+}
+

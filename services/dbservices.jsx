@@ -39,6 +39,7 @@ export const dbService = {
     getOrders: (sellerId, customerId) => callDbService('getOrders', { sellerId, customerId }),
     saveOrder: (order) => callDbService('saveOrder', { order }),
     updateOrderStatus: (id, status, role, userId) => callDbService('updateOrderStatus', { id, status, role, userId }),
+    updateOrderDetails: (orderId, customer, userId) => callDbService('updateOrderDetails', { orderId, customer, userId }),
     confirmPayout: (orderId, adminId) => callDbService('confirmPayout', { orderId, adminId }),
     updateCustomerPaymentVerified: (orderId, verified, adminId) => callDbService('updateCustomerPaymentVerified', { orderId, verified, adminId }),
     getLogs: () => callDbService('getLogs'),
@@ -50,5 +51,8 @@ export const dbService = {
     removeFromWishlist: (userId, productId) => callDbService('removeFromWishlist', { userId, productId }),
     getHeroSlides: () => callDbService('getHeroSlides'),
     saveHeroSlide: (slide, adminId) => callDbService('saveHeroSlide', { slide, adminId }),
-    deleteHeroSlide: (id, adminId) => callDbService('deleteHeroSlide', { id, adminId })
+    deleteHeroSlide: (id, adminId) => callDbService('deleteHeroSlide', { id, adminId }),
+    getJournalPosts: () => callDbService('getJournalPosts'),
+    saveJournalPost: (post, adminId) => callDbService('saveJournalPost', { post, adminId }),
+    deleteJournalPost: (id, adminId) => callDbService('deleteJournalPost', { id, adminId })
 };
