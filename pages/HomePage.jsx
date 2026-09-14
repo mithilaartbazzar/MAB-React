@@ -456,16 +456,16 @@ export const HomePage = ({ products, addToCart, wishlist, toggleWishlist }) => {
                         View Journal <ArrowRight size={14} />
                     </Link>
                 </div>
-                <div className="grid gap-3 md:grid-cols-3 md:gap-5">
+                <div className="grid gap-1 grid-cols-3 md:grid-cols-3 md:gap-5">
                     {journalPosts.map((post, i) => (
                         <Reveal key={post.title} delay={i * 80}>
-                            <Link to={typeof post.link === 'string' ? post.link : post.link} className="group block overflow-hidden rounded-[1.25rem] border border-[#E7E0D2] bg-white shadow-[0_14px_32px_-22px_rgba(36,31,26,0.35)] transition-transform hover:-translate-y-1">
+                            <Link to={typeof post.link === 'string' ? post.link : post.link} className="group block overflow-hidden rounded-[0.5rem] border border-[#E7E0D2] bg-white shadow-[0_14px_32px_-22px_rgba(36,31,26,0.35)] transition-transform hover:-translate-y-1">
                                 <div className="aspect-[16/10] overflow-hidden bg-[#F7F1E4]">
                                     <img src={post.image} alt="" className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" loading="lazy" />
                                 </div>
                                 <div className="space-y-1 p-3 sm:space-y-2 sm:p-5">
-                                    <h3 className="font-playfair text-base font-black leading-snug text-[#241F1A] group-hover:text-[#7C2020] sm:text-xl">{post.title}</h3>
-                                    <p className="text-[11px] leading-relaxed text-[#5B5449] line-clamp-3 sm:text-sm">{post.excerpt}</p>
+                                    <h3 className="font-playfair text-[0.8rem] font-black leading-tight line-clamp-2 text-[#241F1A] group-hover:text-[#7C2020] sm:text-xl">{post.title}</h3>
+                                    <p className="text-[11px] leading-tight text-[#5B5449] line-clamp-3 sm:text-sm">{post.excerpt}</p>
                                     <span className="inline-flex items-center gap-1 text-xs font-semibold text-[#7C2020]">
                                         Read more <ArrowRight size={13} className="transition-transform group-hover:translate-x-0.5" />
                                     </span>
