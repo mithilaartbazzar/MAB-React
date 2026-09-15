@@ -340,7 +340,7 @@ export const HomePage = ({ products, addToCart, wishlist, toggleWishlist }) => {
                     </div>
                 </Reveal>
             </section>
-
+{/* 
             <section id="featured-artists" className="scroll-mt-28 mx-auto max-w-[1280px] px-4 pb-6 sm:px-6 sm:pb-12 lg:px-8 lg:pb-16">
                 <SectionHead title="Featured Artists" subtitle="Meet the talented makers behind these masterpieces" viewAllLink="/products" />
                 <div className="no-scrollbar -mx-4 flex gap-2 overflow-x-auto px-4 pb-1 sm:gap-4 lg:mx-0 lg:grid lg:grid-cols-5 lg:gap-4 lg:overflow-visible lg:px-0">
@@ -374,7 +374,7 @@ export const HomePage = ({ products, addToCart, wishlist, toggleWishlist }) => {
                         </div>
                     ))}
                 </div>
-            </section>
+            </section> */}
 
             <section className="border-y border-[#E7E0D2] bg-[#F3EBDD]">
                 <div className="mx-auto grid max-w-[1280px] grid-cols-1 gap-3 px-4 py-5 sm:grid-cols-2 sm:gap-6 sm:px-6 sm:py-10 lg:grid-cols-4 lg:px-8">
@@ -406,7 +406,7 @@ export const HomePage = ({ products, addToCart, wishlist, toggleWishlist }) => {
                         View Journal <ArrowRight size={14} />
                     </Link>
                 </div>
-                <div className="no-scrollbar -mx-4 flex gap-2 overflow-x-auto px-4 pb-1 sm:mx-0 sm:gap-4 sm:px-0 lg:overflow-visible">
+                <div className="no-scrollbar -mx-4 flex gap-2 overflow-x-auto overflow-y-hidden  px-4 pb-1 sm:mx-0 sm:gap-4 sm:px-0 lg:overflow-visible">
                     {journalPosts.map((post, i) => (
                         <Reveal key={post.title} delay={i * 80}>
                             <Link to={typeof post.link === 'string' ? post.link : post.link} className="group block w-[220px] shrink-0 overflow-hidden rounded-[0.5rem] border border-[#E7E0D2] bg-white shadow-[0_14px_32px_-22px_rgba(36,31,26,0.35)] transition-transform duration-300 hover:-translate-y-1 sm:w-[260px] lg:w-[310px]">
