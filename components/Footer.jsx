@@ -116,9 +116,19 @@ export const Footer = () => {
 
                     {/* Bottom bar */}
                     <div className="mt-10 flex flex-col items-center justify-between gap-4 border-t border-white/5 pt-6 sm:mt-20 sm:gap-6 sm:pt-10 md:flex-row">
-                        <p className="text-center text-[9px] font-black uppercase tracking-[0.2em] text-stone-600 sm:text-left sm:text-[10px] sm:tracking-[0.3em]">
-                            &copy; 2025 Mithila Chitrakala Store &bull; Heritage Reserved
-                        </p>
+                        <div className="flex flex-col items-center gap-2 text-center sm:items-start sm:text-left">
+                            <p className="text-[9px] font-black uppercase tracking-[0.2em] text-stone-600 sm:text-[10px] sm:tracking-[0.3em]">
+                                &copy; 2025 Mithila Chitrakala Store &bull; Heritage Reserved
+                            </p>
+                            <a
+                                href="https://taigranexuslab.onrender.com/"
+                                target="_blank"
+                                rel="noreferrer"
+                                className="text-[9px] font-bold uppercase tracking-[0.2em] text-stone-400 transition-colors hover:text-[#f2c38b] sm:text-[10px]"
+                            >
+                                Designed &amp; Developed by Taigra Nexus Labs
+                            </a>
+                        </div>
                         <div className="flex gap-5 md:gap-6 grayscale opacity-70 hover:opacity-100 hover:grayscale-0 transition-all duration-500">
                             <img src="https://upload.wikimedia.org/wikipedia/commons/b/b5/PayPal.svg" className="h-3 md:h-4" alt="PayPal" />
                             <img src="https://upload.wikimedia.org/wikipedia/commons/9/98/Visa_Inc._logo_%282005%E2%80%932014%29.svg" className="h-3 md:h-4" alt="Visa" />

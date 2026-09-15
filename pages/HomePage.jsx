@@ -40,18 +40,8 @@ const TRUST_ITEMS = [
     { icon: Truck, title: 'Nepal-Wide Delivery', text: 'Reliable shipping across the region' },
 ];
 
-const DEFAULT_SLIDES = [
-    {
-        id: 'default-1',
-        tag: 'AUTHENTIC MITHILA ART & CRAFTS',
-        title: 'Timeless Art',
-        highlight: 'from the Heart of Nepal',
-        text: 'Explore handcrafted Mithila paintings, crafts and cultural artifacts — created by local artists, keeping a centuries-old tradition alive.',
-        cta: 'Explore Collection',
-        link: '/products',
-        image: 'https://res.cloudinary.com/djmbuuz28/image/upload/v1774971793/Shri_Krishna_Leela_-_The_Circular_Chronicles.png',
-    },
-];
+const DEFAULT_SLIDES = [];
+const EMPTY_HERO_SLIDE = { image: '', link: '/products', cta: 'Explore Collection' };
 
 const HOME_CATEGORY_ALIASES = {
     'handmade-crafts': 'crafts',
@@ -130,8 +120,8 @@ const HeroSection = ({ heroSlides }) => {
         touchStartX.current = null;
     };
 
-    const currentSlide = slides[current] || slides[0] || DEFAULT_SLIDES[0];
-    const previousSlide = slides[previous] || slides[0] || DEFAULT_SLIDES[0];
+    const currentSlide = slides[current] || slides[0] || EMPTY_HERO_SLIDE;
+    const previousSlide = slides[previous] || slides[0] || EMPTY_HERO_SLIDE;
 
     return (
         <section

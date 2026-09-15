@@ -3,11 +3,15 @@
 .mithila-hero-section {
     position: relative;
     width: 100%;
-    padding: 0 16px;
+    padding: 0;
+    border-radius: 1.75rem;
+    box-sizing: border-box;
+    overflow-x: hidden;
 }
 
 .mithila-hero-shell {
-    width: min(1280px, calc(100vw - 32px));
+    width: 100%;
+    max-width: 1280px;
     height: clamp(250px, 30vw, 380px);
     margin: 0 auto;
     background: #251f1d;
