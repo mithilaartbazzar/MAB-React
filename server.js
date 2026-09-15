@@ -37,7 +37,7 @@ if (!geminiApiKey) {
 const supabase = createClient(supabaseUrl, supabaseKey);
 const genAI = new GoogleGenAI({ apiKey: geminiApiKey });
 
-const hashPassword = (pwd) => btoa(`mab-salt-${pwd}`);
+const hashPassword = (pwd) => btoa(`mcs-salt-${pwd}`);
 
 const createSlug = (value) => String(value || '')
     .toLowerCase()
@@ -270,7 +270,7 @@ app.post('/api/db', async (req, res) => {
                 const dateStr = now.toISOString().slice(0, 10).replace(/-/g, '');
                 const invoiceSuffix = Math.random().toString(36).substr(2, 4).toUpperCase();
                 const invoiceNo = `INV-${dateStr}-${invoiceSuffix}`;
-                const trackingId = `MAB-TRK-${Math.random().toString(36).substr(2, 8).toUpperCase()}`;
+                const trackingId = `MCS-TRK-${Math.random().toString(36).substr(2, 8).toUpperCase()}`;
 
                 const orderData = {
                     ...order,
@@ -315,7 +315,7 @@ app.post('/api/db', async (req, res) => {
                 const { orderId, adminId } = payload;
                 const { error } = await supabase.from('orders').update({
                     payment_status: 'paid',
-                    mab_payment_status: 'done'
+                    mcs_payment_status: 'done'
                 }).eq('id', orderId);
                 if (error) throw new Error(error.message);
                 if (adminId) await logAction(`Admin confirmed payout for order ${orderId}`, adminId);

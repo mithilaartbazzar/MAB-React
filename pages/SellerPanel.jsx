@@ -170,7 +170,7 @@ export const SellerPanel = ({ currentUser }) => {
                 s.revenue += o.total;
                 if (['packing', 'billing', 'arrived', 'delivered'].includes(o.status)) {
                     s.payable += o.seller_payable_amount;
-                    if (o.mab_payment_status === 'done') s.paid += o.seller_payable_amount;
+                    if (o.mcs_payment_status === 'done') s.paid += o.seller_payable_amount;
                     else s.pendingPayout += o.seller_payable_amount;
                 }
             }
@@ -537,7 +537,7 @@ export const SellerPanel = ({ currentUser }) => {
                         <div className="space-y-10">
                             <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-6">
                                 <StatCard label="Registry Volume" value={`रु ${stats.revenue.toLocaleString()}`} sub="Gross Market Sales" />
-                                <StatCard label="MAB Share" value={`रु ${(stats.revenue - stats.payable).toLocaleString()}`} sub="Revenue Retained" color="text-amber-600" />
+                                <StatCard label="MCS Share" value={`रु ${(stats.revenue - stats.payable).toLocaleString()}`} sub="Revenue Retained" color="text-amber-600" />
                                 <StatCard label="Due for Disbursement" value={`रु ${stats.pendingPayout.toLocaleString()}`} sub="Pending Clearance" color="text-blue-600" />
                                 <StatCard label="Settled Funds" value={`रु ${stats.paid.toLocaleString()}`} sub="Successfully Payout" color="text-green-600" />
                             </div>
@@ -1291,7 +1291,7 @@ export const SellerPanel = ({ currentUser }) => {
                                             <span className="font-black text-stone-900">रु {selectedOrder.total.toLocaleString()}</span>
                                         </div>
                                         <div className="flex justify-between text-xs font-medium">
-                                            <span className="text-stone-400 uppercase tracking-tighter">MAB Commission</span>
+                                            <span className="text-stone-400 uppercase tracking-tighter">MCS Commission</span>
                                             <span className="font-black text-red-700">- रु {selectedOrder.commission_amount.toLocaleString()}</span>
                                         </div>
                                         <div className="pt-6 border-t border-stone-100 flex justify-between items-baseline">
@@ -1307,9 +1307,9 @@ export const SellerPanel = ({ currentUser }) => {
                                             <p className="text-[9px] font-black uppercase mb-1">Collector</p>
                                             <p className="text-[10px] font-black">{selectedOrder.customer_payment_status === 'done' ? 'SETTLED' : 'AWAITING'}</p>
                                         </div>
-                                        <div className={`flex-1 p-5 rounded-2xl border text-center ${selectedOrder.mab_payment_status === 'done' ? 'bg-blue-50 border-blue-100 text-blue-700' : 'bg-white border-stone-100 text-stone-400'}`}>
+                                        <div className={`flex-1 p-5 rounded-2xl border text-center ${selectedOrder.mcs_payment_status === 'done' ? 'bg-blue-50 border-blue-100 text-blue-700' : 'bg-white border-stone-100 text-stone-400'}`}>
                                             <p className="text-[9px] font-black uppercase mb-1">Disbursement</p>
-                                            <p className="text-[10px] font-black">{selectedOrder.mab_payment_status === 'done' ? 'COMPLETED' : 'PENDING'}</p>
+                                            <p className="text-[10px] font-black">{selectedOrder.mcs_payment_status === 'done' ? 'COMPLETED' : 'PENDING'}</p>
                                         </div>
                                     </div>
 
@@ -1350,7 +1350,7 @@ export const SellerPanel = ({ currentUser }) => {
                                         </button>
                                     )}
                                     
-                                    {currentUser.role === 'admin' && selectedOrder.mab_payment_status === 'pending' && (
+                                    {currentUser.role === 'admin' && selectedOrder.mcs_payment_status === 'pending' && (
                                         <button onClick={() => handleConfirmPayout(selectedOrder.id)} className="w-full bg-stone-900 text-white py-6 rounded-[2rem] font-black text-[10px] uppercase tracking-[0.3em] shadow-lg flex items-center justify-center gap-3 hover:bg-[#5c1111] transition-all">
                                             <Wallet size={18} /> Confirm Studio Payout
                                         </button>
