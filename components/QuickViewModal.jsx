@@ -1,11 +1,31 @@
-import React from 'react';
-import { X, ShoppingCart, Plus, Star, MapPin } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
+import { X, ShoppingCart, Star, MapPin, Check } from 'lucide-react';
 import { Badge } from './Badge';
 
 export const QuickViewModal = ({ product, isOpen, onClose, addToCart }) => {
-    if (!isOpen) return null;
+    const [isCartAnimating, setIsCartAnimating] = useState(false);
+    const [isAdded, setIsAdded] = useState(false);
 
-    return ( 
+    useEffect(() => {
+        if (!isAdded) return undefined;
+        const timer = setTimeout(() => setIsAdded(false), 2000);
+        return () => clearTimeout(timer);
+    }, [isAdded]);
+
+    if (!isOpen || !product) return null;
+
+    const handleAddToCart = () => {
+        if (isCartAnimating || isAdded) return;
+        addToCart(product);
+        setIsCartAnimating(true);
+        setTimeout(() => {
+            setIsCartAnimating(false);
+            setIsAdded(true);
+        }, 2050);
+    };
+
+    return createPortal((
         <div className="fixed inset-0 z-[200] flex items-center justify-center p-6 sm:p-12">
             {/* Backdrop */}
             <div 
@@ -65,14 +85,35 @@ export const QuickViewModal = ({ product, isOpen, onClose, addToCart }) => {
 
                     <div className="pt-2 flex gap-4">
                         <button 
-                            onClick={() => { addToCart(product); onClose(); }}
-                            className="flex-1 bg-[#5c1111] text-white py-4 rounded-xl font-black text-[10px] uppercase tracking-[0.2em] shadow-xl hover:bg-[#2a2723] transition-all flex items-center justify-center gap-3 active:scale-95"
+                            onClick={handleAddToCart}
+                            disabled={isCartAnimating || isAdded}
+                            className={`relative flex-1 overflow-hidden rounded-xl py-4 font-black text-[10px] uppercase tracking-[0.2em] shadow-xl transition-all active:scale-95 flex items-center justify-center gap-3 ${
+                                isAdded
+                                    ? 'bg-green-600 text-white'
+                                    : 'bg-[#5c1111] text-white hover:bg-[#2a2723]'
+                            }`}
                         >
-                            <Plus size={14} /> Add To Bag
+                            {isAdded ? (
+                                <Check size={16} />
+                            ) : (
+                                <span className={`relative inline-flex items-center ${isCartAnimating ? 'cart-icon-flight' : ''}`}>
+                                    {isCartAnimating && (
+                                        <span className="cart-wind-lines" aria-hidden="true">
+                                            <span />
+                                            <span />
+                                            <span />
+                                        </span>
+                                    )}
+                                    <ShoppingCart size={14} className="relative z-10" />
+                                </span>
+                            )}
+                            <span className={`transition-opacity duration-150 ${isCartAnimating ? 'opacity-0' : 'opacity-100'}`}>
+                                {isAdded ? 'Added' : 'Add To Bag'}
+                            </span>
                         </button>
                     </div>
                 </div>
             </div>
         </div>
-    );
+    ), document.body);
 };

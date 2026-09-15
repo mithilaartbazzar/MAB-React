@@ -83,6 +83,59 @@
     }
 }
 
+.cart-icon-flight {
+    position: absolute;
+    left: 0;
+    top: 50%;
+    z-index: 2;
+    animation: cartIconFlight 2000ms linear both;
+}
+
+.cart-wind-lines {
+    position: absolute;
+    left: -11px;
+    top: 50%;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    transform: translateY(-50%);
+}
+
+.cart-wind-lines span {
+    display: block;
+    width: 7px;
+    height: 1px;
+    border-radius: 999px;
+    background: currentColor;
+    animation: cartWindLine 1400ms ease-out both;
+}
+
+.cart-wind-lines span:nth-child(2) {
+    width: 10px;
+    animation-delay: 45ms;
+}
+
+.cart-wind-lines span:nth-child(3) {
+    width: 6px;
+    animation-delay: 90ms;
+}
+
+@keyframes cartIconFlight {
+    0% { left: 0; opacity: 0; transform: translate(-4px, -50%) scale(0.9); }
+    12% { left: 45%; opacity: 1; transform: translate(0, -50%) scale(1); }
+    42% { left: 28%; transform: translate(0, -50%) scale(1.08); }
+    68% { left: 88%; transform: translate(0, -50%) scale(1); }
+    88% { left: calc(100% - 20px); opacity: 1; transform: translate(2px, -50%) scale(1); }
+    100% { left: calc(100% - 20px); opacity: 0; transform: translate(4px, -50%) scale(0.96); }
+}
+
+@keyframes cartWindLine {
+    0% { opacity: 0; transform: translateX(6px); }
+    25% { opacity: 0.8; transform: translateX(0); }
+    55% { opacity: 1; transform: translateX(-2px); }
+    100% { opacity: 0; transform: translateX(-8px); }
+}
+
 .mithila-hero-vignette {
     position: absolute;
     inset: 0;

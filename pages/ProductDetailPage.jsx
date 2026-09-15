@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { ArrowLeft, ArrowRight, ArrowUpRight, BadgeCheck, ChevronDown, ChevronLeft, ChevronRight, CircleCheck, Frame, Heart, Leaf, Minus, Palette, Pin, Plus, Ruler, Send, ShoppingCart, Star, Truck, X } from 'lucide-react';
+import { ArrowLeft, ArrowRight, ArrowUpRight, BadgeCheck, Check, ChevronDown, ChevronLeft, ChevronRight, CircleCheck, Frame, Heart, Leaf, Minus, Palette, Pin, Plus, Ruler, Send, ShoppingCart, Star, Truck, X } from 'lucide-react';
 import { Badge } from '../components/Badge';
 import { ProductCard } from '../components/ProductCard';
 import { dbService } from '../services/dbservices';
@@ -15,6 +15,8 @@ export const ProductDetailPage = ({ products, addToCart, wishlist, toggleWishlis
     const [isSubmittingReview, setIsSubmittingReview] = useState(false);
     const [activeTab, setActiveTab] = useState('description');
     const [isImageZoomed, setIsImageZoomed] = useState(false);
+    const [isCartAnimating, setIsCartAnimating] = useState(false);
+    const [isAdded, setIsAdded] = useState(false);
     const navigate = useNavigate();
     const carouselRef = useRef(null);
     const thumbnailRef = useRef(null);
@@ -55,6 +57,22 @@ export const ProductDetailPage = ({ products, addToCart, wishlist, toggleWishlis
         carouselRef.current?.scrollBy({ left: direction === 'left' ? -360 : 360, behavior: 'smooth' });
     };
 
+    useEffect(() => {
+        if (!isAdded) return undefined;
+        const timer = setTimeout(() => setIsAdded(false), 2000);
+        return () => clearTimeout(timer);
+    }, [isAdded]);
+
+    const handleAddToCart = () => {
+        if (isCartAnimating || isAdded) return;
+        for (let index = 0; index < quantity; index += 1) addToCart(product);
+        setIsCartAnimating(true);
+        setTimeout(() => {
+            setIsCartAnimating(false);
+            setIsAdded(true);
+        }, 2050);
+    };
+
     if (!product) {
         return <div className="flex min-h-screen items-center justify-center bg-[#f8f5ee] text-center"><div><h1 className="font-playfair text-4xl font-bold">Piece not found</h1><Link to="/products" className="mt-5 inline-flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-[#7c2020]"><ArrowLeft size={14} /> Back to gallery</Link></div></div>;
     }
@@ -92,7 +110,7 @@ export const ProductDetailPage = ({ products, addToCart, wishlist, toggleWishlis
                         <p className="mt-2 max-w-xl text-[12px] leading-6 text-stone-600 lg:text-base lg:leading-7">{product.description}</p>
                         <div className="mt-5 flex flex-row gap-1 border-y border-[#e8e1d6] py-4 text-[10px] text-stone-600 sm:gap-4 lg:gap-5 lg:text-base"><div className="flex items-center gap-1"><BadgeCheck size={20} className="text-[#7c2020]" /> Original artwork</div><div className="flex items-center border-x border-[#e8e1d6] px-3 gap-1"><Leaf size={20} className="text-[#7c2020]" /> Handmade &amp; eco-friendly</div><div className="flex items-center gap-1"><Truck size={20} className="text-[#7c2020]" /> Ships from Nepal</div></div>
                         <p className="mt-5 text-[10px] font-semibold text-stone-700 lg:text-xs">Quantity</p>
-                        <div className="mt-2 flex gap-2 sm:gap-3"><div className="flex h-10 w-24 shrink-0 items-center justify-between rounded border border-[#e0d8cc] bg-white px-1.5 sm:w-28 sm:px-2"><button onClick={() => setQuantity(Math.max(1, quantity - 1))} className="p-1 text-stone-500" aria-label="Decrease quantity"><Minus size={13} /></button><span className="text-xs px-3 border-x border-[#e8e1d6]">{quantity}</span><button onClick={() => setQuantity(quantity + 1)} className="p-1 text-stone-500" aria-label="Increase quantity"><Plus size={13} /></button></div><button onClick={() => { for (let index = 0; index < quantity; index += 1) addToCart(product); }} className="flex h-10 min-w-0 flex-1 items-center justify-center gap-2 rounded bg-[#8e1717] px-2 text-[11px] font-semibold text-white transition hover:bg-[#6f1010] sm:max-w-[260px] sm:px-4 sm:text-xs"><ShoppingCart size={14} /> Add to cart</button></div>
+                        <div className="mt-2 flex gap-2 sm:gap-3"><div className="flex h-10 w-24 shrink-0 items-center justify-between rounded border border-[#e0d8cc] bg-white px-1.5 sm:w-28 sm:px-2"><button onClick={() => setQuantity(Math.max(1, quantity - 1))} className="p-1 text-stone-500" aria-label="Decrease quantity"><Minus size={13} /></button><span className="text-xs px-3 border-x border-[#e8e1d6]">{quantity}</span><button onClick={() => setQuantity(quantity + 1)} className="p-1 text-stone-500" aria-label="Increase quantity"><Plus size={13} /></button></div><button onClick={handleAddToCart} disabled={isCartAnimating || isAdded} className={`relative flex h-10 min-w-0 flex-1 items-center justify-center gap-2 overflow-hidden rounded px-2 text-[11px] font-semibold text-white transition sm:max-w-[260px] sm:px-4 sm:text-xs ${isAdded ? 'bg-green-600' : 'bg-[#8e1717] hover:bg-[#6f1010]'}`}>{isAdded ? <Check size={16} /> : <span className={`relative inline-flex items-center ${isCartAnimating ? 'cart-icon-flight' : ''}`}>{isCartAnimating && <span className="cart-wind-lines" aria-hidden="true"><span /><span /><span /></span>}<ShoppingCart size={14} className="relative z-10" /></span>}<span className={`transition-opacity duration-150 ${isCartAnimating ? 'opacity-0' : 'opacity-100'}`}>{isAdded ? 'Added' : 'Add to cart'}</span></button></div>
                         <div className="mt-3 flex items-center gap-2 rounded border border-[#eee5d8] bg-[#f5f0e7] px-3 py-3 text-[10px] text-stone-600 lg:text-sm"><Truck size={14} className="text-[#7c2020]" /> Estimated delivery: {product.delivery || 'Not specified'} <ChevronRight size={13} className="ml-auto" /></div>
                     </div>
                 </section>

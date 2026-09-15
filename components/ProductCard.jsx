@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Star, ArrowRight, Plus, Heart, Eye, Share2, Check } from 'lucide-react';
+import { Star, ArrowRight, ShoppingCart, Heart, Eye, Share2, Check } from 'lucide-react';
 import { Badge } from './Badge';
 import { QuickViewModal } from './QuickViewModal';
 
 export const ProductCard = ({ product, addToCart, isWishlisted, toggleWishlist }) => {
     const [isQuickViewOpen, setIsQuickViewOpen] = useState(false);
     const [isAnimating, setIsAnimating] = useState(false);
+    const [isCartAnimating, setIsCartAnimating] = useState(false);
     const [isAdded, setIsAdded] = useState(false);
     const [showCopiedFeedback, setShowCopiedFeedback] = useState(false);
 
@@ -20,8 +21,12 @@ export const ProductCard = ({ product, addToCart, isWishlisted, toggleWishlist }
 
     const handleAddToCart = () => {
         addToCart(product);
-        setIsAdded(true);
+        setIsCartAnimating(true);
         triggerFeedback();
+        setTimeout(() => {
+            setIsCartAnimating(false);
+            setIsAdded(true);
+        }, 2050);
     };
 
     useEffect(() => {
@@ -95,27 +100,6 @@ export const ProductCard = ({ product, addToCart, isWishlisted, toggleWishlist }
                         </button>
                     </div>
 
-                    <div className="absolute inset-x-0 bottom-0 z-20 p-2 transition-all duration-500 ease-out sm:translate-y-6 sm:opacity-0 sm:group-hover:translate-y-0 sm:group-hover:opacity-100">
-                        <button 
-                            onClick={handleAddToCart}
-                            disabled={isAdded}
-                            className={`flex w-full items-center justify-center gap-1 rounded-sm py-2 text-[7px] font-black uppercase tracking-widest shadow-2xl transition-all duration-300 sm:gap-2 sm:py-2.5 sm:text-[9px]
-                                ${isAdded ? 'bg-green-600 text-white' : 'bg-[#2a2723] text-white hover:bg-[#5c1111] sm:hover:scale-[1.02]'} 
-                                ${isAnimating ? 'animate-feedback-bounce' : ''} 
-                                active:scale-95`}
-                        >
-                            {isAdded ? (
-                                <>
-                                    <Check size={10} className="sm:w-[12px]" /> <span className="hidden xs:inline">Added</span><span className="xs:hidden">✓</span>
-                                </>
-                            ) : (
-                                <>
-                                    <Plus size={10} className="sm:w-[12px]" /> <span className="hidden xs:inline">Add To Bag</span><span className="xs:hidden">Add to cart</span>
-                                </>
-                            )}
-                        </button>
-                    </div>
-                    
                     <div className="absolute inset-0 bg-gradient-to-t from-[#2a2723]/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none"></div>
                 </div>
 
@@ -130,14 +114,45 @@ export const ProductCard = ({ product, addToCart, isWishlisted, toggleWishlist }
                         </div>
                     </div>
                     <p className="mb-2 line-clamp-1 text-[7px] font-medium uppercase tracking-widest text-stone-400 sm:mb-3 sm:text-[9px]">{product.storeName}</p>
-                    <div className="mt-auto flex items-center justify-between border-t border-[#e5e1d8] pt-2 sm:pt-3">
-                        <span className="font-playfair text-xs font-bold text-[#7c2020] sm:text-lg">Rs {product.price.toLocaleString()}</span>
-                        <Link 
-                            to={`/product/${product.slug}`} 
-                            className="hidden xs:flex items-center gap-1 text-[7px] sm:text-[9px] font-black uppercase tracking-widest text-stone-400 hover:text-[#2a2723] transition-colors group/link"
-                        >
-                            Details <ArrowRight size={10} className="sm:w-[12px] transition-transform group-hover/link:translate-x-1" />
-                        </Link>
+                    <div className="mt-auto flex items-center justify-between gap-2 border-t border-[#e5e1d8] pt-2 sm:pt-3">
+                        <span className="whitespace-nowrap font-playfair text-xs font-bold text-[#7c2020] sm:text-lg">Rs {product.price.toLocaleString()}</span>
+                        <div className="flex items-center gap-2">
+                            <Link 
+                                to={`/product/${product.slug}`} 
+                                className="hidden xs:flex items-center gap-1 text-[7px] sm:text-[9px] font-black uppercase tracking-widest text-stone-400 hover:text-[#2a2723] transition-colors group/link"
+                            >
+                                Details <ArrowRight size={10} className="sm:w-[12px] transition-transform group-hover/link:translate-x-1" />
+                            </Link>
+                            <button
+                                onClick={handleAddToCart}
+                                disabled={isAdded || isCartAnimating}
+                                aria-label={isAdded ? 'Added to cart' : isCartAnimating ? 'Adding to cart' : 'Add to cart'}
+                                title={isAdded ? 'Added to cart' : 'Add to cart'}
+                                className={`relative flex h-7 min-w-[75px] shrink-0 items-center justify-center gap-1 overflow-hidden whitespace-nowrap rounded-sm border px-1 text-[8px] font-bold uppercase tracking-wide transition-all duration-300 active:scale-95 sm:h-8 sm:w-8 sm:min-w-0 sm:gap-0 sm:rounded-full sm:px-0 sm:text-base ${
+                                    isAdded
+                                        ? 'border-green-600 bg-green-600 text-white'
+                                        : 'border-[#7c2020] text-[#7c2020] hover:bg-[#7c2020] hover:text-white'
+                                } ${isAnimating ? 'animate-feedback-bounce' : ''}`}
+                            >
+                                {isAdded ? (
+                                    <Check size={16} className="sm:h-[14px] sm:w-[14px]" />
+                                ) : (
+                                    <span className={`relative inline-flex items-center ${isCartAnimating ? 'cart-icon-flight' : ''}`}>
+                                        {isCartAnimating && (
+                                            <span className="cart-wind-lines" aria-hidden="true">
+                                                <span />
+                                                <span />
+                                                <span />
+                                            </span>
+                                        )}
+                                        <ShoppingCart size={14} className="relative z-10 sm:h-[14px] sm:w-[14px]" />
+                                    </span>
+                                )}
+                                <span className={`sm:hidden transition-opacity duration-150 ${isCartAnimating ? 'opacity-0' : 'opacity-100'}`}>
+                                    {isAdded ? 'Added' : 'Add to cart'}
+                                </span>
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>
