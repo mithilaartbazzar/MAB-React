@@ -3,12 +3,27 @@ import {
     Package, Plus, Trash2, Box, TrendingUp, ShoppingBag, 
     Printer, Eye, X, Wallet, Shield, Users, AlertCircle,
     LayoutDashboard, MapPin, Search, ChevronRight, Settings, Info, Download,
-    Check, UserX, ShieldCheck, Heart, RotateCcw, Filter, Pencil
+    Check, UserX, ShieldCheck, Heart, RotateCcw, Filter, Pencil, ChevronDown
 } from 'lucide-react';
 import { dbService } from '../services/dbservices';
 import { SectionHeading } from '../components/SectionHeading';
 import { Badge } from '../components/Badge';
 import { InvoiceView } from '../components/InvoiceView';
+
+const DEFAULT_PRODUCT_CATEGORIES = [
+    'Paintings',
+    'Wall Art',
+    'Textile Art',
+    'Accessories',
+    'Home Decor',
+    'Gift Items',
+    'Crafts',
+];
+
+const splitProductCategories = (value) => String(value || '')
+    .split(',')
+    .map((category) => category.trim())
+    .filter(Boolean);
 
 // Helper Component for Sidebar Tabs
 const TabBtn = ({ children, active, onClick, icon }) => (
@@ -51,6 +66,8 @@ export const SellerPanel = ({ currentUser }) => {
     const [uploadingImage, setUploadingImage] = useState(false);
     const [showNewCategory, setShowNewCategory] = useState(false);
     const [newCategoryName, setNewCategoryName] = useState('');
+    const [savedCategories, setSavedCategories] = useState([]);
+    const [categoryMenuOpen, setCategoryMenuOpen] = useState(false);
     const [newProduct, setNewProduct] = useState({
         id: null,
         seller_id: null,
@@ -60,6 +77,9 @@ export const SellerPanel = ({ currentUser }) => {
         image: '',
         images: [],
         category: '',
+        style: '',
+        theme: '',
+        tags: '',
         stock: 0,
         location: '',
         material: '',
@@ -123,14 +143,15 @@ export const SellerPanel = ({ currentUser }) => {
         if (!refreshing) setLoading(true);
         try {
             if (currentUser.role === 'admin') {
-                const [p, o, u, l, w, h, j] = await Promise.all([
+                const [p, o, u, l, w, h, j, c] = await Promise.all([
                     dbService.getProducts(),
                     dbService.getOrders(),
                     dbService.getUsers(),
                     dbService.getLogs(),
                     dbService.getWishlists(),
                     dbService.getHeroSlides(),
-                    dbService.getJournalPosts()
+                    dbService.getJournalPosts(),
+                    dbService.getProductCategories()
                 ]);
                 setProducts(p);
                 setOrders(o);
@@ -139,6 +160,7 @@ export const SellerPanel = ({ currentUser }) => {
                 setWishlists(w);
                 setHeroSlides((h || []).map(normalizeHeroSlide));
                 setJournalPosts(j || []);
+                setSavedCategories((c || []).flatMap((category) => splitProductCategories(category.name)));
                 const commissionData = await dbService.getGlobalCommission();
                 setGlobalCommission(commissionData?.globalCommission ?? 15);
             } else {
@@ -150,6 +172,7 @@ export const SellerPanel = ({ currentUser }) => {
                 setProducts(p);
                 setOrders(o);
                 setWishlists(w);
+                setSavedCategories([]);
             }
             calculateSellerStats();
         } finally {
@@ -225,6 +248,7 @@ export const SellerPanel = ({ currentUser }) => {
         setEditingProductId(null);
         setShowNewCategory(false);
         setNewCategoryName('');
+        setCategoryMenuOpen(false);
         setNewProduct({
             id: null,
             seller_id: null,
@@ -234,6 +258,9 @@ export const SellerPanel = ({ currentUser }) => {
             image: '',
             images: [],
             category: '',
+            style: '',
+            theme: '',
+            tags: '',
             stock: 0,
             location: '',
             material: '',
@@ -248,6 +275,7 @@ export const SellerPanel = ({ currentUser }) => {
         setEditingProductId(product.id);
         setShowNewCategory(false);
         setNewCategoryName('');
+        setCategoryMenuOpen(false);
         setNewProduct({
             id: product.id,
             seller_id: product.seller_id,
@@ -257,6 +285,9 @@ export const SellerPanel = ({ currentUser }) => {
             image: product.image || '',
             images: Array.isArray(product.images) ? product.images : [],
             category: product.category || '',
+            style: product.style || '',
+            theme: product.theme || '',
+            tags: Array.isArray(product.tags) ? product.tags.join(', ') : (product.tags || ''),
             stock: product.stock || 0,
             location: product.location || '',
             material: product.material || '',
@@ -268,24 +299,51 @@ export const SellerPanel = ({ currentUser }) => {
         setShowAddProductModal(true);
     };
 
-    const productCategories = [...new Set(products.map((product) => product.category?.trim()).filter(Boolean))]
+    const productCategories = [...new Set([
+        ...DEFAULT_PRODUCT_CATEGORIES,
+        ...savedCategories,
+        ...products.flatMap((product) => splitProductCategories(product.category)),
+    ])]
         .sort((a, b) => a.localeCompare(b));
 
-    const handleCategorySelect = (value) => {
-        if (value === '__new__') {
+    const handleCategorySelect = (event) => {
+        const values = Array.from(event.target.selectedOptions).map((option) => option.value);
+        if (values.includes('__new__')) {
             setShowNewCategory(true);
             return;
         }
         setShowNewCategory(false);
-        setNewProduct((previous) => ({ ...previous, category: value }));
+        setNewProduct((previous) => ({ ...previous, category: values.join(', ') }));
+    };
+
+    const toggleCategory = (category) => {
+        setNewProduct((previous) => {
+            const selectedCategories = splitProductCategories(previous.category);
+            const nextCategories = selectedCategories.includes(category)
+                ? selectedCategories.filter((selectedCategory) => selectedCategory !== category)
+                : [...selectedCategories, category];
+            return { ...previous, category: nextCategories.join(', ') };
+        });
     };
 
     const addNewCategory = () => {
         const category = newCategoryName.trim();
         if (!category) return;
-        setNewProduct((previous) => ({ ...previous, category }));
-        setNewCategoryName('');
-        setShowNewCategory(false);
+        dbService.addProductCategory(category)
+            .then((savedCategory) => {
+                const savedName = savedCategory?.name || category;
+                setSavedCategories((previous) => [...new Set([...previous, savedName])]);
+                setNewProduct((previous) => ({
+                    ...previous,
+                    category: [...new Set([...splitProductCategories(previous.category), savedName])].join(', '),
+                }));
+                setNewCategoryName('');
+                setShowNewCategory(false);
+            })
+            .catch((error) => {
+                console.error('Error saving product category:', error);
+                window.alert(error.message || 'Unable to save category.');
+            });
     };
 
     const handleSaveProduct = async () => {
@@ -1397,19 +1455,49 @@ export const SellerPanel = ({ currentUser }) => {
                                         />
                                     </div>
                                     <div>
-                                        <label className="block text-[10px] font-black uppercase tracking-widest text-stone-400 mb-2">Category</label>
-                                        <select
-                                            value={showNewCategory ? '__new__' : newProduct.category}
-                                            onChange={(e) => handleCategorySelect(e.target.value)}
-                                            className="w-full rounded-2xl border border-stone-200 bg-white px-4 py-3 outline-none transition-all focus:border-[#5c1111] focus:ring-2 focus:ring-[#5c1111]/20"
-                                        >
-                                            <option value="">Choose a category</option>
-                                            {newProduct.category && !productCategories.includes(newProduct.category) && !showNewCategory && (
-                                                <option value={newProduct.category}>{newProduct.category}</option>
+                                        <label className="block text-[10px] font-black uppercase tracking-widest text-stone-400 mb-2">Categories</label>
+                                        <div className="relative">
+                                            <button
+                                                type="button"
+                                                onClick={() => setCategoryMenuOpen((open) => !open)}
+                                                className={`flex w-full items-center justify-between rounded-2xl border bg-white px-4 py-3 text-left text-sm transition-all ${categoryMenuOpen ? 'border-[#5c1111] ring-2 ring-[#5c1111]/10' : 'border-stone-200 hover:border-stone-300'}`}
+                                            >
+                                                <span className={newProduct.category ? 'font-semibold text-stone-800' : 'text-stone-400'}>
+                                                    {splitProductCategories(newProduct.category).length > 0
+                                                        ? `${splitProductCategories(newProduct.category).length} categor${splitProductCategories(newProduct.category).length === 1 ? 'y' : 'ies'} selected`
+                                                        : 'Choose categories'}
+                                                </span>
+                                                <ChevronDown size={16} className={`text-stone-400 transition-transform ${categoryMenuOpen ? 'rotate-180' : ''}`} />
+                                            </button>
+                                            {categoryMenuOpen && (
+                                                <div className="absolute left-0 right-0 top-full z-20 mt-2 max-h-64 overflow-y-auto rounded-2xl border border-stone-200 bg-white p-2 shadow-xl">
+                                                    <div className="grid grid-cols-1 gap-1 sm:grid-cols-2">
+                                                        {productCategories.map((category) => {
+                                                            const isSelected = splitProductCategories(newProduct.category).includes(category);
+                                                            return (
+                                                                <label key={category} className={`flex cursor-pointer items-center gap-3 rounded-xl px-3 py-2.5 text-xs transition-colors ${isSelected ? 'bg-[#5c1111]/10 text-[#5c1111]' : 'text-stone-600 hover:bg-stone-50'}`}>
+                                                                    <input
+                                                                        type="checkbox"
+                                                                        checked={isSelected}
+                                                                        onChange={() => toggleCategory(category)}
+                                                                        className="h-4 w-4 cursor-pointer accent-[#5c1111]"
+                                                                    />
+                                                                    <span className={isSelected ? 'font-bold' : 'font-medium'}>{category}</span>
+                                                                </label>
+                                                            );
+                                                        })}
+                                                    </div>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => setShowNewCategory(true)}
+                                                        className="mt-2 flex w-full items-center gap-2 border-t border-stone-100 px-3 py-3 text-left text-[10px] font-black uppercase tracking-widest text-[#5c1111] transition-colors hover:bg-stone-50"
+                                                    >
+                                                        <Plus size={13} /> Add new category
+                                                    </button>
+                                                </div>
                                             )}
-                                            {productCategories.map((category) => <option key={category} value={category}>{category}</option>)}
-                                            <option value="__new__">+ Add new category</option>
-                                        </select>
+                                        </div>
+                                        <p className="mt-2 text-[9px] font-bold uppercase tracking-widest text-stone-400">Select one or more categories</p>
                                         {showNewCategory && (
                                             <div className="mt-2 flex gap-2">
                                                 <input
@@ -1435,6 +1523,54 @@ export const SellerPanel = ({ currentUser }) => {
                                         className="w-full px-4 py-3 bg-white border border-stone-200 rounded-2xl focus:ring-2 focus:ring-[#5c1111]/20 focus:border-[#5c1111] outline-none transition-all h-24 resize-none"
                                         placeholder="Describe your product"
                                     />
+                                </div>
+
+                                <div className="grid grid-cols-1 gap-3 md:grid-cols-2 md:gap-6">
+                                    <div>
+                                        <label className="block text-[10px] font-black uppercase tracking-widest text-stone-400 mb-2">Style</label>
+                                        <select
+                                            value={newProduct.style}
+                                            onChange={(e) => setNewProduct({ ...newProduct, style: e.target.value })}
+                                            className="w-full rounded-2xl border border-stone-200 bg-white px-4 py-3 outline-none transition-all focus:border-[#5c1111] focus:ring-2 focus:ring-[#5c1111]/20"
+                                        >
+                                            <option value="">Choose a style</option>
+                                            <option value="Traditional">Traditional</option>
+                                            <option value="Modern">Modern</option>
+                                            <option value="Folk">Folk</option>
+                                            <option value="Contemporary">Contemporary</option>
+                                            <option value="Minimal">Minimal</option>
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label className="block text-[10px] font-black uppercase tracking-widest text-stone-400 mb-2">Theme</label>
+                                        <select
+                                            value={newProduct.theme}
+                                            onChange={(e) => setNewProduct({ ...newProduct, theme: e.target.value })}
+                                            className="w-full rounded-2xl border border-stone-200 bg-white px-4 py-3 outline-none transition-all focus:border-[#5c1111] focus:ring-2 focus:ring-[#5c1111]/20"
+                                        >
+                                            <option value="">Choose a theme</option>
+                                            <option value="Nature">Nature</option>
+                                            <option value="Floral">Floral</option>
+                                            <option value="Birds">Birds</option>
+                                            <option value="Devotional">Devotional</option>
+                                            <option value="Mythology">Mythology</option>
+                                            <option value="Village Life">Village Life</option>
+                                            <option value="Folklore">Folklore</option>
+                                            <option value="Abstract">Abstract</option>
+                                        </select>
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <label className="block text-[10px] font-black uppercase tracking-widest text-stone-400 mb-2">Tags</label>
+                                    <input
+                                        type="text"
+                                        value={newProduct.tags}
+                                        onChange={(e) => setNewProduct({ ...newProduct, tags: e.target.value })}
+                                        className="w-full rounded-2xl border border-stone-200 bg-white px-4 py-3 outline-none transition-all focus:border-[#5c1111] focus:ring-2 focus:ring-[#5c1111]/20"
+                                        placeholder="handmade, floral, mithila"
+                                    />
+                                    <p className="mt-2 text-[9px] font-bold uppercase tracking-widest text-stone-400">Separate tags with commas</p>
                                 </div>
 
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

@@ -249,6 +249,28 @@ app.post('/api/db', async (req, res) => {
                 result = { success: true };
                 break;
             }
+            case 'getProductCategories': {
+                const { data, error } = await supabase
+                    .from('product_categories')
+                    .select('id, name')
+                    .eq('active', true)
+                    .order('name', { ascending: true });
+                if (error) throw new Error(error.message);
+                result = data;
+                break;
+            }
+            case 'addProductCategory': {
+                const categoryName = String(payload.category || '').trim();
+                if (!categoryName) throw new Error('Category name is required');
+                const { data, error } = await supabase
+                    .from('product_categories')
+                    .upsert({ name: categoryName, active: true }, { onConflict: 'name' })
+                    .select('id, name')
+                    .single();
+                if (error) throw new Error(error.message);
+                result = data;
+                break;
+            }
             case 'getOrders': {
                 const { sellerId, customerId } = payload;
                 let query = supabase.from('orders').select('*').order('date', { ascending: false });

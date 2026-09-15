@@ -3,18 +3,20 @@ import { useSearchParams } from 'react-router-dom';
 import { Search, Filter, X, ChevronDown, Heart, ShieldCheck, Truck } from 'lucide-react';
 import { ProductCard } from '../components/ProductCard';
 import { Reveal } from '../components/Reveal';
+import { dbService } from '../services/dbservices';
 
 const BASE_CATEGORY_LABELS = {
     'all': 'All Works',
     'paintings': 'Paintings',
     'accessories': 'Accessories',
     'home-decor': 'Home Decor',
+    'gift-items': 'Gift Items',
     'wall-art': 'Wall Art',
     'textile-art': 'Textile Art',
+    'crafts': 'Crafts',
 };
 
 const CATEGORY_ALIASES = {
-    crafts: 'accessories',
     textiles: 'textile-art',
 };
 
@@ -22,6 +24,11 @@ const normalizeCategory = (value) => {
     const normalized = String(value || '').trim().toLowerCase().replace(/\s+/g, '-');
     return normalized;
 };
+
+const productCategories = (value) => String(value || '')
+    .split(',')
+    .map((category) => normalizeCategory(category))
+    .filter(Boolean);
 
 const categoryLabel = (category) => category
     .split('-')
@@ -37,11 +44,19 @@ const SORT_OPTIONS = [
 ];
 
 const STYLE_OPTIONS = [
-    { key: 'traditional', label: 'Traditional', terms: ['traditional', 'mithila', 'folk', 'handmade', 'painting'] },
-    { key: 'modern', label: 'Modern', terms: ['modern', 'contemporary', 'minimal'] },
-    { key: 'nature', label: 'Nature', terms: ['nature', 'floral', 'flower', 'bird', 'tree', 'fish', 'sun'] },
-    { key: 'god', label: 'God & Goddess', terms: ['god', 'goddess', 'krishna', 'radha', 'shiva', 'sita', 'ram'] },
-    { key: 'folklore', label: 'Folklore', terms: ['folklore', 'story', 'myth', 'village', 'folk'] },
+    { key: 'traditional', label: 'Traditional', terms: ['traditional', 'mithila', 'handmade', 'painting'] },
+    { key: 'modern', label: 'Modern', terms: ['modern'] },
+    { key: 'folk', label: 'Folk', terms: ['folk'] },
+    { key: 'contemporary', label: 'Contemporary', terms: ['contemporary'] },
+    { key: 'minimal', label: 'Minimal', terms: ['minimal'] },
+    { key: 'nature', label: 'Nature', terms: ['nature', 'flower', 'bird', 'tree', 'fish', 'sun'] },
+    { key: 'floral', label: 'Floral', terms: ['floral', 'flower'] },
+    { key: 'birds', label: 'Birds', terms: ['birds', 'bird'] },
+    { key: 'devotional', label: 'Devotional', terms: ['devotional', 'god', 'goddess', 'krishna', 'radha', 'shiva', 'sita', 'ram'] },
+    { key: 'mythology', label: 'Mythology', terms: ['mythology', 'myth'] },
+    { key: 'village-life', label: 'Village Life', terms: ['village life', 'village'] },
+    { key: 'folklore', label: 'Folklore', terms: ['folklore', 'story'] },
+    { key: 'abstract', label: 'Abstract', terms: ['abstract'] },
 ];
 
 const productSearchText = (product) => [
@@ -60,6 +75,7 @@ export const ProductsPage = ({ products, addToCart, wishlist, toggleWishlist }) 
     const [filterOpen, setFilterOpen] = useState(false);
     const [selectedStyles, setSelectedStyles] = useState([]);
     const [priceLimit, setPriceLimit] = useState(null);
+    const [savedCategories, setSavedCategories] = useState([]);
     const category = normalizeCategory(searchParams.get('cat') || 'all');
     const selectedCategory = CATEGORY_ALIASES[category] || category;
 
@@ -69,6 +85,16 @@ export const ProductsPage = ({ products, addToCart, wishlist, toggleWishlist }) 
     useEffect(() => {
         setSearch(searchParams.get('q') || '');
     }, [searchParams]);
+
+    useEffect(() => {
+        let isMounted = true;
+        dbService.getProductCategories()
+            .then((categories) => {
+                if (isMounted) setSavedCategories((categories || []).map((item) => item.name).filter(Boolean));
+            })
+            .catch((error) => console.error('Unable to load product categories:', error));
+        return () => { isMounted = false; };
+    }, []);
 
     const setCategory = (cat) => {
         if (cat === 'all') searchParams.delete('cat');
@@ -93,14 +119,38 @@ export const ProductsPage = ({ products, addToCart, wishlist, toggleWishlist }) 
     const categoryCounts = useMemo(() => {
         const counts = { all: products.length };
         products.forEach(p => {
-            const normalizedCategory = normalizeCategory(p.category);
-            counts[normalizedCategory] = (counts[normalizedCategory] || 0) + 1;
+            productCategories(p.category).forEach((normalizedCategory) => {
+                counts[normalizedCategory] = (counts[normalizedCategory] || 0) + 1;
+            });
         });
         return counts;
     }, [products]);
 
+    const styleOptions = useMemo(() => {
+        const options = new Map(STYLE_OPTIONS.map((style) => [style.key, style]));
+        products.flatMap((product) => [product.style, product.theme])
+            .flatMap((value) => String(value || '').split(','))
+            .map((value) => value.trim())
+            .filter(Boolean)
+            .forEach((value) => {
+                const key = normalizeCategory(value);
+                if (!options.has(key)) options.set(key, { key, label: value, terms: [value.toLowerCase(), key.replace(/-/g, ' ')] });
+            });
+        return [...options.values()];
+    }, [products]);
+
+    const styleCounts = useMemo(() => Object.fromEntries(
+        styleOptions.map((style) => [
+            style.key,
+            products.filter((product) => style.terms.some((term) => productSearchText(product).includes(term))).length,
+        ])
+    ), [products, styleOptions]);
+
     const categoryOptions = useMemo(() => {
-        const existingCategories = new Set(products.map((product) => normalizeCategory(product.category)).filter(Boolean));
+        const existingCategories = new Set([
+            ...savedCategories.map((savedCategory) => normalizeCategory(savedCategory)),
+            ...products.flatMap((product) => productCategories(product.category)),
+        ]);
         const options = Object.entries(BASE_CATEGORY_LABELS);
         existingCategories.forEach((categoryKey) => {
             if (!BASE_CATEGORY_LABELS[categoryKey] && !options.some(([key]) => key === categoryKey)) {
@@ -108,16 +158,16 @@ export const ProductsPage = ({ products, addToCart, wishlist, toggleWishlist }) 
             }
         });
         return options;
-    }, [products]);
+    }, [products, savedCategories]);
 
     const filtered = useMemo(() => {
         const list = products.filter(p => {
             const q = search.toLowerCase();
             const matchesSearch = p.name.toLowerCase().includes(q) || p.description.toLowerCase().includes(q) || (p.storeName || '').toLowerCase().includes(q);
-            const matchesCategory = selectedCategory === 'all' || normalizeCategory(p.category) === selectedCategory;
+            const matchesCategory = selectedCategory === 'all' || productCategories(p.category).includes(selectedCategory);
             const productText = productSearchText(p);
             const matchesStyle = selectedStyles.length === 0 || selectedStyles.some((styleKey) => {
-                const style = STYLE_OPTIONS.find((option) => option.key === styleKey);
+                const style = styleOptions.find((option) => option.key === styleKey);
                 return style?.terms.some((term) => productText.includes(term));
             });
             const matchesPrice = (Number(p.price) || 0) <= activePriceLimit;
@@ -160,7 +210,14 @@ export const ProductsPage = ({ products, addToCart, wishlist, toggleWishlist }) 
                             <div className="mb-3 flex items-center justify-between"><h2 className="text-[10px] font-bold uppercase tracking-[0.16em]">Categories</h2><button type="button" className="lg:hidden" onClick={() => setFilterOpen(false)} aria-label="Close filters"><X size={15} /></button></div>
                             <div className="space-y-1 border-t border-[#e6dfd4] pt-2">{categoryOptions.map(([cat, label]) => <button key={cat} onClick={() => { setCategory(cat); setFilterOpen(false); }} className={`flex w-full items-center justify-between border-b border-[#eee8df] py-2 text-left text-[10px] transition-colors ${selectedCategory === cat ? 'font-bold text-[#7c2020]' : 'text-[#6f675e] hover:text-[#7c2020]'}`}><span>{label}</span><span className="text-[8px] text-[#a39a8d]">({categoryCounts[cat] || 0})</span></button>)}</div>
                             <div className="mt-6 border-t border-[#e6dfd4] pt-4"><h3 className="mb-3 text-[10px] font-bold uppercase tracking-[0.16em]">Price Range</h3><input type="range" min="0" max={maxPrice} step="100" value={activePriceLimit} onChange={(event) => setPriceLimit(Number(event.target.value))} className="h-1 w-full cursor-pointer accent-[#7c2020]" aria-label="Maximum price" /><div className="mt-2 flex justify-between text-[8px] text-[#81786d]"><span>Rs 0</span><span>{activePriceLimit >= maxPrice ? `Rs ${maxPrice.toLocaleString()}+` : `Up to Rs ${activePriceLimit.toLocaleString()}`}</span></div></div>
-                            <div className="mt-6 border-t border-[#e6dfd4] pt-4"><h3 className="mb-3 text-[10px] font-bold uppercase tracking-[0.16em]">Style / Theme</h3>{STYLE_OPTIONS.map((style) => <label key={style.key} className="flex cursor-pointer items-center gap-2 py-1 text-[10px] text-[#6f675e]"><input type="checkbox" checked={selectedStyles.includes(style.key)} onChange={() => toggleStyle(style.key)} className="h-3 w-3 cursor-pointer accent-[#7c2020]" />{style.label}<span className="ml-auto text-[8px] text-[#a39a8d]">{products.filter((product) => style.terms.some((term) => productSearchText(product).includes(term))).length}</span></label>)}</div>
+                            <div className="mt-6 border-t border-[#e6dfd4] pt-4">
+                                <div className="mb-3 flex items-center justify-between"><h3 className="text-[10px] font-bold uppercase tracking-[0.16em]">Style / Theme</h3><span className="text-[8px] text-[#a39a8d]">Optional</span></div>
+                                <div className="space-y-1">{styleOptions.map((style) => {
+                                    const count = styleCounts[style.key] || 0;
+                                    const isSelected = selectedStyles.includes(style.key);
+                                    return <label key={style.key} className={`flex items-center gap-3 border px-3 py-2.5 text-[10px] transition-colors ${count === 0 ? 'cursor-not-allowed border-transparent text-[#b8aea0]' : isSelected ? 'cursor-pointer border-[#d9b7a8] bg-[#f3e4db] font-bold text-[#7c2020]' : 'cursor-pointer border-transparent text-[#6f675e] hover:border-[#e6dfd4] hover:bg-white'}`}><input type="checkbox" checked={isSelected} onChange={() => toggleStyle(style.key)} disabled={count === 0} className="h-3.5 w-3.5 cursor-pointer accent-[#7c2020] disabled:cursor-not-allowed disabled:opacity-40" /><span className="flex-1">{style.label}</span><span className={`text-[8px] ${isSelected ? 'text-[#7c2020]' : 'text-[#a39a8d]'}`}>{count}</span></label>;
+                                })}</div>
+                            </div>
                             <button type="button" onClick={clearFilters} className="mt-6 w-full bg-[#292621] py-3 text-[9px] font-bold uppercase tracking-[0.14em] text-white transition-colors hover:bg-[#7c2020]">Clear Filters</button>
                         </div>
                     </aside>
