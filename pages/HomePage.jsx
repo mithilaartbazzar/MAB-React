@@ -4,9 +4,6 @@ import {
     ArrowRight,
     ChevronLeft,
     ChevronRight,
-    Star,
-    Heart,
-    ShoppingCart,
     ShieldCheck,
     Truck,
     Lock,
@@ -15,6 +12,7 @@ import {
 } from 'lucide-react';
 import { dbService } from '../services/dbservices';
 import { Reveal } from '../components/Reveal';
+import { ProductCard } from '../components/ProductCard';
 
 const CATEGORIES = [
     { key: 'paintings', label: 'Paintings', fallback: 'https://res.cloudinary.com/djmbuuz28/image/upload/v1789361816/Cozy_Madhubani_Art_Display_zdqqyb.png' },
@@ -61,14 +59,6 @@ const normalizeHeroSlide = (slide) => ({
     sort_order: slide.sort_order ?? 0,
     active: slide.active ?? true,
 });
-
-const Rating = ({ value = 0, count }) => (
-    <div className="flex items-center gap-1">
-        <Star size={12} className="text-amber-500" fill="currentColor" />
-        <span className="text-[11px] font-semibold text-[#241F1A]">{Number(value).toFixed(1)}</span>
-        {count != null && <span className="text-[11px] text-[#8B8378]">({count})</span>}
-    </div>
-);
 
 const HeroSection = ({ heroSlides }) => {
     const [current, setCurrent] = useState(0);
@@ -300,46 +290,16 @@ export const HomePage = ({ products, addToCart, wishlist, toggleWishlist }) => {
                     </p>
                 ) : (
                     <div className="grid grid-cols-2 gap-2 sm:gap-4 lg:grid-cols-5">
-                        {featuredFill.map((p, idx) => {
-                            const isWishlisted = wishlist.includes(p.id);
-                            const artistLabel = p.artist || p.storeName;
-                            return (
-                                <Reveal key={p.id} delay={idx * 60}>
-                                    <div className="group flex h-full flex-col overflow-hidden rounded-xl border border-[#E7E0D2] bg-[#FFFCFA] shadow-[0_14px_32px_-20px_rgba(36,31,26,0.38)] transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_18px_38px_-18px_rgba(92,17,17,0.22)] sm:rounded-[1.15rem]">
-                                        <Link to={`/product/${p.slug}`} className="relative block overflow-hidden bg-[#F7F1E4]">
-                                            <div className="aspect-square">
-                                                <img src={p.image} alt={p.name} className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" loading="lazy" />
-                                            </div>
-                                            <button
-                                                type="button"
-                                                onClick={(e) => { e.preventDefault(); toggleWishlist(p.id); }}
-                                                aria-label={isWishlisted ? 'Remove from wishlist' : 'Add to wishlist'}
-                                                className="absolute right-1.5 top-1.5 flex h-7 w-7 items-center justify-center rounded-full bg-white/95 shadow-sm transition-colors hover:bg-white sm:right-2.5 sm:top-2.5 sm:h-8 sm:w-8"
-                                            >
-                                                <Heart size={13} className={isWishlisted ? 'text-[#7C2020]' : 'text-[#8B8378]'} fill={isWishlisted ? 'currentColor' : 'none'} />
-                                            </button>
-                                        </Link>
-                                        <div className="flex flex-1 flex-col space-y-1 p-2 sm:space-y-2 sm:p-3.5">
-                                            <Link to={`/product/${p.slug}`} className="font-playfair text-xs font-black leading-tight text-[#241F1A] transition-colors hover:text-[#7C2020] sm:text-[1.05rem]">
-                                                {p.name}
-                                            </Link>
-                                            {artistLabel && <p className="text-[9px] text-[#8B8378] sm:text-[11px]">by {artistLabel}</p>}
-                                            <div className="flex items-center justify-between gap-2">
-                                                <span className="font-playfair text-xs font-black text-[#7C2020] sm:text-lg">रु {p.price?.toLocaleString?.() ?? p.price}</span>
-                                                {p.rating != null && <Rating value={p.rating} count={p.reviewCount} />}
-                                            </div>
-                                            <button
-                                                type="button"
-                                                onClick={() => addToCart(p)}
-                                                className="mt-auto flex w-full items-center justify-center gap-1.5 rounded-lg bg-[#241F1A] px-2 py-2 text-[11px] font-semibold text-white transition-colors hover:bg-[#7C2020] sm:gap-2 sm:px-3 sm:py-2.5 sm:text-xs"
-                                            >
-                                                <ShoppingCart size={12} className="sm:h-[14px] sm:w-[14px]" /> Add to Cart
-                                            </button>
-                                        </div>
-                                    </div>
-                                </Reveal>
-                            );
-                        })}
+                        {featuredFill.map((p, idx) => (
+                            <Reveal key={p.id} delay={idx * 60}>
+                                <ProductCard
+                                    product={p}
+                                    addToCart={addToCart}
+                                    isWishlisted={wishlist.includes(p.id)}
+                                    toggleWishlist={toggleWishlist}
+                                />
+                            </Reveal>
+                        ))}
                     </div>
                 )}
             </section>
