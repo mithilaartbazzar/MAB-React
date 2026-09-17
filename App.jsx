@@ -107,6 +107,18 @@ const initialCart = loadCartFromStorage();
 const initialWishlist = [];
 const initialUser = loadUserFromStorage();
 
+const preloadHeroImages = async (slides) => {
+    const activeSlides = (slides || []).filter((slide) => slide.active !== false && slide.image);
+
+    await Promise.all(activeSlides.map((slide, index) => new Promise((resolve) => {
+        const image = new Image();
+        image.fetchPriority = index === 0 ? 'high' : 'auto';
+        image.onload = resolve;
+        image.onerror = resolve;
+        image.src = slide.image;
+    })));
+};
+
 export default function App() {
     const [isAppLoading, setIsAppLoading] = useState(true);
     const [products, setProducts] = useState([]);
@@ -120,8 +132,10 @@ export default function App() {
                 // Minimum preloader time for aesthetic impact
                 const minLoaderPromise = new Promise(resolve => setTimeout(resolve, 2200));
                 const dataPromise = dbService.getProducts();
+                const heroPromise = dbService.getHeroSlides();
                 
-                const [data] = await Promise.all([dataPromise, minLoaderPromise]);
+                const [data, heroSlides] = await Promise.all([dataPromise, heroPromise, minLoaderPromise]);
+                await preloadHeroImages(heroSlides);
                 setProducts(data);
 
                 if (currentUser) {
