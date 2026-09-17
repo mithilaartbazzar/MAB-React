@@ -125,6 +125,16 @@ export default function App() {
                 setProducts(data);
 
                 if (currentUser) {
+                    try {
+                        const allUsers = await dbService.getUsers();
+                        const refreshedUser = allUsers.find(user => user.id === currentUser.id);
+                        if (refreshedUser) {
+                            setCurrentUser(refreshedUser);
+                        }
+                    } catch (userSyncError) {
+                        console.error('Failed to sync current user from database:', userSyncError);
+                    }
+
                     const wishlistsData = await dbService.getWishlists();
                     const userWishlists = wishlistsData.filter(w => w.userId === currentUser.id).map(w => w.productId);
                     if (userWishlists.length > 0) {
@@ -148,7 +158,7 @@ export default function App() {
             }
         };
         loadInitialData();
-    }, [currentUser]);
+    }, [currentUser?.id]);
 
     useEffect(() => { localStorage.setItem('mithila-cart', JSON.stringify(cart)); }, [cart]);
     // Wishlist no longer stored in localStorage
