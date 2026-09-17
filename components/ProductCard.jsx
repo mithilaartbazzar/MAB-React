@@ -116,13 +116,13 @@ export const ProductCard = ({ product, addToCart, isWishlisted, toggleWishlist }
                             <span className="text-[8px] font-bold">{product.rating}</span>
                         </div>
                     </div>
-                    <p className="mb-2 line-clamp-1 text-[7px] font-medium uppercase tracking-widest text-stone-400 sm:mb-3 sm:text-[9px]">{product.storeName}</p>
+                    <p className="mb-2 line-clamp-1 text-[7px] font-medium uppercase tracking-widest text-stone-500 sm:mb-3 sm:text-[9px]">{product.storeName}</p>
                     <div className="mt-auto flex items-center justify-between gap-2 border-t border-[#e5e1d8] pt-2 sm:pt-3">
-                        <div className="flex flex-col gap-0.5">
-                            <span className="whitespace-nowrap font-playfair text-xs font-bold text-[#7c2020] sm:text-lg">NPR {price.toLocaleString()}</span>
+                        <div className="flex flex-col gap-0">
+                            <span className="whitespace-nowrap font-playfair text-xs font-bold text-[#7c2020] sm:text-lg">रु {price.toLocaleString()}</span>
                             {comparePrice > price && (
-                                <span className="whitespace-nowrap text-[8px] font-medium text-stone-400 line-through sm:text-[10px]">
-                                    NPR {comparePrice.toLocaleString()}
+                                <span className="whitespace-nowrap text-[8px] font-medium text-stone-500 line-through sm:text-[10px]">
+                                    रु {comparePrice.toLocaleString()}
                                 </span>
                             )}
                         </div>

@@ -158,9 +158,9 @@ export const ProductDetailPage = ({ products, addToCart, wishlist, toggleWishlis
                         <div className="mt-1 flex flex-col items-start gap-2">
                             <span className="flex items-center gap-1 text-xs text-amber-600 lg:text-sm">{product.rating != null && <><Star size={13} fill="currentColor" /> {product.rating}</>} {reviews.length} {reviews.length === 1 ? 'review' : 'reviews'}</span>
                             <div className="flex flex-col items-start gap-1">
-                                <span className="font-playfair text-3xl font-bold text-[#29251f] lg:text-4xl">NPR {currentPrice.toLocaleString()}</span>
+                                <span className="font-playfair text-3xl font-bold text-[#29251f] lg:text-4xl">रु {currentPrice.toLocaleString()}</span>
                                 {comparePrice > currentPrice && (
-                                    <span className="text-base font-medium text-stone-400 line-through sm:text-lg">NPR {comparePrice.toLocaleString()}</span>
+                                    <span className="text-base font-medium text-stone-400 line-through sm:text-lg">रु {comparePrice.toLocaleString()}</span>
                                 )}
                             </div>
                         </div>

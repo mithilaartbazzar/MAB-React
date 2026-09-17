@@ -1964,11 +1964,11 @@ export const SellerPanel = ({ currentUser }) => {
                                         <div className="mt-4 space-y-3">
                                             <div className="rounded-2xl border border-stone-200 bg-[#f9f7f3] p-3">
                                                 <p className="text-[10px] font-black uppercase tracking-[0.22em] text-stone-400">Price</p>
-                                                <p className="mt-1 text-xl font-black text-stone-900">NPR {Number(newProduct.price || 0).toLocaleString()}</p>
+                                                <p className="mt-1 text-xl font-black text-stone-900">रु {Number(newProduct.price || 0).toLocaleString()}</p>
                                             </div>
                                             <div className="rounded-2xl border border-stone-200 bg-[#f9f7f3] p-3">
                                                 <p className="text-[10px] font-black uppercase tracking-[0.22em] text-stone-400">Stock</p>
-                                                <p className="mt-1 text-xl font-black text-stone-900">{newProduct.stock || 0} units</p>
+                                                <p className="mt-1 text-xl font-black text-stone-900">रु {Number(newProduct.stock || 0).toLocaleString()}</p>
                                             </div>
                                         </div>
                                     </section>
