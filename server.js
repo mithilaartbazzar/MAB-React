@@ -96,6 +96,15 @@ const logAction = async (action, adminId) => {
     }]);
 };
 
+const isStoreApprovalSchemaError = (errorMessage = '') => /storeName_pending|storeName_change_requested_at/i.test(errorMessage);
+
+const stripStoreApprovalFields = (record = {}) => {
+    const nextRecord = { ...record };
+    delete nextRecord.storeName_pending;
+    delete nextRecord.storeName_change_requested_at;
+    return nextRecord;
+};
+
 // --- Gemini API Route ---
 app.post('/api/gemini', async (req, res) => {
     try {
@@ -196,9 +205,17 @@ app.post('/api/db', async (req, res) => {
                     password: plainPassword,
                     password_hash: hashPassword(plainPassword)
                 };
-                const { data, error } = await supabase.from('users').insert([newUser]).select();
-                if (error) throw new Error(error.message);
-                result = (data && data.length > 0) ? data[0] : newUser;
+                try {
+                    const { data, error } = await supabase.from('users').insert([newUser]).select();
+                    if (error) throw new Error(error.message);
+                    result = (data && data.length > 0) ? data[0] : newUser;
+                } catch (error) {
+                    if (!isStoreApprovalSchemaError(error.message)) throw error;
+                    const fallbackUser = stripStoreApprovalFields(newUser);
+                    const { data, fallbackError } = await supabase.from('users').insert([fallbackUser]).select();
+                    if (fallbackError) throw new Error(fallbackError.message);
+                    result = (data && data.length > 0) ? data[0] : fallbackUser;
+                }
                 break;
             }
             case 'getUserByEmail': {
@@ -279,33 +296,60 @@ app.post('/api/db', async (req, res) => {
                     }
                 }
 
-                const { data, error } = await supabase.from('users').update(updateData).eq('id', userId).select();
-                if (error) throw new Error(error.message);
-                result = data[0];
+                try {
+                    const { data, error } = await supabase.from('users').update(updateData).eq('id', userId).select();
+                    if (error) throw new Error(error.message);
+                    result = data[0];
+                } catch (error) {
+                    if (!isStoreApprovalSchemaError(error.message)) throw error;
+                    const fallbackData = stripStoreApprovalFields(updateData);
+                    const { data, error: fallbackError } = await supabase.from('users').update(fallbackData).eq('id', userId).select();
+                    if (fallbackError) throw new Error(fallbackError.message);
+                    result = data[0];
+                }
                 break;
             }
             case 'approveStoreNameChange': {
                 const { userId, approvedStoreName, adminId } = payload;
                 const cleanedStore = String(approvedStoreName || '').trim();
-                const { error } = await supabase.from('users').update({
-                    storeName: cleanedStore,
-                    storeName_pending: '',
-                    storeName_change_requested_at: null
-                }).eq('id', userId);
-                if (error) throw new Error(error.message);
-                if (adminId) await logAction(`Admin approved store name for user ${userId}`, adminId);
-                result = { success: true };
+                try {
+                    const { error } = await supabase.from('users').update({
+                        storeName: cleanedStore,
+                        storeName_pending: '',
+                        storeName_change_requested_at: null
+                    }).eq('id', userId);
+                    if (error) throw new Error(error.message);
+                    if (adminId) await logAction(`Admin approved store name for user ${userId}`, adminId);
+                    result = { success: true };
+                } catch (error) {
+                    if (!isStoreApprovalSchemaError(error.message)) throw error;
+                    const { error: fallbackError } = await supabase.from('users').update({
+                        storeName: cleanedStore
+                    }).eq('id', userId);
+                    if (fallbackError) throw new Error(fallbackError.message);
+                    if (adminId) await logAction(`Admin approved store name for user ${userId}`, adminId);
+                    result = { success: true };
+                }
                 break;
             }
             case 'rejectStoreNameChange': {
                 const { userId, adminId } = payload;
-                const { error } = await supabase.from('users').update({
-                    storeName_pending: '',
-                    storeName_change_requested_at: null
-                }).eq('id', userId);
-                if (error) throw new Error(error.message);
-                if (adminId) await logAction(`Admin rejected store name change for user ${userId}`, adminId);
-                result = { success: true };
+                try {
+                    const { error } = await supabase.from('users').update({
+                        storeName_pending: '',
+                        storeName_change_requested_at: null
+                    }).eq('id', userId);
+                    if (error) throw new Error(error.message);
+                    if (adminId) await logAction(`Admin rejected store name change for user ${userId}`, adminId);
+                    result = { success: true };
+                } catch (error) {
+                    if (!isStoreApprovalSchemaError(error.message)) throw error;
+                    const { error: fallbackError } = await supabase.from('users').update({}).eq('id', userId);
+                    if (fallbackError) throw new Error(fallbackError.message);
+                    if (adminId) await logAction(`Admin rejected store name change for user ${userId}`, adminId);
+                    result = { success: true };
+                }
+                break;
             }
             case 'updateUserStatus': {
                 const { id, status, adminId } = payload;
