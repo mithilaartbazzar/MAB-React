@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { ArrowLeft, ArrowRight, ArrowUpRight, BadgeCheck, Check, ChevronDown, ChevronLeft, ChevronRight, CircleCheck, Frame, Heart, Leaf, Minus, Palette, Pin, Plus, Ruler, Send, ShoppingCart, Star, Truck, X } from 'lucide-react';
+import { ArrowLeft, ArrowRight, ArrowUpRight, BadgeCheck, Check, ChevronDown, ChevronLeft, ChevronRight, CircleCheck, Frame, Heart, Leaf, Minus, Palette, Pin, Plus, Ruler, Send, Share2, ShoppingCart, Star, Truck, X } from 'lucide-react';
 import { Badge } from '../components/Badge';
 import { ProductCard } from '../components/ProductCard';
 import { dbService } from '../services/dbservices';
@@ -46,6 +46,7 @@ export const ProductDetailPage = ({ products, addToCart, wishlist, toggleWishlis
     const [isImageZoomed, setIsImageZoomed] = useState(false);
     const [isCartAnimating, setIsCartAnimating] = useState(false);
     const [isAdded, setIsAdded] = useState(false);
+    const [isShareCopied, setIsShareCopied] = useState(false);
     const navigate = useNavigate();
     const carouselRef = useRef(null);
     const thumbnailRef = useRef(null);
@@ -59,6 +60,30 @@ export const ProductDetailPage = ({ products, addToCart, wishlist, toggleWishlis
         setQuantity(1);
         window.scrollTo(0, 0);
         loadReviews();
+    }, [product]);
+
+    useEffect(() => {
+        if (!product) return;
+        const pageUrl = window.location.href;
+        document.title = `${product.name} | Mithila Chitrakala Store`;
+        const metaValues = {
+            description: product.description || `Discover ${product.name} at Mithila Chitrakala Store.`,
+            'og:title': product.name,
+            'og:description': product.description || `Discover ${product.name} at Mithila Chitrakala Store.`,
+            'og:url': pageUrl,
+            'og:image': product.image,
+            'twitter:title': product.name,
+            'twitter:description': product.description || `Discover ${product.name} at Mithila Chitrakala Store.`,
+            'twitter:image': product.image,
+        };
+
+        Object.entries(metaValues).forEach(([key, content]) => {
+            const selector = key === 'description' ? 'meta[name="description"]' : `meta[property="${key}"], meta[name="${key}"]`;
+            const meta = document.querySelector(selector);
+            if (meta && content) meta.setAttribute('content', content);
+        });
+
+        return () => { document.title = 'Mithila Chitrakala Store - Premium Traditional Art'; };
     }, [product]);
 
     const loadReviews = async () => {
@@ -121,6 +146,31 @@ export const ProductDetailPage = ({ products, addToCart, wishlist, toggleWishlis
         }, 2050);
     };
 
+    const handleShare = async () => {
+        const shareData = {
+            title: product.name,
+            text: product.description || `View ${product.name} at Mithila Chitrakala Store.`,
+            url: window.location.href,
+        };
+
+        if (navigator.share) {
+            try {
+                await navigator.share(shareData);
+            } catch (error) {
+                if (error.name !== 'AbortError') console.error('Error sharing product:', error);
+            }
+            return;
+        }
+
+        try {
+            await navigator.clipboard.writeText(shareData.url);
+            setIsShareCopied(true);
+            setTimeout(() => setIsShareCopied(false), 2000);
+        } catch (error) {
+            console.error('Could not copy product link:', error);
+        }
+    };
+
     if (!product) {
         return <div className="flex min-h-screen items-center justify-center bg-[#f8f5ee] text-center"><div><h1 className="font-playfair text-4xl font-bold">Piece not found</h1><Link to="/products" className="mt-5 inline-flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-[#7c2020]"><ArrowLeft size={14} /> Back to gallery</Link></div></div>;
     }
@@ -152,7 +202,7 @@ export const ProductDetailPage = ({ products, addToCart, wishlist, toggleWishlis
                     </div>
 
                     <div className="flex flex-col pt-1 lg:pt-2">
-                        <div className="mb-3 flex items-start justify-between gap-4"><Badge variant="saffron">{product.badge || 'Original Artwork'}</Badge><button onClick={() => toggleWishlist(product.id)} className="flex h-8 w-8 items-center justify-center rounded border border-stone-200 text-[#7c2020]" aria-label="Add to wishlist"><Heart size={15} fill={isWishlisted ? 'currentColor' : 'none'} /></button></div>
+                        <div className="mb-3 flex items-start justify-between gap-4"><Badge variant="saffron">{product.badge || 'Original Artwork'}</Badge><div className="flex gap-2"><button onClick={handleShare} className="flex h-8 items-center gap-1.5 rounded border border-stone-200 px-2 text-[10px] font-semibold text-stone-600 hover:text-[#7c2020]" aria-label="Share product">{isShareCopied ? <Check size={14} /> : <Share2 size={14} />}<span>{isShareCopied ? 'Copied' : 'Share'}</span></button><button onClick={() => toggleWishlist(product.id)} className="flex h-8 w-8 items-center justify-center rounded border border-stone-200 text-[#7c2020]" aria-label="Add to wishlist"><Heart size={15} fill={isWishlisted ? 'currentColor' : 'none'} /></button></div></div>
                         <h1 className="max-w-xl font-playfair text-[1.4rem] leading-[1.08] text-[#20221f] sm:text-4xl lg:text-[2.55rem]">{product.name}</h1>
                         <p className="mt-1 text-xs text-stone-500 lg:text-sm">By <span className="font-semibold text-stone-700">{product.storeName || 'Mithila Artisan'}</span> <span className="mx-1">•</span> {product.location || 'Janakpur, Nepal'}</p>
                         <div className="mt-1 flex flex-col items-start gap-2">

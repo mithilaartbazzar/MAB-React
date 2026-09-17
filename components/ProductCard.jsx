@@ -50,7 +50,7 @@ export const ProductCard = ({ product, addToCart, isWishlisted, toggleWishlist }
         const shareData = {
             title: `MCS - ${product.name}`,
             text: product.description,
-            url: `${window.location.origin}/#/product/${product.slug}`
+            url: `${window.location.origin}/product/${product.slug}`
         };
 
         if (navigator.share) {

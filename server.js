@@ -2,6 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import crypto from 'crypto';
+import fs from 'fs';
 import { createClient } from '@supabase/supabase-js';
 import { GoogleGenAI } from '@google/genai';
 import path from 'path';
@@ -698,6 +699,47 @@ app.post('/api/db', async (req, res) => {
 });
 
 app.use(express.static(path.join(__dirname, 'dist')));
+
+const escapeHtmlAttribute = (value) => String(value || '')
+    .replace(/&/g, '&amp;')
+    .replace(/"/g, '&quot;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+
+app.get('/product/:slug', async (req, res, next) => {
+    try {
+        const { data: product, error } = await supabase
+            .from('products')
+            .select('name, description, image, slug')
+            .eq('slug', req.params.slug)
+            .maybeSingle();
+
+        if (error || !product) return next();
+
+        const title = `${product.name} | Mithila Chitrakala Store`;
+        const description = product.description || `Discover ${product.name} at Mithila Chitrakala Store.`;
+        const pageUrl = `${req.protocol}://${req.get('host')}${req.originalUrl}`;
+        let html = fs.readFileSync(path.join(__dirname, 'dist', 'index.html'), 'utf8');
+        const metadata = {
+            '<title>Mithila Chitrakala Store - Premium Traditional Art</title>': `<title>${escapeHtmlAttribute(title)}</title>`,
+            '<meta name="description" content="Discover authentic Mithila art, handmade crafts, textiles, home decor, and cultural gifts from local artists.">': `<meta name="description" content="${escapeHtmlAttribute(description)}">`,
+            '<meta property="og:title" content="Mithila Chitrakala Store - Premium Traditional Art">': `<meta property="og:title" content="${escapeHtmlAttribute(title)}">`,
+            '<meta property="og:description" content="Explore authentic Mithila artwork, handmade crafts, textiles, and cultural treasures from local artists.">': `<meta property="og:description" content="${escapeHtmlAttribute(description)}">`,
+            '<meta property="og:image" content="https://res.cloudinary.com/djmbuuz28/image/upload/v1761108817/logo.png">': `<meta property="og:image" content="${escapeHtmlAttribute(product.image)}">`,
+            '<meta name="twitter:title" content="Mithila Chitrakala Store - Premium Traditional Art">': `<meta name="twitter:title" content="${escapeHtmlAttribute(title)}">`,
+            '<meta name="twitter:description" content="Explore authentic Mithila artwork, handmade crafts, textiles, and cultural treasures from local artists.">': `<meta name="twitter:description" content="${escapeHtmlAttribute(description)}">`,
+            '<meta name="twitter:image" content="https://res.cloudinary.com/djmbuuz28/image/upload/v1761108817/logo.png">': `<meta name="twitter:image" content="${escapeHtmlAttribute(product.image)}">`,
+        };
+
+        Object.entries(metadata).forEach(([source, replacement]) => {
+            html = html.replace(source, replacement);
+        });
+        html = html.replace('</head>', `<link rel="canonical" href="${escapeHtmlAttribute(pageUrl)}">\n</head>`);
+        res.send(html);
+    } catch (error) {
+        next(error);
+    }
+});
 
 
 // Handle SPA routing: send all non-API requests to index.html
