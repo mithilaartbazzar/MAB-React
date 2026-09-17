@@ -50,6 +50,8 @@ const StatCard = ({ label, value, sub, color = "text-stone-900" }) => (
 );
 
 export const SellerPanel = ({ currentUser }) => {
+    const isAdmin = currentUser?.role === 'admin';
+    const adminTabs = new Set(['admin_users', 'admin_hero', 'admin_blog', 'admin_config', 'admin_logs']);
     const [products, setProducts] = useState([]);
     const [orders, setOrders] = useState([]);
     const [allUsers, setAllUsers] = useState([]);
@@ -71,6 +73,7 @@ export const SellerPanel = ({ currentUser }) => {
     const [newProduct, setNewProduct] = useState({
         id: null,
         seller_id: null,
+        storeName: currentUser?.storeName || '',
         name: '',
         description: '',
         product_code: '',
@@ -140,6 +143,12 @@ export const SellerPanel = ({ currentUser }) => {
 
     const salesChartRef = useRef(null);
     const chartInstance = useRef(null);
+
+    useEffect(() => {
+        if (!isAdmin && adminTabs.has(activeTab)) {
+            setActiveTab('dashboard');
+        }
+    }, [isAdmin, activeTab]);
 
     useEffect(() => { loadData(); }, [activeTab, currentUser]);
     useEffect(() => { if (activeTab === 'dashboard' && !loading) renderCharts(); }, [activeTab, orders, loading]);
@@ -257,6 +266,7 @@ export const SellerPanel = ({ currentUser }) => {
         setNewProduct({
             id: null,
             seller_id: null,
+            storeName: currentUser?.storeName || '',
             name: '',
             description: '',
             product_code: '',
@@ -289,6 +299,7 @@ export const SellerPanel = ({ currentUser }) => {
         setNewProduct({
             id: product.id,
             seller_id: product.seller_id,
+            storeName: product.storeName || currentUser?.storeName || '',
             name: product.name || '',
             description: product.description || '',
             product_code: product.product_code || '',
@@ -406,6 +417,7 @@ export const SellerPanel = ({ currentUser }) => {
         try {
             const productPayload = {
                 ...newProduct,
+                storeName: newProduct.storeName || currentUser?.storeName || '',
                 key_features: cleanKeyFeaturesForStorage(newProduct.key_features),
                 seller_id: newProduct.seller_id || currentUser.id,
                 visible_to_users: Boolean(newProduct.visible_to_users),
@@ -616,7 +628,7 @@ export const SellerPanel = ({ currentUser }) => {
                         <TabBtn active={activeTab === 'inventory'} onClick={() => setActiveTab('inventory')} icon={<Box size={14}/>}>Inventory</TabBtn>
                         <TabBtn active={activeTab === 'orders'} onClick={() => setActiveTab('orders')} icon={<ShoppingBag size={14}/>}>Orders</TabBtn>
                         <TabBtn active={activeTab === 'wishlists'} onClick={() => setActiveTab('wishlists')} icon={<Heart size={14}/>}>Wishlists</TabBtn>
-                        {currentUser.role === 'admin' && (
+                        {isAdmin && (
                             <>
                                 <TabBtn active={activeTab === 'admin_users'} onClick={() => setActiveTab('admin_users')} icon={<Users size={14}/>}>Artisans</TabBtn>
                                 <TabBtn active={activeTab === 'admin_hero'} onClick={() => setActiveTab('admin_hero')} icon={<Pencil size={14}/>}>Hero</TabBtn>
@@ -1492,397 +1504,493 @@ export const SellerPanel = ({ currentUser }) => {
 
             {/* Add Product Modal */}
             {showAddProductModal && (
-                <div className="fixed inset-0 z-[1000] flex items-center justify-center p-4 sm:p-6 bg-[#2a2723]/60 backdrop-blur-md animate-in fade-in duration-300 print:hidden">
-                    <div className="bg-[#f8f6f2] w-full max-w-2xl max-h-[85vh] rounded-[1rem] md:rounded-[4rem] overflow-hidden shadow-2xl animate-in zoom-in-95 duration-500 relative border border-white/20">
-                        <button onClick={() => setShowAddProductModal(false)} className="absolute top-6 right-6 sm:top-10 sm:right-10 p-3 sm:p-4 bg-white/80 rounded-full hover:text-red-800 transition-all active:scale-90 z-10 shadow-sm"><X size={18} className="w-4 h-4 sm:w-5 sm:h-5"/></button>
+                <div className="fixed inset-0 z-[1000] flex items-center justify-center bg-[#2a2723]/60 p-4 backdrop-blur-md sm:p-6 print:hidden">
+                    <div className="relative w-full max-w-6xl max-h-[90vh] overflow-hidden rounded-[1.5rem] border border-white/20 bg-[#f8f6f2] shadow-2xl">
+                        <button
+                            onClick={() => setShowAddProductModal(false)}
+                            className="absolute right-4 top-4 z-10 flex h-10 w-10 items-center justify-center rounded-full bg-white/80 text-stone-600 shadow-sm transition-all hover:text-red-800 active:scale-90 sm:right-6 sm:top-6"
+                            aria-label="Close add product dialog"
+                        >
+                            <X size={18} />
+                        </button>
 
-                        <div className="p-3 sm:p-10 md:p-12 space-y-6 overflow-y-auto max-h-[85vh]">
-                            <SectionHeading subtitle="Product Registry" title={editingProductId ? 'Edit Artifact' : 'Add New Artifact'} />
-
-                            <div className="space-y-6">
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-6">
-                                    <div>
-                                        <label className="block text-[10px] font-black uppercase tracking-widest text-stone-400 mb-2">Product Name</label>
-                                        <input
-                                            type="text"
-                                            value={newProduct.name}
-                                            onChange={(e) => setNewProduct({...newProduct, name: e.target.value})}
-                                            className="w-full px-4 py-3 bg-white border border-stone-200 rounded-2xl focus:ring-2 focus:ring-[#5c1111]/20 focus:border-[#5c1111] outline-none transition-all"
-                                            placeholder="Enter product name"
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className="block text-[10px] font-black uppercase tracking-widest text-stone-400 mb-2">Categories</label>
-                                        <div className="relative">
-                                            <button
-                                                type="button"
-                                                onClick={() => setCategoryMenuOpen((open) => !open)}
-                                                className={`flex w-full items-center justify-between rounded-2xl border bg-white px-4 py-3 text-left text-sm transition-all ${categoryMenuOpen ? 'border-[#5c1111] ring-2 ring-[#5c1111]/10' : 'border-stone-200 hover:border-stone-300'}`}
-                                            >
-                                                <span className={newProduct.category ? 'font-semibold text-stone-800' : 'text-stone-400'}>
-                                                    {splitProductCategories(newProduct.category).length > 0
-                                                        ? `${splitProductCategories(newProduct.category).length} categor${splitProductCategories(newProduct.category).length === 1 ? 'y' : 'ies'} selected`
-                                                        : 'Choose categories'}
-                                                </span>
-                                                <ChevronDown size={16} className={`text-stone-400 transition-transform ${categoryMenuOpen ? 'rotate-180' : ''}`} />
-                                            </button>
-                                            {categoryMenuOpen && (
-                                                <div className="absolute left-0 right-0 top-full z-20 mt-2 max-h-64 overflow-y-auto rounded-2xl border border-stone-200 bg-white p-2 shadow-xl">
-                                                    <div className="grid grid-cols-1 gap-1 sm:grid-cols-2">
-                                                        {productCategories.map((category) => {
-                                                            const isSelected = splitProductCategories(newProduct.category).includes(category);
-                                                            return (
-                                                                <label key={category} className={`flex cursor-pointer items-center gap-3 rounded-xl px-3 py-2.5 text-xs transition-colors ${isSelected ? 'bg-[#5c1111]/10 text-[#5c1111]' : 'text-stone-600 hover:bg-stone-50'}`}>
-                                                                    <input
-                                                                        type="checkbox"
-                                                                        checked={isSelected}
-                                                                        onChange={() => toggleCategory(category)}
-                                                                        className="h-4 w-4 cursor-pointer accent-[#5c1111]"
-                                                                    />
-                                                                    <span className={isSelected ? 'font-bold' : 'font-medium'}>{category}</span>
-                                                                </label>
-                                                            );
-                                                        })}
-                                                    </div>
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => setShowNewCategory(true)}
-                                                        className="mt-2 flex w-full items-center gap-2 border-t border-stone-100 px-3 py-3 text-left text-[10px] font-black uppercase tracking-widest text-[#5c1111] transition-colors hover:bg-stone-50"
-                                                    >
-                                                        <Plus size={13} /> Add new category
-                                                    </button>
-                                                </div>
-                                            )}
-                                        </div>
-                                        <p className="mt-2 text-[9px] font-bold uppercase tracking-widest text-stone-400">Select one or more categories</p>
-                                        {showNewCategory && (
-                                            <div className="mt-2 flex gap-2">
-                                                <input
-                                                    type="text"
-                                                    value={newCategoryName}
-                                                    onChange={(e) => setNewCategoryName(e.target.value)}
-                                                    onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addNewCategory(); } }}
-                                                    className="min-w-0 flex-1 rounded-xl border border-stone-200 bg-white px-3 py-2 text-sm outline-none focus:border-[#5c1111]"
-                                                    placeholder="New category name"
-                                                    autoFocus
-                                                />
-                                                <button type="button" onClick={addNewCategory} className="rounded-xl bg-[#5c1111] px-3 py-2 text-[10px] font-black uppercase tracking-widest text-white">Add</button>
-                                            </div>
-                                        )}
-                                    </div>
-                                </div>
-
+                        <div className="max-h-[90vh] overflow-y-auto p-4 sm:p-6 lg:p-8">
+                            <div className="mb-6 flex flex-col gap-4 border-b border-stone-200 pb-5 sm:flex-row sm:items-end sm:justify-between">
                                 <div>
-                                    <label className="block text-[10px] font-black uppercase tracking-widest text-stone-400 mb-2">Description</label>
-                                    <textarea
-                                        value={newProduct.description}
-                                        onChange={(e) => setNewProduct({...newProduct, description: e.target.value})}
-                                        className="w-full px-4 py-3 bg-white border border-stone-200 rounded-2xl focus:ring-2 focus:ring-[#5c1111]/20 focus:border-[#5c1111] outline-none transition-all h-24 resize-none"
-                                        placeholder="Describe your product"
-                                    />
+                                    <p className="text-[10px] font-black uppercase tracking-[0.28em] text-[#5c1111]">Product Registry</p>
+                                    <h2 className="mt-2 font-playfair text-2xl font-black text-stone-900 sm:text-4xl">
+                                        {editingProductId ? 'Edit Artifact' : 'Add New Artifact'}
+                                    </h2>
                                 </div>
 
-                                <div className="grid grid-cols-1 gap-3 md:grid-cols-2 md:gap-6">
-                                    <div>
-                                        <label className="block text-[10px] font-black uppercase tracking-widest text-stone-400 mb-2">Product Code</label>
-                                        <input
-                                            type="text"
-                                            value={newProduct.product_code}
-                                            onChange={(e) => setNewProduct({ ...newProduct, product_code: e.target.value })}
-                                            className="w-full px-4 py-3 bg-white border border-stone-200 rounded-2xl focus:ring-2 focus:ring-[#5c1111]/20 focus:border-[#5c1111] outline-none transition-all"
-                                            placeholder="e.g. MCS-ART-102"
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className="block text-[10px] font-black uppercase tracking-widest text-stone-400 mb-2">Compare at Price (NPR)</label>
-                                        <input
-                                            type="number"
-                                            value={newProduct.compare_price}
-                                            onChange={(e) => setNewProduct({ ...newProduct, compare_price: parseFloat(e.target.value) || 0 })}
-                                            className="w-full px-4 py-3 bg-white border border-stone-200 rounded-2xl focus:ring-2 focus:ring-[#5c1111]/20 focus:border-[#5c1111] outline-none transition-all"
-                                            placeholder="0"
-                                        />
-                                    </div>
-                                </div>
-
-                                <div>
-                                    <div className="mb-3 flex items-center justify-between gap-3">
-                                        <label className="block text-[10px] font-black uppercase tracking-widest text-stone-400">Key Features</label>
-                                        <button
-                                            type="button"
-                                            onClick={addFeatureRow}
-                                            className="rounded-xl bg-[#5c1111] px-3 py-2 text-[9px] font-black uppercase tracking-widest text-white hover:bg-[#2a2723] transition-all"
-                                        >
-                                            + Add Row
-                                        </button>
-                                    </div>
-
-                                    <div className="space-y-2 rounded-2xl border border-stone-200 bg-white p-3">
-                                        {(() => {
-                                            const rows = buildFeatureRows(newProduct.key_features);
-                                            if (rows.length === 0) {
-                                                rows.push({ feature: '', detail: '' });
-                                            }
-
-                                            return rows.map((row, index) => (
-                                                <div key={`feature-row-${index}`} className="grid grid-cols-1 gap-2 md:grid-cols-2">
-                                                    <input
-                                                        type="text"
-                                                        value={row.feature}
-                                                        onChange={(e) => {
-                                                            const currentRows = buildFeatureRows(newProduct.key_features);
-                                                            if (currentRows.length === 0) currentRows.push({ feature: '', detail: '' });
-                                                            if (index >= currentRows.length) currentRows.push({ feature: '', detail: '' });
-                                                            currentRows[index] = { ...currentRows[index], feature: e.target.value };
-                                                            setNewProduct({ ...newProduct, key_features: serializeFeatureRows(currentRows) });
-                                                        }}
-                                                        className="w-full rounded-xl border border-stone-200 bg-[#f9f7f3] px-3 py-2 text-sm outline-none transition-all focus:border-[#5c1111] focus:ring-2 focus:ring-[#5c1111]/20"
-                                                        placeholder="Feature"
-                                                    />
-                                                    <div className="flex gap-2">
-                                                        <input
-                                                            type="text"
-                                                            value={row.detail}
-                                                            onChange={(e) => {
-                                                                const currentRows = buildFeatureRows(newProduct.key_features);
-                                                                if (currentRows.length === 0) currentRows.push({ feature: '', detail: '' });
-                                                                if (index >= currentRows.length) currentRows.push({ feature: '', detail: '' });
-                                                                currentRows[index] = { ...currentRows[index], detail: e.target.value };
-                                                                setNewProduct({ ...newProduct, key_features: serializeFeatureRows(currentRows) });
-                                                            }}
-                                                            className="w-full rounded-xl border border-stone-200 bg-[#f9f7f3] px-3 py-2 text-sm outline-none transition-all focus:border-[#5c1111] focus:ring-2 focus:ring-[#5c1111]/20"
-                                                            placeholder="Detail"
-                                                        />
-                                                        {buildFeatureRows(newProduct.key_features).length > 1 && (
-                                                            <button
-                                                                type="button"
-                                                                onClick={() => {
-                                                                    const currentRows = buildFeatureRows(newProduct.key_features);
-                                                                    currentRows.splice(index, 1);
-                                                                    setNewProduct({ ...newProduct, key_features: serializeFeatureRows(currentRows) });
-                                                                }}
-                                                                className="rounded-xl border border-red-200 bg-red-50 px-2 text-xs font-bold text-red-700 hover:bg-red-100"
-                                                                aria-label="Remove key feature row"
-                                                            >
-                                                                ×
-                                                            </button>
-                                                        )}
-                                                    </div>
-                                                </div>
-                                            ));
-                                        })()}
-                                    </div>
-                                </div>
-
-                                <div className="grid grid-cols-1 gap-3 md:grid-cols-2 md:gap-6">
-                                    <div>
-                                        <label className="block text-[10px] font-black uppercase tracking-widest text-stone-400 mb-2">Style</label>
-                                        <select
-                                            value={newProduct.style}
-                                            onChange={(e) => setNewProduct({ ...newProduct, style: e.target.value })}
-                                            className="w-full rounded-2xl border border-stone-200 bg-white px-4 py-3 outline-none transition-all focus:border-[#5c1111] focus:ring-2 focus:ring-[#5c1111]/20"
-                                        >
-                                            <option value="">Choose a style</option>
-                                            <option value="Traditional">Traditional</option>
-                                            <option value="Modern">Modern</option>
-                                            <option value="Folk">Folk</option>
-                                            <option value="Contemporary">Contemporary</option>
-                                            <option value="Minimal">Minimal</option>
-                                        </select>
-                                    </div>
-                                    <div>
-                                        <label className="block text-[10px] font-black uppercase tracking-widest text-stone-400 mb-2">Theme</label>
-                                        <select
-                                            value={newProduct.theme}
-                                            onChange={(e) => setNewProduct({ ...newProduct, theme: e.target.value })}
-                                            className="w-full rounded-2xl border border-stone-200 bg-white px-4 py-3 outline-none transition-all focus:border-[#5c1111] focus:ring-2 focus:ring-[#5c1111]/20"
-                                        >
-                                            <option value="">Choose a theme</option>
-                                            <option value="Nature">Nature</option>
-                                            <option value="Floral">Floral</option>
-                                            <option value="Birds">Birds</option>
-                                            <option value="Devotional">Devotional</option>
-                                            <option value="Mythology">Mythology</option>
-                                            <option value="Village Life">Village Life</option>
-                                            <option value="Folklore">Folklore</option>
-                                            <option value="Abstract">Abstract</option>
-                                        </select>
-                                    </div>
-                                </div>
-
-                                <div>
-                                    <label className="block text-[10px] font-black uppercase tracking-widest text-stone-400 mb-2">Custom Tags Below Product Name</label>
-                                    <input
-                                        type="text"
-                                        value={newProduct.custom_tags}
-                                        onChange={(e) => setNewProduct({ ...newProduct, custom_tags: e.target.value })}
-                                        className="w-full rounded-2xl border border-stone-200 bg-white px-4 py-3 outline-none transition-all focus:border-[#5c1111] focus:ring-2 focus:ring-[#5c1111]/20"
-                                        placeholder="100% Cotton · Hand Painted · Mithila Art"
-                                    />
-                                    <p className="mt-2 text-[9px] font-bold uppercase tracking-widest text-stone-400">Use • or commas to separate tags</p>
-                                </div>
-
-                                <div>
-                                    <label className="block text-[10px] font-black uppercase tracking-widest text-stone-400 mb-2">Tags</label>
-                                    <input
-                                        type="text"
-                                        value={newProduct.tags}
-                                        onChange={(e) => setNewProduct({ ...newProduct, tags: e.target.value })}
-                                        className="w-full rounded-2xl border border-stone-200 bg-white px-4 py-3 outline-none transition-all focus:border-[#5c1111] focus:ring-2 focus:ring-[#5c1111]/20"
-                                        placeholder="handmade, floral, mithila"
-                                    />
-                                    <p className="mt-2 text-[9px] font-bold uppercase tracking-widest text-stone-400">Separate tags with commas</p>
-                                </div>
-
-                                <div className="flex items-center justify-between rounded-2xl border border-stone-200 bg-white px-4 py-3">
-                                    <div>
-                                        <p className="text-[10px] font-black uppercase tracking-widest text-stone-400">User visibility</p>
-                                        <p className="text-[9px] font-bold uppercase tracking-widest text-stone-500">Show product on storefront</p>
-                                    </div>
-                                    <label className="relative inline-flex cursor-pointer items-center">
-                                        <input
-                                            type="checkbox"
-                                            checked={Boolean(newProduct.visible_to_users)}
-                                            onChange={(e) => setNewProduct({ ...newProduct, visible_to_users: e.target.checked })}
-                                            className="peer sr-only"
-                                        />
-                                        <span className="h-6 w-11 rounded-full bg-stone-200 transition peer-checked:bg-[#5c1111]" />
-                                        <span className="absolute left-1 top-1 h-4 w-4 rounded-full bg-white transition peer-checked:translate-x-5" />
-                                    </label>
-                                </div>
-
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                    <div>
-                                        <label className="block text-[10px] font-black uppercase tracking-widest text-stone-400 mb-2">Price (रु)</label>
-                                        <input
-                                            type="number"
-                                            value={newProduct.price}
-                                            onChange={(e) => setNewProduct({...newProduct, price: parseFloat(e.target.value) || 0})}
-                                            className="w-full px-4 py-3 bg-white border border-stone-200 rounded-2xl focus:ring-2 focus:ring-[#5c1111]/20 focus:border-[#5c1111] outline-none transition-all"
-                                            placeholder="0"
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className="block text-[10px] font-black uppercase tracking-widest text-stone-400 mb-2">Stock Quantity</label>
-                                        <input
-                                            type="number"
-                                            value={newProduct.stock}
-                                            onChange={(e) => setNewProduct({...newProduct, stock: parseInt(e.target.value) || 0})}
-                                            className="w-full px-4 py-3 bg-white border border-stone-200 rounded-2xl focus:ring-2 focus:ring-[#5c1111]/20 focus:border-[#5c1111] outline-none transition-all"
-                                            placeholder="0"
-                                        />
-                                    </div>
-                                </div>
-
-                                <div>
-                                    <div className="mb-2 flex items-center justify-between gap-3">
-                                        <label className="block text-[10px] font-black uppercase tracking-widest text-stone-400">Product Images</label>
-                                        <label className={`cursor-pointer rounded-xl px-3 py-2 text-[9px] font-black uppercase tracking-widest transition-all ${uploadingImage ? 'pointer-events-none bg-stone-200 text-stone-400' : 'bg-[#5c1111] text-white hover:bg-[#2a2723]'}`}>
-                                            {uploadingImage ? 'Uploading...' : 'Upload Images'}
-                                            <input type="file" accept="image/*" multiple onChange={handleProductImageUpload} className="hidden" disabled={uploadingImage} />
-                                        </label>
-                                    </div>
-                                    <input
-                                        type="url"
-                                        value={newProduct.image}
-                                        onChange={(e) => setNewProduct({...newProduct, image: e.target.value})}
-                                        className="w-full px-4 py-3 bg-white border border-stone-200 rounded-2xl focus:ring-2 focus:ring-[#5c1111]/20 focus:border-[#5c1111] outline-none transition-all"
-                                        placeholder="Primary image URL, or paste an image URL"
-                                    />
-                                    {(newProduct.image || newProduct.images?.length > 0) && <div className="mt-3 flex flex-wrap gap-3">
-                                        {[newProduct.image, ...(newProduct.images || [])].filter(Boolean).map((imageUrl, index) => <div key={`${imageUrl}-${index}`} className="group relative">
-                                            <img src={imageUrl} alt={`Product preview ${index + 1}`} className="h-24 w-24 rounded-2xl border border-stone-200 object-cover" />
-                                            {index === 0 && <span className="absolute bottom-1 left-1 rounded bg-[#5c1111] px-1.5 py-0.5 text-[8px] font-bold uppercase text-white">Primary</span>}
-                                            <button type="button" onClick={() => removeProductImage(imageUrl)} className="absolute -right-2 -top-2 flex h-6 w-6 items-center justify-center rounded-full bg-white text-stone-500 shadow hover:text-[#5c1111]" aria-label={`Remove image ${index + 1}`}><X size={12} /></button>
-                                        </div>)}
-                                    </div>}
-                                </div>
-
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                    <div>
-                                        <label className="block text-[10px] font-black uppercase tracking-widest text-stone-400 mb-2">Material</label>
-                                        <input
-                                            type="text"
-                                            value={newProduct.material}
-                                            onChange={(e) => setNewProduct({...newProduct, material: e.target.value})}
-                                            className="w-full px-4 py-3 bg-white border border-stone-200 rounded-2xl focus:ring-2 focus:ring-[#5c1111]/20 focus:border-[#5c1111] outline-none transition-all"
-                                            placeholder="e.g., Canvas, Wood"
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className="block text-[10px] font-black uppercase tracking-widest text-stone-400 mb-2">Dimensions</label>
-                                        <input
-                                            type="text"
-                                            value={newProduct.length}
-                                            onChange={(e) => setNewProduct({...newProduct, length: e.target.value})}
-                                            className="w-full px-4 py-3 bg-white border border-stone-200 rounded-2xl focus:ring-2 focus:ring-[#5c1111]/20 focus:border-[#5c1111] outline-none transition-all"
-                                            placeholder="e.g., 12x16 inches"
-                                        />
-                                    </div>
-                                </div>
-
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                    <div>
-                                        <label className="block text-[10px] font-black uppercase tracking-widest text-stone-400 mb-2">Delivery Time</label>
-                                        <input
-                                            type="text"
-                                            value={newProduct.delivery}
-                                            onChange={(e) => setNewProduct({...newProduct, delivery: e.target.value})}
-                                            className="w-full px-4 py-3 bg-white border border-stone-200 rounded-2xl focus:ring-2 focus:ring-[#5c1111]/20 focus:border-[#5c1111] outline-none transition-all"
-                                            placeholder="e.g., 7-10 days"
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className="block text-[10px] font-black uppercase tracking-widest text-stone-400 mb-2">Location</label>
-                                        <input
-                                            type="text"
-                                            value={newProduct.location}
-                                            onChange={(e) => setNewProduct({...newProduct, location: e.target.value})}
-                                            className="w-full px-4 py-3 bg-white border border-stone-200 rounded-2xl focus:ring-2 focus:ring-[#5c1111]/20 focus:border-[#5c1111] outline-none transition-all"
-                                            placeholder="e.g., Janakpur"
-                                        />
-                                    </div>
-                                </div>
-
-                                <div>
-                                    <label className="block text-[10px] font-black uppercase tracking-widest text-stone-400 mb-2">Care Instructions</label>
-                                    <input
-                                        type="text"
-                                        value={newProduct.instruction}
-                                        onChange={(e) => setNewProduct({...newProduct, instruction: e.target.value})}
-                                        className="w-full px-4 py-3 bg-white border border-stone-200 rounded-2xl focus:ring-2 focus:ring-[#5c1111]/20 focus:border-[#5c1111] outline-none transition-all"
-                                        placeholder="e.g., Keep away from direct sunlight"
-                                    />
-                                </div>
-
-                                <div>
-                                    <label className="block text-[10px] font-black uppercase tracking-widest text-stone-400 mb-2">Authenticity</label>
-                                    <input
-                                        type="text"
-                                        value={newProduct.authenticity}
-                                        onChange={(e) => setNewProduct({...newProduct, authenticity: e.target.value})}
-                                        className="w-full px-4 py-3 bg-white border border-stone-200 rounded-2xl focus:ring-2 focus:ring-[#5c1111]/20 focus:border-[#5c1111] outline-none transition-all"
-                                        placeholder="e.g., Certified authentic Mithila art"
-                                    />
-                                </div>
-
-                                <div className="flex gap-4 pt-6">
+                                <div className="flex items-center gap-3 self-start sm:self-auto">
                                     <button
                                         onClick={() => {
                                             setShowAddProductModal(false);
                                             resetProductForm();
                                         }}
-                                        className="flex-1 px-6 py-4 bg-stone-100 text-stone-600 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-stone-200 transition-all"
+                                        className="rounded-2xl border border-stone-200 bg-white px-4 py-2.5 text-[10px] font-black uppercase tracking-[0.22em] text-stone-600 transition-all hover:border-stone-300 hover:bg-stone-100"
                                     >
                                         Cancel
                                     </button>
                                     <button
                                         onClick={handleSaveProduct}
-                                        className="flex-1 px-6 py-4 bg-[#5c1111] text-white rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-[#2a2723] transition-all"
+                                        className="rounded-2xl bg-[#5c1111] px-5 py-2.5 text-[10px] font-black uppercase tracking-[0.22em] text-white shadow-lg shadow-[#5c1111]/20 transition-all hover:bg-[#2a2723]"
                                     >
-                                        {editingProductId ? 'Save Changes' : 'Add Product'}
+                                        {editingProductId ? 'Save Changes' : 'Publish Product'}
                                     </button>
                                 </div>
+                            </div>
+
+                            <div className="grid gap-6 xl:grid-cols-[1.7fr_0.9fr]">
+                                <div className="space-y-5">
+                                    <section className="rounded-[2rem] border border-stone-200 bg-white p-4 shadow-sm sm:p-5">
+                                        <div className="mb-4 flex items-center justify-between">
+                                            <h3 className="text-[10px] font-black uppercase tracking-[0.22em] text-stone-500">Product Overview</h3>
+                                            <span className="rounded-full bg-[#5c1111]/10 px-2.5 py-1 text-[8px] font-black uppercase tracking-[0.2em] text-[#5c1111]">Essential</span>
+                                        </div>
+
+                                        <div className="grid gap-4 md:grid-cols-2">
+                                            <div className="md:col-span-2">
+                                                <label className="mb-2 block text-[10px] font-black uppercase tracking-[0.22em] text-stone-400">Product Name</label>
+                                                <input
+                                                    type="text"
+                                                    value={newProduct.name}
+                                                    onChange={(e) => setNewProduct({ ...newProduct, name: e.target.value })}
+                                                    className="w-full rounded-2xl border border-stone-200 bg-[#f9f7f3] px-4 py-3 text-sm text-stone-800 outline-none transition-all focus:border-[#5c1111] focus:ring-2 focus:ring-[#5c1111]/10"
+                                                    placeholder="Enter product name"
+                                                />
+                                            </div>
+
+                                            <div className="md:col-span-2">
+                                                <label className="mb-2 block text-[10px] font-black uppercase tracking-[0.22em] text-stone-400">Categories</label>
+                                                <div className="relative">
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => setCategoryMenuOpen((open) => !open)}
+                                                        className={`flex w-full items-center justify-between rounded-2xl border bg-[#f9f7f3] px-4 py-3 text-left text-sm transition-all ${categoryMenuOpen ? 'border-[#5c1111] ring-2 ring-[#5c1111]/10' : 'border-stone-200 hover:border-stone-300'}`}
+                                                    >
+                                                        <span className={newProduct.category ? 'font-semibold text-stone-800' : 'text-stone-400'}>
+                                                            {splitProductCategories(newProduct.category).length > 0
+                                                                ? `${splitProductCategories(newProduct.category).length} categor${splitProductCategories(newProduct.category).length === 1 ? 'y' : 'ies'} selected`
+                                                                : 'Choose categories'}
+                                                        </span>
+                                                        <ChevronDown size={16} className={`text-stone-400 transition-transform ${categoryMenuOpen ? 'rotate-180' : ''}`} />
+                                                    </button>
+
+                                                    {categoryMenuOpen && (
+                                                        <div className="absolute left-0 right-0 top-full z-20 mt-2 max-h-64 overflow-y-auto rounded-2xl border border-stone-200 bg-white p-2 shadow-xl">
+                                                            <div className="grid gap-1 sm:grid-cols-2">
+                                                                {productCategories.map((category) => {
+                                                                    const isSelected = splitProductCategories(newProduct.category).includes(category);
+                                                                    return (
+                                                                        <label key={category} className={`flex cursor-pointer items-center gap-3 rounded-xl px-3 py-2.5 text-xs transition-colors ${isSelected ? 'bg-[#5c1111]/10 text-[#5c1111]' : 'text-stone-600 hover:bg-stone-50'}`}>
+                                                                            <input
+                                                                                type="checkbox"
+                                                                                checked={isSelected}
+                                                                                onChange={() => toggleCategory(category)}
+                                                                                className="h-4 w-4 cursor-pointer accent-[#5c1111]"
+                                                                            />
+                                                                            <span className={isSelected ? 'font-bold' : 'font-medium'}>{category}</span>
+                                                                        </label>
+                                                                    );
+                                                                })}
+                                                            </div>
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => setShowNewCategory(true)}
+                                                                className="mt-2 flex w-full items-center gap-2 border-t border-stone-100 px-3 py-3 text-left text-[10px] font-black uppercase tracking-[0.2em] text-[#5c1111] transition-colors hover:bg-stone-50"
+                                                            >
+                                                                <Plus size={13} /> Add new category
+                                                            </button>
+                                                        </div>
+                                                    )}
+                                                </div>
+
+                                                {showNewCategory && (
+                                                    <div className="mt-2 flex gap-2">
+                                                        <input
+                                                            type="text"
+                                                            value={newCategoryName}
+                                                            onChange={(e) => setNewCategoryName(e.target.value)}
+                                                            onKeyDown={(e) => {
+                                                                if (e.key === 'Enter') {
+                                                                    e.preventDefault();
+                                                                    addNewCategory();
+                                                                }
+                                                            }}
+                                                            className="min-w-0 flex-1 rounded-xl border border-stone-200 bg-white px-3 py-2.5 text-sm outline-none transition-all focus:border-[#5c1111]"
+                                                            placeholder="New category name"
+                                                            autoFocus
+                                                        />
+                                                        <button
+                                                            type="button"
+                                                            onClick={addNewCategory}
+                                                            className="rounded-xl bg-[#5c1111] px-3 py-2.5 text-[10px] font-black uppercase tracking-[0.2em] text-white"
+                                                        >
+                                                            Add
+                                                        </button>
+                                                    </div>
+                                                )}
+                                            </div>
+
+                                            <div className="md:col-span-2">
+                                                <label className="mb-2 block text-[10px] font-black uppercase tracking-[0.22em] text-stone-400">Description</label>
+                                                <textarea
+                                                    value={newProduct.description}
+                                                    onChange={(e) => setNewProduct({ ...newProduct, description: e.target.value })}
+                                                    className="h-28 w-full resize-none rounded-2xl border border-stone-200 bg-[#f9f7f3] px-4 py-3 text-sm text-stone-800 outline-none transition-all focus:border-[#5c1111] focus:ring-2 focus:ring-[#5c1111]/10"
+                                                    placeholder="Describe your product"
+                                                />
+                                            </div>
+                                        </div>
+                                    </section>
+
+                                    <section className="rounded-[2rem] border border-stone-200 bg-white p-4 shadow-sm sm:p-5">
+                                        <div className="mb-4 flex items-center justify-between">
+                                            <h3 className="text-[10px] font-black uppercase tracking-[0.22em] text-stone-500">Key Features</h3>
+                                            <button
+                                                type="button"
+                                                onClick={addFeatureRow}
+                                                className="rounded-xl bg-[#5c1111] px-3 py-2 text-[9px] font-black uppercase tracking-[0.2em] text-white transition-all hover:bg-[#2a2723]"
+                                            >
+                                                + Add Row
+                                            </button>
+                                        </div>
+
+                                        <div className="space-y-2 rounded-2xl border border-stone-200 bg-[#f9f7f3] p-3">
+                                            {(() => {
+                                                const rows = buildFeatureRows(newProduct.key_features);
+                                                if (rows.length === 0) {
+                                                    rows.push({ feature: '', detail: '' });
+                                                }
+
+                                                return rows.map((row, index) => (
+                                                    <div key={`feature-row-${index}`} className="grid gap-2 md:grid-cols-[1fr_1.2fr]">
+                                                        <input
+                                                            type="text"
+                                                            value={row.feature}
+                                                            onChange={(e) => {
+                                                                const currentRows = buildFeatureRows(newProduct.key_features);
+                                                                if (currentRows.length === 0) currentRows.push({ feature: '', detail: '' });
+                                                                if (index >= currentRows.length) currentRows.push({ feature: '', detail: '' });
+                                                                currentRows[index] = { ...currentRows[index], feature: e.target.value };
+                                                                setNewProduct({ ...newProduct, key_features: serializeFeatureRows(currentRows) });
+                                                            }}
+                                                            className="w-full rounded-xl border border-stone-200 bg-white px-3 py-2.5 text-sm outline-none transition-all focus:border-[#5c1111] focus:ring-2 focus:ring-[#5c1111]/10"
+                                                            placeholder="Feature"
+                                                        />
+                                                        <div className="flex gap-2">
+                                                            <input
+                                                                type="text"
+                                                                value={row.detail}
+                                                                onChange={(e) => {
+                                                                    const currentRows = buildFeatureRows(newProduct.key_features);
+                                                                    if (currentRows.length === 0) currentRows.push({ feature: '', detail: '' });
+                                                                    if (index >= currentRows.length) currentRows.push({ feature: '', detail: '' });
+                                                                    currentRows[index] = { ...currentRows[index], detail: e.target.value };
+                                                                    setNewProduct({ ...newProduct, key_features: serializeFeatureRows(currentRows) });
+                                                                }}
+                                                                className="w-full rounded-xl border border-stone-200 bg-white px-3 py-2.5 text-sm outline-none transition-all focus:border-[#5c1111] focus:ring-2 focus:ring-[#5c1111]/10"
+                                                                placeholder="Detail"
+                                                            />
+                                                            {buildFeatureRows(newProduct.key_features).length > 1 && (
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => {
+                                                                        const currentRows = buildFeatureRows(newProduct.key_features);
+                                                                        currentRows.splice(index, 1);
+                                                                        setNewProduct({ ...newProduct, key_features: serializeFeatureRows(currentRows) });
+                                                                    }}
+                                                                    className="rounded-xl border border-red-200 bg-red-50 px-2 text-xs font-bold text-red-700 transition-all hover:bg-red-100"
+                                                                    aria-label="Remove key feature row"
+                                                                >
+                                                                    ×
+                                                                </button>
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                ));
+                                            })()}
+                                        </div>
+                                    </section>
+
+                                    <section className="rounded-[2rem] border border-stone-200 bg-white p-4 shadow-sm sm:p-5">
+                                        <div className="mb-4 flex items-center justify-between">
+                                            <h3 className="text-[10px] font-black uppercase tracking-[0.22em] text-stone-500">Media & Pricing</h3>
+                                            <span className="rounded-full bg-emerald-50 px-2.5 py-1 text-[8px] font-black uppercase tracking-[0.2em] text-emerald-700">Live</span>
+                                        </div>
+
+                                        <div className="grid gap-4 md:grid-cols-2">
+                                            <div className="md:col-span-2">
+                                                <div className="mb-2 flex items-center justify-between gap-3">
+                                                    <label className="block text-[10px] font-black uppercase tracking-[0.22em] text-stone-400">Product Images</label>
+                                                    <label className={`cursor-pointer rounded-xl px-3 py-2 text-[9px] font-black uppercase tracking-[0.2em] transition-all ${uploadingImage ? 'pointer-events-none bg-stone-200 text-stone-400' : 'bg-[#5c1111] text-white hover:bg-[#2a2723]'}`}>
+                                                        {uploadingImage ? 'Uploading...' : 'Upload Images'}
+                                                        <input type="file" accept="image/*" multiple onChange={handleProductImageUpload} className="hidden" disabled={uploadingImage} />
+                                                    </label>
+                                                </div>
+                                                <input
+                                                    type="url"
+                                                    value={newProduct.image}
+                                                    onChange={(e) => setNewProduct({ ...newProduct, image: e.target.value })}
+                                                    className="w-full rounded-2xl border border-stone-200 bg-[#f9f7f3] px-4 py-3 text-sm outline-none transition-all focus:border-[#5c1111] focus:ring-2 focus:ring-[#5c1111]/10"
+                                                    placeholder="Primary image URL or paste an image link"
+                                                />
+
+                                                {(newProduct.image || newProduct.images?.length > 0) && (
+                                                    <div className="mt-3 flex flex-wrap gap-3">
+                                                        {[newProduct.image, ...(newProduct.images || [])].filter(Boolean).map((imageUrl, index) => (
+                                                            <div key={`${imageUrl}-${index}`} className="group relative">
+                                                                <img src={imageUrl} alt={`Product preview ${index + 1}`} className="h-24 w-24 rounded-2xl border border-stone-200 object-cover" />
+                                                                {index === 0 && <span className="absolute bottom-1 left-1 rounded bg-[#5c1111] px-1.5 py-0.5 text-[8px] font-bold uppercase text-white">Primary</span>}
+                                                                <button type="button" onClick={() => removeProductImage(imageUrl)} className="absolute -right-2 -top-2 flex h-6 w-6 items-center justify-center rounded-full bg-white text-stone-500 shadow hover:text-[#5c1111]" aria-label={`Remove image ${index + 1}`}><X size={12} /></button>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                )}
+                                            </div>
+
+                                            <div>
+                                                <label className="mb-2 block text-[10px] font-black uppercase tracking-[0.22em] text-stone-400">Price (रु)</label>
+                                                <input
+                                                    type="number"
+                                                    value={newProduct.price}
+                                                    onChange={(e) => setNewProduct({ ...newProduct, price: parseFloat(e.target.value) || 0 })}
+                                                    className="w-full rounded-2xl border border-stone-200 bg-[#f9f7f3] px-4 py-3 text-sm outline-none transition-all focus:border-[#5c1111] focus:ring-2 focus:ring-[#5c1111]/10"
+                                                    placeholder="0"
+                                                />
+                                            </div>
+
+                                            <div>
+                                                <label className="mb-2 block text-[10px] font-black uppercase tracking-[0.22em] text-stone-400">Compare at Price</label>
+                                                <input
+                                                    type="number"
+                                                    value={newProduct.compare_price}
+                                                    onChange={(e) => setNewProduct({ ...newProduct, compare_price: parseFloat(e.target.value) || 0 })}
+                                                    className="w-full rounded-2xl border border-stone-200 bg-[#f9f7f3] px-4 py-3 text-sm outline-none transition-all focus:border-[#5c1111] focus:ring-2 focus:ring-[#5c1111]/10"
+                                                    placeholder="0"
+                                                />
+                                            </div>
+
+                                            <div>
+                                                <label className="mb-2 block text-[10px] font-black uppercase tracking-[0.22em] text-stone-400">Stock Quantity</label>
+                                                <input
+                                                    type="number"
+                                                    value={newProduct.stock}
+                                                    onChange={(e) => setNewProduct({ ...newProduct, stock: parseInt(e.target.value) || 0 })}
+                                                    className="w-full rounded-2xl border border-stone-200 bg-[#f9f7f3] px-4 py-3 text-sm outline-none transition-all focus:border-[#5c1111] focus:ring-2 focus:ring-[#5c1111]/10"
+                                                    placeholder="0"
+                                                />
+                                            </div>
+
+                                            <div>
+                                                <label className="mb-2 block text-[10px] font-black uppercase tracking-[0.22em] text-stone-400">Product Code</label>
+                                                <input
+                                                    type="text"
+                                                    value={newProduct.product_code}
+                                                    onChange={(e) => setNewProduct({ ...newProduct, product_code: e.target.value })}
+                                                    className="w-full rounded-2xl border border-stone-200 bg-[#f9f7f3] px-4 py-3 text-sm outline-none transition-all focus:border-[#5c1111] focus:ring-2 focus:ring-[#5c1111]/10"
+                                                    placeholder="MCS-ART-102"
+                                                />
+                                            </div>
+                                        </div>
+                                    </section>
+
+                                    <section className="rounded-[2rem] border border-stone-200 bg-white p-4 shadow-sm sm:p-5">
+                                        <div className="mb-4 flex items-center justify-between">
+                                            <h3 className="text-[10px] font-black uppercase tracking-[0.22em] text-stone-500">Details</h3>
+                                            <span className="rounded-full bg-amber-50 px-2.5 py-1 text-[8px] font-black uppercase tracking-[0.2em] text-amber-700">Meta</span>
+                                        </div>
+
+                                        <div className="grid gap-4 md:grid-cols-2">
+                                            <div>
+                                                <label className="mb-2 block text-[10px] font-black uppercase tracking-[0.22em] text-stone-400">Style</label>
+                                                <select
+                                                    value={newProduct.style}
+                                                    onChange={(e) => setNewProduct({ ...newProduct, style: e.target.value })}
+                                                    className="w-full rounded-2xl border border-stone-200 bg-[#f9f7f3] px-4 py-3 text-sm outline-none transition-all focus:border-[#5c1111] focus:ring-2 focus:ring-[#5c1111]/10"
+                                                >
+                                                    <option value="">Choose a style</option>
+                                                    <option value="Traditional">Traditional</option>
+                                                    <option value="Modern">Modern</option>
+                                                    <option value="Folk">Folk</option>
+                                                    <option value="Contemporary">Contemporary</option>
+                                                    <option value="Minimal">Minimal</option>
+                                                </select>
+                                            </div>
+
+                                            <div>
+                                                <label className="mb-2 block text-[10px] font-black uppercase tracking-[0.22em] text-stone-400">Theme</label>
+                                                <select
+                                                    value={newProduct.theme}
+                                                    onChange={(e) => setNewProduct({ ...newProduct, theme: e.target.value })}
+                                                    className="w-full rounded-2xl border border-stone-200 bg-[#f9f7f3] px-4 py-3 text-sm outline-none transition-all focus:border-[#5c1111] focus:ring-2 focus:ring-[#5c1111]/10"
+                                                >
+                                                    <option value="">Choose a theme</option>
+                                                    <option value="Nature">Nature</option>
+                                                    <option value="Floral">Floral</option>
+                                                    <option value="Birds">Birds</option>
+                                                    <option value="Devotional">Devotional</option>
+                                                    <option value="Mythology">Mythology</option>
+                                                    <option value="Village Life">Village Life</option>
+                                                    <option value="Folklore">Folklore</option>
+                                                    <option value="Abstract">Abstract</option>
+                                                </select>
+                                            </div>
+
+                                            <div>
+                                                <label className="mb-2 block text-[10px] font-black uppercase tracking-[0.22em] text-stone-400">Material</label>
+                                                <input
+                                                    type="text"
+                                                    value={newProduct.material}
+                                                    onChange={(e) => setNewProduct({ ...newProduct, material: e.target.value })}
+                                                    className="w-full rounded-2xl border border-stone-200 bg-[#f9f7f3] px-4 py-3 text-sm outline-none transition-all focus:border-[#5c1111] focus:ring-2 focus:ring-[#5c1111]/10"
+                                                    placeholder="Canvas, Wood"
+                                                />
+                                            </div>
+
+                                            <div>
+                                                <label className="mb-2 block text-[10px] font-black uppercase tracking-[0.22em] text-stone-400">Dimensions</label>
+                                                <input
+                                                    type="text"
+                                                    value={newProduct.length}
+                                                    onChange={(e) => setNewProduct({ ...newProduct, length: e.target.value })}
+                                                    className="w-full rounded-2xl border border-stone-200 bg-[#f9f7f3] px-4 py-3 text-sm outline-none transition-all focus:border-[#5c1111] focus:ring-2 focus:ring-[#5c1111]/10"
+                                                    placeholder="12x16 inches"
+                                                />
+                                            </div>
+
+                                            <div>
+                                                <label className="mb-2 block text-[10px] font-black uppercase tracking-[0.22em] text-stone-400">Delivery Time</label>
+                                                <input
+                                                    type="text"
+                                                    value={newProduct.delivery}
+                                                    onChange={(e) => setNewProduct({ ...newProduct, delivery: e.target.value })}
+                                                    className="w-full rounded-2xl border border-stone-200 bg-[#f9f7f3] px-4 py-3 text-sm outline-none transition-all focus:border-[#5c1111] focus:ring-2 focus:ring-[#5c1111]/10"
+                                                    placeholder="7-10 days"
+                                                />
+                                            </div>
+
+                                            <div>
+                                                <label className="mb-2 block text-[10px] font-black uppercase tracking-[0.22em] text-stone-400">Location</label>
+                                                <input
+                                                    type="text"
+                                                    value={newProduct.location}
+                                                    onChange={(e) => setNewProduct({ ...newProduct, location: e.target.value })}
+                                                    className="w-full rounded-2xl border border-stone-200 bg-[#f9f7f3] px-4 py-3 text-sm outline-none transition-all focus:border-[#5c1111] focus:ring-2 focus:ring-[#5c1111]/10"
+                                                    placeholder="Janakpur"
+                                                />
+                                            </div>
+
+                                            <div className="md:col-span-2">
+                                                <label className="mb-2 block text-[10px] font-black uppercase tracking-[0.22em] text-stone-400">Care Instructions</label>
+                                                <input
+                                                    type="text"
+                                                    value={newProduct.instruction}
+                                                    onChange={(e) => setNewProduct({ ...newProduct, instruction: e.target.value })}
+                                                    className="w-full rounded-2xl border border-stone-200 bg-[#f9f7f3] px-4 py-3 text-sm outline-none transition-all focus:border-[#5c1111] focus:ring-2 focus:ring-[#5c1111]/10"
+                                                    placeholder="Keep away from direct sunlight"
+                                                />
+                                            </div>
+
+                                            <div className="md:col-span-2">
+                                                <label className="mb-2 block text-[10px] font-black uppercase tracking-[0.22em] text-stone-400">Authenticity</label>
+                                                <input
+                                                    type="text"
+                                                    value={newProduct.authenticity}
+                                                    onChange={(e) => setNewProduct({ ...newProduct, authenticity: e.target.value })}
+                                                    className="w-full rounded-2xl border border-stone-200 bg-[#f9f7f3] px-4 py-3 text-sm outline-none transition-all focus:border-[#5c1111] focus:ring-2 focus:ring-[#5c1111]/10"
+                                                    placeholder="Certified authentic Mithila art"
+                                                />
+                                            </div>
+                                        </div>
+                                    </section>
+                                </div>
+
+                                <aside className="space-y-5">
+                                    <section className="rounded-[2rem] border border-stone-200 bg-white p-4 shadow-sm sm:p-5">
+                                        <h3 className="text-[10px] font-black uppercase tracking-[0.22em] text-stone-500">Quick Status</h3>
+
+                                        <div className="mt-4 flex items-center justify-between rounded-2xl border border-stone-200 bg-[#f9f7f3] px-4 py-3">
+                                            <div>
+                                                <p className="text-[10px] font-black uppercase tracking-[0.22em] text-stone-400">Visibility</p>
+                                                <p className="mt-1 text-xs font-semibold text-stone-600">Storefront listing</p>
+                                            </div>
+                                            <label className="relative inline-flex cursor-pointer items-center">
+                                                <input
+                                                    type="checkbox"
+                                                    checked={Boolean(newProduct.visible_to_users)}
+                                                    onChange={(e) => setNewProduct({ ...newProduct, visible_to_users: e.target.checked })}
+                                                    className="peer sr-only"
+                                                />
+                                                <span className="h-6 w-11 rounded-full bg-stone-200 transition peer-checked:bg-[#5c1111]" />
+                                                <span className="absolute left-1 top-1 h-4 w-4 rounded-full bg-white transition peer-checked:translate-x-5" />
+                                            </label>
+                                        </div>
+
+                                        <div className="mt-4 space-y-3">
+                                            <div className="rounded-2xl border border-stone-200 bg-[#f9f7f3] p-3">
+                                                <p className="text-[10px] font-black uppercase tracking-[0.22em] text-stone-400">Price</p>
+                                                <p className="mt-1 text-xl font-black text-stone-900">NPR {Number(newProduct.price || 0).toLocaleString()}</p>
+                                            </div>
+                                            <div className="rounded-2xl border border-stone-200 bg-[#f9f7f3] p-3">
+                                                <p className="text-[10px] font-black uppercase tracking-[0.22em] text-stone-400">Stock</p>
+                                                <p className="mt-1 text-xl font-black text-stone-900">{newProduct.stock || 0} units</p>
+                                            </div>
+                                        </div>
+                                    </section>
+
+                                    <section className="rounded-[2rem] border border-stone-200 bg-white p-4 shadow-sm sm:p-5">
+                                        <h3 className="text-[10px] font-black uppercase tracking-[0.22em] text-stone-500">Catalog Labels</h3>
+
+                                        <div className="mt-4 space-y-3">
+                                            <div>
+                                                <label className="mb-2 block text-[10px] font-black uppercase tracking-[0.22em] text-stone-400">Custom Tags</label>
+                                                <input
+                                                    type="text"
+                                                    value={newProduct.custom_tags}
+                                                    onChange={(e) => setNewProduct({ ...newProduct, custom_tags: e.target.value })}
+                                                    className="w-full rounded-2xl border border-stone-200 bg-[#f9f7f3] px-4 py-3 text-sm outline-none transition-all focus:border-[#5c1111] focus:ring-2 focus:ring-[#5c1111]/10"
+                                                    placeholder="100% Cotton • Hand Painted"
+                                                />
+                                            </div>
+
+                                            <div>
+                                                <label className="mb-2 block text-[10px] font-black uppercase tracking-[0.22em] text-stone-400">Tags</label>
+                                                <input
+                                                    type="text"
+                                                    value={newProduct.tags}
+                                                    onChange={(e) => setNewProduct({ ...newProduct, tags: e.target.value })}
+                                                    className="w-full rounded-2xl border border-stone-200 bg-[#f9f7f3] px-4 py-3 text-sm outline-none transition-all focus:border-[#5c1111] focus:ring-2 focus:ring-[#5c1111]/10"
+                                                    placeholder="handmade, floral, mithila"
+                                                />
+                                            </div>
+                                        </div>
+                                    </section>
+
+                                    <section className="rounded-[2rem] border border-stone-200 bg-[#5c1111] p-4 text-white shadow-lg shadow-[#5c1111]/15 sm:p-5">
+                                        <h3 className="text-[10px] font-black uppercase tracking-[0.22em] text-white/80">Checklist</h3>
+                                        <div className="mt-4 space-y-3 text-sm text-white/90">
+                                            <div className="flex items-center gap-3">
+                                                <span className="flex h-5 w-5 items-center justify-center rounded-full bg-white/20 text-[10px] font-bold">{newProduct.name ? '✓' : '•'}</span>
+                                                Product name added
+                                            </div>
+                                            <div className="flex items-center gap-3">
+                                                <span className="flex h-5 w-5 items-center justify-center rounded-full bg-white/20 text-[10px] font-bold">{newProduct.image ? '✓' : '•'}</span>
+                                                Product image ready
+                                            </div>
+                                            <div className="flex items-center gap-3">
+                                                <span className="flex h-5 w-5 items-center justify-center rounded-full bg-white/20 text-[10px] font-bold">{newProduct.price > 0 ? '✓' : '•'}</span>
+                                                Pricing set
+                                            </div>
+                                            <div className="flex items-center gap-3">
+                                                <span className="flex h-5 w-5 items-center justify-center rounded-full bg-white/20 text-[10px] font-bold">{splitProductCategories(newProduct.category).length > 0 ? '✓' : '•'}</span>
+                                                Category assigned
+                                            </div>
+                                        </div>
+                                    </section>
+                                </aside>
                             </div>
                         </div>
                     </div>

@@ -57,6 +57,7 @@ const normalizeProductData = (productData = {}) => {
 
     return {
         ...productData,
+        storeName: String(productData.storeName || '').trim(),
         name: String(productData.name || '').trim(),
         product_code: String(productData.product_code || '').trim(),
         key_features: String(productData.key_features || '').trim(),
@@ -69,6 +70,21 @@ const normalizeProductData = (productData = {}) => {
             ? productData.tags.join(', ')
             : String(productData.tags || '').trim(),
     };
+};
+
+const resolveProductStoreName = async (sellerId, fallbackStoreName = '') => {
+    const trimmedFallback = String(fallbackStoreName || '').trim();
+    if (trimmedFallback) return trimmedFallback;
+    if (!sellerId) return '';
+
+    const { data, error } = await supabase
+        .from('users')
+        .select('storeName')
+        .eq('id', sellerId)
+        .maybeSingle();
+
+    if (error) throw new Error(error.message);
+    return String(data?.storeName || '').trim();
 };
 
 const logAction = async (action, adminId) => {
@@ -255,9 +271,11 @@ app.post('/api/db', async (req, res) => {
             case 'addProduct': {
                 const { productData } = payload;
                 const normalizedProduct = normalizeProductData(productData);
+                const resolvedStoreName = await resolveProductStoreName(normalizedProduct.seller_id, normalizedProduct.storeName);
                 const id = normalizedProduct.id || `p-${Math.random().toString(36).substr(2, 9)}`;
                 const product = {
                     ...normalizedProduct,
+                    storeName: resolvedStoreName,
                     slug: createSlug(normalizedProduct.slug) || createSlug(normalizedProduct.name) || id,
                     id,
                 };
@@ -269,7 +287,8 @@ app.post('/api/db', async (req, res) => {
             case 'updateProduct': {
                 const { productId, productData } = payload;
                 const normalizedProduct = normalizeProductData(productData);
-                const { data, error } = await supabase.from('products').update(normalizedProduct).eq('id', productId).select();
+                const resolvedStoreName = await resolveProductStoreName(normalizedProduct.seller_id, normalizedProduct.storeName);
+                const { data, error } = await supabase.from('products').update({ ...normalizedProduct, storeName: resolvedStoreName }).eq('id', productId).select();
                 if (error) throw new Error(error.message);
                 result = data[0];
                 break;
