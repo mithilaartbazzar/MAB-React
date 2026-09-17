@@ -286,8 +286,9 @@ export const LoginPage = ({ onLogin }) => {
                                                 <label className="text-[10px] font-black uppercase text-stone-400 pl-4">Studio Name</label>
                                                 <div className="relative">
                                                     <Store size={16} className="absolute left-5 top-1/2 -translate-y-1/2 text-stone-300" />
-                                                    <input required value={storeName} title='Enter Your Store Name' onChange={e => setStoreName(e.target.value)} type="text" className="w-full pl-12 pr-6 py-4 bg-[#efece6] rounded-2xl outline-none focus:bg-white border border-transparent focus:border-[#5c1111]/20 transition-all font-medium" />
+                                                    <input value={storeName} placeholder="Set after admin approval" title='Enter Your Store Name' onChange={e => setStoreName(e.target.value)} type="text" className="w-full pl-12 pr-6 py-4 bg-[#efece6] rounded-2xl outline-none focus:bg-white border border-transparent focus:border-[#5c1111]/20 transition-all font-medium" />
                                                 </div>
+                                                <p className="px-1 text-[9px] font-bold uppercase tracking-widest text-stone-400">This is optional at signup. It will be reviewed by admin before approval.</p>
                                             </div>
                                             <div className="space-y-2 animate-in fade-in slide-in-from-top-2">
                                                 <label className="text-[10px] font-black uppercase text-stone-400 pl-4">Phone Number</label>

@@ -614,6 +614,18 @@ export const SellerPanel = ({ currentUser }) => {
         loadData();
     };
 
+    const handleApproveStoreName = async (userId, approvedStoreName) => {
+        if (currentUser.role !== 'admin') return;
+        await dbService.approveStoreNameChange(userId, approvedStoreName, currentUser.id);
+        loadData();
+    };
+
+    const handleRejectStoreName = async (userId) => {
+        if (currentUser.role !== 'admin') return;
+        await dbService.rejectStoreNameChange(userId, currentUser.id);
+        loadData();
+    };
+
     return (
         <div className="pt-40 pb-32 px-3 sm:px-6 max-w-7xl mx-auto min-h-screen print:p-0">
             <div className="flex flex-col lg:flex-row justify-between items-start lg:items-end gap-10 mb-12 print:hidden">
@@ -1090,7 +1102,27 @@ export const SellerPanel = ({ currentUser }) => {
                                             <Badge variant={u.status === 'active' ? 'primary' : u.status === 'pending' ? 'saffron' : 'dark'}>{u.status}</Badge>
                                         </div>
                                         
-                                        <div className="flex gap-2">
+                                        <div className="flex flex-col gap-2">
+                                            {u.storeName_pending && (
+                                                <div className="rounded-xl border border-amber-200 bg-amber-50 p-2 text-left">
+                                                    <p className="text-[8px] font-black uppercase tracking-[0.2em] text-amber-700">Store name pending</p>
+                                                    <p className="mt-1 text-xs font-semibold text-stone-700">{u.storeName_pending}</p>
+                                                    <div className="mt-2 flex gap-2">
+                                                        <button
+                                                            onClick={() => handleApproveStoreName(u.id, u.storeName_pending)}
+                                                            className="px-3 py-2 bg-green-600 text-white rounded-lg text-[8px] font-black uppercase tracking-widest"
+                                                        >
+                                                            Approve
+                                                        </button>
+                                                        <button
+                                                            onClick={() => handleRejectStoreName(u.id)}
+                                                            className="px-3 py-2 bg-stone-200 text-stone-700 rounded-lg text-[8px] font-black uppercase tracking-widest"
+                                                        >
+                                                            Reject
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            )}
                                             {u.status === 'pending' && (
                                                 <button 
                                                     onClick={() => handleUserStatusUpdate(u.id, 'active')}

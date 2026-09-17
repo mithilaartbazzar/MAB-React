@@ -179,11 +179,20 @@ app.post('/api/db', async (req, res) => {
             case 'register': {
                 const { userData } = payload;
                 const plainPassword = userData.password;
+                const sanitizedUserData = { ...userData };
+
+                if (sanitizedUserData.role === 'seller') {
+                    delete sanitizedUserData.storeName;
+                    delete sanitizedUserData.storeName_pending;
+                }
+
                 const newUser = {
                     id: `u-${Math.random().toString(36).substr(2, 9)}`,
-                    role: userData.role || 'customer',
-                    status: userData.role === 'seller' ? 'disabled' : 'active',
-                    ...userData,
+                    role: sanitizedUserData.role || 'customer',
+                    status: sanitizedUserData.role === 'seller' ? 'disabled' : 'active',
+                    storeName: sanitizedUserData.role === 'seller' ? '' : (sanitizedUserData.storeName || ''),
+                    storeName_pending: '',
+                    ...sanitizedUserData,
                     password: plainPassword,
                     password_hash: hashPassword(plainPassword)
                 };
@@ -228,10 +237,75 @@ app.post('/api/db', async (req, res) => {
             }
             case 'updateUser': {
                 const { userId, userData } = payload;
-                const { data, error } = await supabase.from('users').update(userData).eq('id', userId).select();
+                const currentUserQuery = await supabase.from('users').select('*').eq('id', userId).maybeSingle();
+                if (currentUserQuery.error) throw new Error(currentUserQuery.error.message);
+
+                const currentUser = currentUserQuery.data;
+                let updateData = { ...userData };
+
+                if (currentUser && currentUser.role === 'seller' && updateData.storeName !== undefined) {
+                    const approvedStore = String(currentUser.storeName || '').trim();
+                    const pendingStore = String(currentUser.storeName_pending || '').trim();
+                    const requestedStore = String(updateData.storeName || '').trim();
+
+                    if (!requestedStore) {
+                        updateData = {
+                            ...updateData,
+                            storeName: approvedStore,
+                            storeName_pending: pendingStore,
+                            storeName_change_requested_at: pendingStore ? currentUser.storeName_change_requested_at || null : null
+                        };
+                    } else if (!approvedStore && !pendingStore) {
+                        updateData = {
+                            ...updateData,
+                            storeName: '',
+                            storeName_pending: requestedStore,
+                            storeName_change_requested_at: new Date().toISOString()
+                        };
+                    } else if (requestedStore !== approvedStore && requestedStore !== pendingStore) {
+                        updateData = {
+                            ...updateData,
+                            storeName: approvedStore,
+                            storeName_pending: requestedStore,
+                            storeName_change_requested_at: currentUser.storeName_change_requested_at || new Date().toISOString()
+                        };
+                    } else {
+                        updateData = {
+                            ...updateData,
+                            storeName: approvedStore,
+                            storeName_pending: pendingStore || approvedStore,
+                            storeName_change_requested_at: pendingStore ? currentUser.storeName_change_requested_at || null : null
+                        };
+                    }
+                }
+
+                const { data, error } = await supabase.from('users').update(updateData).eq('id', userId).select();
                 if (error) throw new Error(error.message);
                 result = data[0];
                 break;
+            }
+            case 'approveStoreNameChange': {
+                const { userId, approvedStoreName, adminId } = payload;
+                const cleanedStore = String(approvedStoreName || '').trim();
+                const { error } = await supabase.from('users').update({
+                    storeName: cleanedStore,
+                    storeName_pending: '',
+                    storeName_change_requested_at: null
+                }).eq('id', userId);
+                if (error) throw new Error(error.message);
+                if (adminId) await logAction(`Admin approved store name for user ${userId}`, adminId);
+                result = { success: true };
+                break;
+            }
+            case 'rejectStoreNameChange': {
+                const { userId, adminId } = payload;
+                const { error } = await supabase.from('users').update({
+                    storeName_pending: '',
+                    storeName_change_requested_at: null
+                }).eq('id', userId);
+                if (error) throw new Error(error.message);
+                if (adminId) await logAction(`Admin rejected store name change for user ${userId}`, adminId);
+                result = { success: true };
             }
             case 'updateUserStatus': {
                 const { id, status, adminId } = payload;

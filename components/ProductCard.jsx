@@ -78,7 +78,7 @@ export const ProductCard = ({ product, addToCart, isWishlisted, toggleWishlist }
                         <img 
                             src={product.image} 
                             alt={product.name} 
-                            className="h-full w-full object-cover transition-transform duration-700 ease-out group-hover:scale-105" 
+                            className="h-full w-full object-contain transition-transform duration-700 ease-out group-hover:scale-105" 
                         />
                     </Link>
                     

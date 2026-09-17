@@ -62,9 +62,15 @@ export const ProfilePage = ({ currentUser, setCurrentUser, wishlist, products, t
     };
     const saveProfile = async () => {
         setSaving(true);
-        try { setCurrentUser(await dbService.updateUser(currentUser.id, profile)); setIsEditing(false); }
-        catch (error) { alert('Failed to update profile. Please try again.'); }
-        finally { setSaving(false); }
+        try {
+            const updatedUser = await dbService.updateUser(currentUser.id, profile);
+            setCurrentUser(updatedUser);
+            setIsEditing(false);
+        } catch (error) {
+            alert(error.message || 'Failed to update profile. Please try again.');
+        } finally {
+            setSaving(false);
+        }
     };
     const saveOrderDetails = async (orderId, customer) => {
         setSaving(true);
@@ -114,6 +120,21 @@ const OrderDetails = ({ order, onClose, onSave, saving }) => {
 
 const Info = ({ label, value }) => <div className="rounded bg-[#f5ead9] p-3"><p className="text-xs font-semibold uppercase tracking-wider text-[#8b8378]">{label}</p><p className="mt-1 text-sm text-[#5e574e]">{value}</p></div>;
 const WishlistPanel = ({ products, addToCart, toggleWishlist, expanded }) => <section className="rounded border border-[#e5dccd] bg-[#fffaf0] p-4"><div className="mb-3 flex items-center justify-between"><h2 className="font-playfair text-lg font-bold">My Wishlist</h2><Link to="/wishlist" className="text-xs text-[#9b6c47]">View all →</Link></div>{products.length ? <div className={`grid gap-3 ${expanded ? 'grid-cols-2 sm:grid-cols-3 lg:grid-cols-4' : 'grid-cols-2'}`}>{products.map(product => <ProductCard key={product.id} product={product} addToCart={addToCart} isWishlisted toggleWishlist={toggleWishlist} />)}</div> : <div className="py-8 text-center text-sm text-[#8b8378]">Your wishlist is waiting for a new treasure.</div>}</section>;
-const ProfilePanel = ({ currentUser, profile, setProfile, editing, setEditing, saving, onSave, onlyAddress }) => <section className="rounded border border-[#e5dccd] bg-[#fffaf0] p-5"><div className="mb-5 flex items-center justify-between border-b border-[#e5dccd] pb-3"><div><p className="text-xs font-semibold uppercase tracking-widest text-[#9b6c47]">Account details</p><h2 className="font-playfair text-xl font-bold">{onlyAddress ? 'Saved Address' : 'Profile Information'}</h2></div><button type="button" onClick={() => setEditing(true)} className="flex min-h-10 items-center gap-1 rounded border border-[#d7c8b6] px-3 text-xs font-semibold text-[#7c2020]"><Pencil size={13} /> Edit Profile</button></div><div className="grid gap-4 sm:grid-cols-2">{!onlyAddress && <><Field label="Full name" value={profile.name} editing={editing} onChange={value => setProfile({ ...profile, name: value })} /><Field label="Username" value={profile.username} editing={editing} onChange={value => setProfile({ ...profile, username: value })} />{currentUser.role !== 'customer' && <Field label="Store name" value={profile.storeName} editing={editing} onChange={value => setProfile({ ...profile, storeName: value })} />}<Field label="Email" value={currentUser.email} /><Field label="Phone" value={profile.phone} editing={editing} onChange={value => setProfile({ ...profile, phone: value })} /></>}{(onlyAddress || editing) && <><Field label="Address" value={profile.address} editing={editing} onChange={value => setProfile({ ...profile, address: value })} /><Field label="City / Province" value={profile.city} editing={editing} onChange={value => setProfile({ ...profile, city: value })} /></>}</div>{editing && <div className="mt-5 flex gap-2"><button type="button" disabled={saving} onClick={onSave} className="flex min-h-10 items-center gap-2 rounded bg-[#7c2020] px-4 text-xs font-semibold text-white disabled:opacity-60"><Save size={13} /> {saving ? 'Saving...' : 'Save changes'}</button><button type="button" onClick={() => setEditing(false)} className="flex min-h-10 items-center gap-2 rounded border border-[#d7c8b6] px-4 text-xs font-semibold"><X size={13} /> Cancel</button></div>}</section>;
+const ProfilePanel = ({ currentUser, profile, setProfile, editing, setEditing, saving, onSave, onlyAddress }) => {
+    const canEditStoreName = currentUser.role !== 'customer' && !currentUser.storeName && !currentUser.storeName_pending;
+    const visibleStoreName = currentUser.storeName_pending || profile.storeName || currentUser.storeName || '';
 
-const Field = ({ label, value, editing, onChange }) => <label className="block"><span className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-[#8b8378]">{label}</span>{editing && onChange ? <input value={value || ''} onChange={event => onChange(event.target.value)} className="w-full rounded border border-[#d7c8b6] bg-white px-3 py-2.5 text-sm" /> : <span className="block min-h-10 rounded bg-[#f5ead9] px-3 py-2.5 text-sm text-[#5e574e]">{value || 'Not provided'}</span>}</label>;
+    return (
+        <section className="rounded border border-[#e5dccd] bg-[#fffaf0] p-5">
+            <div className="mb-5 flex items-center justify-between border-b border-[#e5dccd] pb-3">
+                <div>
+                    <p className="text-xs font-semibold uppercase tracking-widest text-[#9b6c47]">Account details</p>
+                    <h2 className="font-playfair text-xl font-bold">{onlyAddress ? 'Saved Address' : 'Profile Information'}</h2>
+                </div>
+                <button type="button" onClick={() => setEditing(true)} className="flex min-h-10 items-center gap-1 rounded border border-[#d7c8b6] px-3 text-xs font-semibold text-[#7c2020]"><Pencil size={13} /> Edit Profile</button>
+            </div>
+            <div className="grid gap-4 sm:grid-cols-2">{!onlyAddress && <><Field label="Full name" value={profile.name} editing={editing} onChange={value => setProfile({ ...profile, name: value })} /><Field label="Username" value={profile.username} editing={editing} onChange={value => setProfile({ ...profile, username: value })} />{currentUser.role !== 'customer' && <Field label="Store name" value={visibleStoreName} editing={editing && canEditStoreName} onChange={value => setProfile({ ...profile, storeName: value })} disabled={!canEditStoreName} />}{currentUser.role !== 'customer' && currentUser.storeName_pending && <div className="sm:col-span-2 rounded border border-amber-200 bg-amber-50 p-3 text-xs font-semibold text-amber-800">Store name change is pending admin approval.</div>}{currentUser.role !== 'customer' && currentUser.storeName && !currentUser.storeName_pending && <div className="sm:col-span-2 rounded border border-stone-200 bg-[#f7efe7] p-3 text-xs font-semibold text-stone-700">Store name is approved. To request a change, contact the admin.</div>}<Field label="Email" value={currentUser.email} /><Field label="Phone" value={profile.phone} editing={editing} onChange={value => setProfile({ ...profile, phone: value })} /></>}{(onlyAddress || editing) && <><Field label="Address" value={profile.address} editing={editing} onChange={value => setProfile({ ...profile, address: value })} /><Field label="City / Province" value={profile.city} editing={editing} onChange={value => setProfile({ ...profile, city: value })} /></>}</div>{editing && <div className="mt-5 flex gap-2"><button type="button" disabled={saving} onClick={onSave} className="flex min-h-10 items-center gap-2 rounded bg-[#7c2020] px-4 text-xs font-semibold text-white disabled:opacity-60"><Save size={13} /> {saving ? 'Saving...' : 'Save changes'}</button><button type="button" onClick={() => setEditing(false)} className="flex min-h-10 items-center gap-2 rounded border border-[#d7c8b6] px-4 text-xs font-semibold"><X size={13} /> Cancel</button></div>}</section>
+    );
+};
+
+const Field = ({ label, value, editing, onChange, disabled = false }) => <label className="block"><span className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-[#8b8378]">{label}</span>{editing && onChange ? <input value={value || ''} onChange={event => onChange(event.target.value)} disabled={disabled} className="w-full rounded border border-[#d7c8b6] bg-white px-3 py-2.5 text-sm disabled:cursor-not-allowed disabled:bg-stone-100" /> : <span className="block min-h-10 rounded bg-[#f5ead9] px-3 py-2.5 text-sm text-[#5e574e]">{value || 'Not provided'}</span>}</label>;
