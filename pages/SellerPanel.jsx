@@ -715,7 +715,7 @@ export const SellerPanel = ({ currentUser }) => {
                                 const isLow = p.stock <= lowStockThreshold;
                                 return (
                                     <div key={p.id} className={`p-1.5 sm:p-4 rounded-3xl border transition-all relative flex items-center gap-4 sm:gap-8 hover:shadow-xl ${isLow ? 'bg-red-50/50 border-red-100' : 'bg-white border-stone-100'}`}>
-                                        <img src={p.image} className="w-16 h-16 sm:w-24 sm:h-24 rounded-2xl object-cover shadow-sm ring-1 ring-stone-100" />
+                                        <img src={p.image} className="w-16 h-16 sm:w-24 sm:h-24 rounded-2xl object-contain shadow-sm ring-1 ring-stone-100" />
                                         <div className="flex-1">
                                             <div className="flex items-center gap-1 sm:gap-4">
                                                 <h4 className="font-black text-[10px] sm:text-sm text-stone-900">{p.name}</h4>

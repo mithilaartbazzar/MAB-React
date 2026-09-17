@@ -147,7 +147,8 @@ export const ProductDetailPage = ({ products, addToCart, wishlist, toggleWishlis
                             </div>
                             <button onClick={showNextImage} className="mt-2 flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-stone-200 bg-white text-stone-500 shadow-sm hover:text-[#7c2020]" aria-label="Show next image"><ChevronDown size={14} /></button>
                         </div>
-                        <div className="relative aspect-square overflow-hidden rounded-md bg-[#eee9df] p-1 sm:aspect-[1.12/1] sm:p-2"><img src={activeImg} alt={product.name} className="h-full w-full object-cover" /><button onClick={() => setIsImageZoomed(true)} className="absolute bottom-2 right-2 flex h-7 w-7 items-center justify-center rounded-full bg-white/90 text-stone-600 shadow sm:bottom-3 sm:right-3 sm:h-8 sm:w-8" aria-label="View larger image"><ArrowUpRight size={14} /></button></div>
+                        <div className="relative aspect-square overflow-hidden rounded-md bg-[#eee9df] p-1 sm:aspect-[1.12/1] sm:p-2">
+                        <img src={activeImg} alt={product.name} className="h-full w-full object-contain" /><button onClick={() => setIsImageZoomed(true)} className="absolute bottom-2 right-2 flex h-7 w-7 items-center justify-center rounded-full bg-white/90 text-stone-600 shadow sm:bottom-3 sm:right-3 sm:h-8 sm:w-8" aria-label="View larger image"><ArrowUpRight size={14} /></button></div>
                     </div>
 
                     <div className="flex flex-col pt-1 lg:pt-2">
