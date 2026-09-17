@@ -45,6 +45,32 @@ const createSlug = (value) => String(value || '')
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-|-$/g, '');
 
+const normalizeProductData = (productData = {}) => {
+    const toTagList = (value) => String(value ?? '')
+        .split(/[\n,|·]+/)
+        .map((item) => item.replace(/\s+/g, ' ').trim())
+        .filter(Boolean);
+
+    const customTags = Array.isArray(productData.custom_tags)
+        ? productData.custom_tags
+        : toTagList(productData.custom_tags || productData.tags || '');
+
+    return {
+        ...productData,
+        name: String(productData.name || '').trim(),
+        product_code: String(productData.product_code || '').trim(),
+        key_features: String(productData.key_features || '').trim(),
+        compare_price: Number(productData.compare_price ?? productData.original_price ?? productData.mrp ?? 0) || 0,
+        custom_tags: customTags.join(' · '),
+        visible_to_users: Boolean(productData.visible_to_users),
+        price: Number(productData.price ?? 0) || 0,
+        stock: Number(productData.stock ?? 0) || 0,
+        tags: Array.isArray(productData.tags)
+            ? productData.tags.join(', ')
+            : String(productData.tags || '').trim(),
+    };
+};
+
 const logAction = async (action, adminId) => {
     await supabase.from('logs').insert([{
         id: `l-${Math.random().toString(36).substr(2, 9)}`,
@@ -216,7 +242,11 @@ app.post('/api/db', async (req, res) => {
             case 'getProducts': {
                 const { sellerId } = payload;
                 let query = supabase.from('products').select('*');
-                if (sellerId) query = query.eq('seller_id', sellerId);
+                if (sellerId) {
+                    query = query.eq('seller_id', sellerId);
+                } else {
+                    query = query.or('visible_to_users.is.null,visible_to_users.eq.true');
+                }
                 const { data, error } = await query;
                 if (error) throw new Error(error.message);
                 result = data;
@@ -224,10 +254,11 @@ app.post('/api/db', async (req, res) => {
             }
             case 'addProduct': {
                 const { productData } = payload;
-                const id = productData.id || `p-${Math.random().toString(36).substr(2, 9)}`;
+                const normalizedProduct = normalizeProductData(productData);
+                const id = normalizedProduct.id || `p-${Math.random().toString(36).substr(2, 9)}`;
                 const product = {
-                    ...productData,
-                    slug: createSlug(productData.slug) || createSlug(productData.name) || id,
+                    ...normalizedProduct,
+                    slug: createSlug(normalizedProduct.slug) || createSlug(normalizedProduct.name) || id,
                     id,
                 };
                 const { data, error } = await supabase.from('products').insert([product]).select();
@@ -237,7 +268,8 @@ app.post('/api/db', async (req, res) => {
             }
             case 'updateProduct': {
                 const { productId, productData } = payload;
-                const { data, error } = await supabase.from('products').update(productData).eq('id', productId).select();
+                const normalizedProduct = normalizeProductData(productData);
+                const { data, error } = await supabase.from('products').update(normalizedProduct).eq('id', productId).select();
                 if (error) throw new Error(error.message);
                 result = data[0];
                 break;

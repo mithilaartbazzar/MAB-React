@@ -73,20 +73,25 @@ export const SellerPanel = ({ currentUser }) => {
         seller_id: null,
         name: '',
         description: '',
+        product_code: '',
+        key_features: '',
         price: 0,
+        compare_price: 0,
         image: '',
         images: [],
         category: '',
         style: '',
         theme: '',
         tags: '',
+        custom_tags: '',
         stock: 0,
         location: '',
         material: '',
         length: '',
         delivery: '',
         instruction: '',
-        authenticity: ''
+        authenticity: '',
+        visible_to_users: false
     });
 
     const [heroSlides, setHeroSlides] = useState([]);
@@ -254,20 +259,25 @@ export const SellerPanel = ({ currentUser }) => {
             seller_id: null,
             name: '',
             description: '',
+            product_code: '',
+            key_features: '',
             price: 0,
+            compare_price: 0,
             image: '',
             images: [],
             category: '',
             style: '',
             theme: '',
             tags: '',
+            custom_tags: '',
             stock: 0,
             location: '',
             material: '',
             length: '',
             delivery: '',
             instruction: '',
-            authenticity: ''
+            authenticity: '',
+            visible_to_users: false
         });
     };
 
@@ -281,22 +291,68 @@ export const SellerPanel = ({ currentUser }) => {
             seller_id: product.seller_id,
             name: product.name || '',
             description: product.description || '',
+            product_code: product.product_code || '',
+            key_features: product.key_features || '',
             price: product.price || 0,
+            compare_price: product.compare_price || 0,
             image: product.image || '',
             images: Array.isArray(product.images) ? product.images : [],
             category: product.category || '',
             style: product.style || '',
             theme: product.theme || '',
             tags: Array.isArray(product.tags) ? product.tags.join(', ') : (product.tags || ''),
+            custom_tags: product.custom_tags || '',
             stock: product.stock || 0,
             location: product.location || '',
             material: product.material || '',
             length: product.length || '',
             delivery: product.delivery || '',
             instruction: product.instruction || '',
-            authenticity: product.authenticity || ''
+            authenticity: product.authenticity || '',
+            visible_to_users: Boolean(product.visible_to_users)
         });
         setShowAddProductModal(true);
+    };
+
+    const buildFeatureRows = (value = '') => {
+        const rows = String(value || '')
+            .split(/\r?\n/)
+            .map((row) => {
+                const [feature = '', ...rest] = row.split('|');
+                return {
+                    feature: feature.trim(),
+                    detail: rest.join('|').trim(),
+                };
+            });
+
+        return rows.length > 0 ? rows : [{ feature: '', detail: '' }];
+    };
+
+    const serializeFeatureRows = (rows = []) => rows
+        .map((row) => `${(row.feature || '').trim()}|${(row.detail || '').trim()}`)
+        .join('\n');
+
+    const cleanKeyFeaturesForStorage = (value = '') => String(value || '')
+        .split(/\r?\n/)
+        .map((row) => {
+            const [feature = '', ...rest] = row.split('|');
+            const detail = rest.join('|').trim();
+            return {
+                feature: feature.trim(),
+                detail: detail.trim(),
+            };
+        })
+        .filter((row) => row.feature.trim() || row.detail.trim())
+        .map((row) => `${row.feature}|${row.detail}`)
+        .join('\n');
+
+    const addFeatureRow = () => {
+        const currentRows = buildFeatureRows(newProduct.key_features);
+        const nextRows = [...currentRows, { feature: '', detail: '' }];
+        setNewProduct((previous) => ({
+            ...previous,
+            key_features: serializeFeatureRows(nextRows),
+        }));
     };
 
     const productCategories = [...new Set([
@@ -348,16 +404,17 @@ export const SellerPanel = ({ currentUser }) => {
 
     const handleSaveProduct = async () => {
         try {
+            const productPayload = {
+                ...newProduct,
+                key_features: cleanKeyFeaturesForStorage(newProduct.key_features),
+                seller_id: newProduct.seller_id || currentUser.id,
+                visible_to_users: Boolean(newProduct.visible_to_users),
+            };
+
             if (editingProductId) {
-                await dbService.updateProduct(editingProductId, {
-                    ...newProduct,
-                    seller_id: newProduct.seller_id || currentUser.id
-                });
+                await dbService.updateProduct(editingProductId, productPayload);
             } else {
-                await dbService.addProduct({
-                    ...newProduct,
-                    seller_id: currentUser.id
-                });
+                await dbService.addProduct(productPayload);
             }
             setShowAddProductModal(false);
             resetProductForm();
@@ -1527,6 +1584,98 @@ export const SellerPanel = ({ currentUser }) => {
 
                                 <div className="grid grid-cols-1 gap-3 md:grid-cols-2 md:gap-6">
                                     <div>
+                                        <label className="block text-[10px] font-black uppercase tracking-widest text-stone-400 mb-2">Product Code</label>
+                                        <input
+                                            type="text"
+                                            value={newProduct.product_code}
+                                            onChange={(e) => setNewProduct({ ...newProduct, product_code: e.target.value })}
+                                            className="w-full px-4 py-3 bg-white border border-stone-200 rounded-2xl focus:ring-2 focus:ring-[#5c1111]/20 focus:border-[#5c1111] outline-none transition-all"
+                                            placeholder="e.g. MCS-ART-102"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-[10px] font-black uppercase tracking-widest text-stone-400 mb-2">Compare at Price (NPR)</label>
+                                        <input
+                                            type="number"
+                                            value={newProduct.compare_price}
+                                            onChange={(e) => setNewProduct({ ...newProduct, compare_price: parseFloat(e.target.value) || 0 })}
+                                            className="w-full px-4 py-3 bg-white border border-stone-200 rounded-2xl focus:ring-2 focus:ring-[#5c1111]/20 focus:border-[#5c1111] outline-none transition-all"
+                                            placeholder="0"
+                                        />
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <div className="mb-3 flex items-center justify-between gap-3">
+                                        <label className="block text-[10px] font-black uppercase tracking-widest text-stone-400">Key Features</label>
+                                        <button
+                                            type="button"
+                                            onClick={addFeatureRow}
+                                            className="rounded-xl bg-[#5c1111] px-3 py-2 text-[9px] font-black uppercase tracking-widest text-white hover:bg-[#2a2723] transition-all"
+                                        >
+                                            + Add Row
+                                        </button>
+                                    </div>
+
+                                    <div className="space-y-2 rounded-2xl border border-stone-200 bg-white p-3">
+                                        {(() => {
+                                            const rows = buildFeatureRows(newProduct.key_features);
+                                            if (rows.length === 0) {
+                                                rows.push({ feature: '', detail: '' });
+                                            }
+
+                                            return rows.map((row, index) => (
+                                                <div key={`feature-row-${index}`} className="grid grid-cols-1 gap-2 md:grid-cols-2">
+                                                    <input
+                                                        type="text"
+                                                        value={row.feature}
+                                                        onChange={(e) => {
+                                                            const currentRows = buildFeatureRows(newProduct.key_features);
+                                                            if (currentRows.length === 0) currentRows.push({ feature: '', detail: '' });
+                                                            if (index >= currentRows.length) currentRows.push({ feature: '', detail: '' });
+                                                            currentRows[index] = { ...currentRows[index], feature: e.target.value };
+                                                            setNewProduct({ ...newProduct, key_features: serializeFeatureRows(currentRows) });
+                                                        }}
+                                                        className="w-full rounded-xl border border-stone-200 bg-[#f9f7f3] px-3 py-2 text-sm outline-none transition-all focus:border-[#5c1111] focus:ring-2 focus:ring-[#5c1111]/20"
+                                                        placeholder="Feature"
+                                                    />
+                                                    <div className="flex gap-2">
+                                                        <input
+                                                            type="text"
+                                                            value={row.detail}
+                                                            onChange={(e) => {
+                                                                const currentRows = buildFeatureRows(newProduct.key_features);
+                                                                if (currentRows.length === 0) currentRows.push({ feature: '', detail: '' });
+                                                                if (index >= currentRows.length) currentRows.push({ feature: '', detail: '' });
+                                                                currentRows[index] = { ...currentRows[index], detail: e.target.value };
+                                                                setNewProduct({ ...newProduct, key_features: serializeFeatureRows(currentRows) });
+                                                            }}
+                                                            className="w-full rounded-xl border border-stone-200 bg-[#f9f7f3] px-3 py-2 text-sm outline-none transition-all focus:border-[#5c1111] focus:ring-2 focus:ring-[#5c1111]/20"
+                                                            placeholder="Detail"
+                                                        />
+                                                        {buildFeatureRows(newProduct.key_features).length > 1 && (
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => {
+                                                                    const currentRows = buildFeatureRows(newProduct.key_features);
+                                                                    currentRows.splice(index, 1);
+                                                                    setNewProduct({ ...newProduct, key_features: serializeFeatureRows(currentRows) });
+                                                                }}
+                                                                className="rounded-xl border border-red-200 bg-red-50 px-2 text-xs font-bold text-red-700 hover:bg-red-100"
+                                                                aria-label="Remove key feature row"
+                                                            >
+                                                                ×
+                                                            </button>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            ));
+                                        })()}
+                                    </div>
+                                </div>
+
+                                <div className="grid grid-cols-1 gap-3 md:grid-cols-2 md:gap-6">
+                                    <div>
                                         <label className="block text-[10px] font-black uppercase tracking-widest text-stone-400 mb-2">Style</label>
                                         <select
                                             value={newProduct.style}
@@ -1562,6 +1711,18 @@ export const SellerPanel = ({ currentUser }) => {
                                 </div>
 
                                 <div>
+                                    <label className="block text-[10px] font-black uppercase tracking-widest text-stone-400 mb-2">Custom Tags Below Product Name</label>
+                                    <input
+                                        type="text"
+                                        value={newProduct.custom_tags}
+                                        onChange={(e) => setNewProduct({ ...newProduct, custom_tags: e.target.value })}
+                                        className="w-full rounded-2xl border border-stone-200 bg-white px-4 py-3 outline-none transition-all focus:border-[#5c1111] focus:ring-2 focus:ring-[#5c1111]/20"
+                                        placeholder="100% Cotton · Hand Painted · Mithila Art"
+                                    />
+                                    <p className="mt-2 text-[9px] font-bold uppercase tracking-widest text-stone-400">Use • or commas to separate tags</p>
+                                </div>
+
+                                <div>
                                     <label className="block text-[10px] font-black uppercase tracking-widest text-stone-400 mb-2">Tags</label>
                                     <input
                                         type="text"
@@ -1571,6 +1732,23 @@ export const SellerPanel = ({ currentUser }) => {
                                         placeholder="handmade, floral, mithila"
                                     />
                                     <p className="mt-2 text-[9px] font-bold uppercase tracking-widest text-stone-400">Separate tags with commas</p>
+                                </div>
+
+                                <div className="flex items-center justify-between rounded-2xl border border-stone-200 bg-white px-4 py-3">
+                                    <div>
+                                        <p className="text-[10px] font-black uppercase tracking-widest text-stone-400">User visibility</p>
+                                        <p className="text-[9px] font-bold uppercase tracking-widest text-stone-500">Show product on storefront</p>
+                                    </div>
+                                    <label className="relative inline-flex cursor-pointer items-center">
+                                        <input
+                                            type="checkbox"
+                                            checked={Boolean(newProduct.visible_to_users)}
+                                            onChange={(e) => setNewProduct({ ...newProduct, visible_to_users: e.target.checked })}
+                                            className="peer sr-only"
+                                        />
+                                        <span className="h-6 w-11 rounded-full bg-stone-200 transition peer-checked:bg-[#5c1111]" />
+                                        <span className="absolute left-1 top-1 h-4 w-4 rounded-full bg-white transition peer-checked:translate-x-5" />
+                                    </label>
                                 </div>
 
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

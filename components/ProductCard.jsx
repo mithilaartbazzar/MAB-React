@@ -11,6 +11,9 @@ export const ProductCard = ({ product, addToCart, isWishlisted, toggleWishlist }
     const [isAdded, setIsAdded] = useState(false);
     const [showCopiedFeedback, setShowCopiedFeedback] = useState(false);
 
+    const price = Number(product.price) || 0;
+    const comparePrice = Number(product.compare_price ?? product.original_price ?? product.mrp ?? 0) || 0;
+
     const triggerFeedback = () => {
         setIsAnimating(false);
         // Force reflow
@@ -115,7 +118,14 @@ export const ProductCard = ({ product, addToCart, isWishlisted, toggleWishlist }
                     </div>
                     <p className="mb-2 line-clamp-1 text-[7px] font-medium uppercase tracking-widest text-stone-400 sm:mb-3 sm:text-[9px]">{product.storeName}</p>
                     <div className="mt-auto flex items-center justify-between gap-2 border-t border-[#e5e1d8] pt-2 sm:pt-3">
-                        <span className="whitespace-nowrap font-playfair text-xs font-bold text-[#7c2020] sm:text-lg">Rs {product.price.toLocaleString()}</span>
+                        <div className="flex flex-col gap-0.5">
+                            <span className="whitespace-nowrap font-playfair text-xs font-bold text-[#7c2020] sm:text-lg">NPR {price.toLocaleString()}</span>
+                            {comparePrice > price && (
+                                <span className="whitespace-nowrap text-[8px] font-medium text-stone-400 line-through sm:text-[10px]">
+                                    NPR {comparePrice.toLocaleString()}
+                                </span>
+                            )}
+                        </div>
                         <div className="flex items-center gap-2">
                             <Link 
                                 to={`/product/${product.slug}`} 

@@ -5,6 +5,35 @@ import { Badge } from '../components/Badge';
 import { ProductCard } from '../components/ProductCard';
 import { dbService } from '../services/dbservices';
 
+const parseKeyFeatures = (keyFeatures) => {
+    if (!keyFeatures) return [];
+
+    return String(keyFeatures)
+        .split(/\r?\n|\r/)
+        .map((line) => line.trim())
+        .filter(Boolean)
+        .map((line) => {
+            const pipeMatch = line.match(/^([^|]+?)\s*\|\s*(.+)$/);
+            if (pipeMatch) {
+                return {
+                    label: pipeMatch[1].trim(),
+                    value: pipeMatch[2].trim(),
+                };
+            }
+
+            const directMatch = line.match(/^(.+?)\s*[:\-]\s*(.+)$/);
+            if (directMatch) {
+                return {
+                    label: directMatch[1].trim(),
+                    value: directMatch[2].trim(),
+                };
+            }
+
+            return { label: 'Feature', value: line.trim() };
+        })
+        .filter((row) => row.label && row.value);
+};
+
 export const ProductDetailPage = ({ products, addToCart, wishlist, toggleWishlist }) => {
     const slug = useLocation().pathname.split('/').pop();
     const product = products.find((item) => item.slug === slug);
@@ -53,6 +82,25 @@ export const ProductDetailPage = ({ products, addToCart, wishlist, toggleWishlis
             .concat(products.filter((item) => item.category !== product.category && item.id !== product.id).slice(0, 4));
     }, [product, products]);
 
+    const customTags = useMemo(() => {
+        if (!product) return [];
+        const rawTags = Array.isArray(product.custom_tags)
+            ? product.custom_tags
+            : String(product.custom_tags || product.tags || '')
+                .split(/[•,|]+/)
+                .map((tag) => tag.trim())
+                .filter(Boolean);
+        return rawTags.slice(0, 6);
+    }, [product]);
+
+    const featureRows = useMemo(() => {
+        if (!product) return [];
+        return parseKeyFeatures(product.key_features);
+    }, [product]);
+
+    const currentPrice = Number(product?.price) || 0;
+    const comparePrice = Number(product?.compare_price ?? product?.original_price ?? product?.mrp ?? 0) || 0;
+
     const scrollCarousel = (direction) => {
         carouselRef.current?.scrollBy({ left: direction === 'left' ? -360 : 360, behavior: 'smooth' });
     };
@@ -95,7 +143,7 @@ export const ProductDetailPage = ({ products, addToCart, wishlist, toggleWishlis
                     <div className="grid grid-cols-[42px_1fr] gap-3 sm:grid-cols-[64px_1fr] sm:gap-7">
                         <div className="flex min-w-0 flex-col items-center">
                             <div ref={thumbnailRef} className="no-scrollbar flex max-h-[360px] w-full flex-col gap-2 overflow-y-auto sm:gap-3">
-                            {images.map((image, index) => <button key={`${image}-${index}`} onClick={() => setActiveImg(image)} className={`aspect-[4/5] overflow-hidden rounded border bg-[#eee9df] p-0.5 transition ${activeImg === image ? 'border-[#9c2929] ring-1 ring-[#9c2929]' : 'border-transparent opacity-75 hover:opacity-100'}`} aria-label={`View image ${index + 1}`}><img src={image} alt="" className="h-full w-full object-cover" /></button>)}
+                            {images.map((image, index) => <button key={`${image}-${index}`} onClick={() => setActiveImg(image)} className={`aspect-[4/5] overflow-hidden rounded border bg-[#eee9df] p-0.5 transition ${activeImg === image ? 'border-[#9c2929] ring-1 ring-[#9c2929]' : 'border-transparent opacity-75 hover:opacity-100'}`} aria-label={`View image ${index + 1}`}><img src={image} alt="" className="h-full w-full object-contain" /></button>)}
                             </div>
                             <button onClick={showNextImage} className="mt-2 flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-stone-200 bg-white text-stone-500 shadow-sm hover:text-[#7c2020]" aria-label="Show next image"><ChevronDown size={14} /></button>
                         </div>
@@ -106,7 +154,24 @@ export const ProductDetailPage = ({ products, addToCart, wishlist, toggleWishlis
                         <div className="mb-3 flex items-start justify-between gap-4"><Badge variant="saffron">{product.badge || 'Original Artwork'}</Badge><button onClick={() => toggleWishlist(product.id)} className="flex h-8 w-8 items-center justify-center rounded border border-stone-200 text-[#7c2020]" aria-label="Add to wishlist"><Heart size={15} fill={isWishlisted ? 'currentColor' : 'none'} /></button></div>
                         <h1 className="max-w-xl font-playfair text-[1.4rem] leading-[1.08] text-[#20221f] sm:text-4xl lg:text-[2.55rem]">{product.name}</h1>
                         <p className="mt-1 text-xs text-stone-500 lg:text-sm">By <span className="font-semibold text-stone-700">{product.storeName || 'Mithila Artisan'}</span> <span className="mx-1">•</span> {product.location || 'Janakpur, Nepal'}</p>
-                        <div className="mt-1 flex flex-col items-start gap-2"><span className="flex items-center gap-1 text-xs text-amber-600 lg:text-sm">{product.rating != null && <><Star size={13} fill="currentColor" /> {product.rating}</>} {reviews.length} {reviews.length === 1 ? 'review' : 'reviews'}</span><span className="font-playfair text-3xl font-bold text-[#29251f] lg:text-4xl">रु {product.price.toLocaleString()}</span></div>
+                        <div className="mt-1 flex flex-col items-start gap-2">
+                            <span className="flex items-center gap-1 text-xs text-amber-600 lg:text-sm">{product.rating != null && <><Star size={13} fill="currentColor" /> {product.rating}</>} {reviews.length} {reviews.length === 1 ? 'review' : 'reviews'}</span>
+                            <div className="flex flex-col items-start gap-1">
+                                <span className="font-playfair text-3xl font-bold text-[#29251f] lg:text-4xl">NPR {currentPrice.toLocaleString()}</span>
+                                {comparePrice > currentPrice && (
+                                    <span className="text-base font-medium text-stone-400 line-through sm:text-lg">NPR {comparePrice.toLocaleString()}</span>
+                                )}
+                            </div>
+                        </div>
+                        {customTags.length > 0 && (
+                            <div className="mt-3 flex flex-wrap gap-2">
+                                {customTags.map((tag) => (
+                                    <span key={tag} className="rounded-full border border-stone-200 bg-stone-100 px-2 py-1 text-[10px] font-medium text-stone-600 sm:text-[11px]">
+                                        {tag}
+                                    </span>
+                                ))}
+                            </div>
+                        )}
                         <p className="mt-2 max-w-xl text-[12px] leading-6 text-stone-600 lg:text-base lg:leading-7">{product.description}</p>
                         <div className="mt-5 flex flex-row gap-1 border-y border-[#e8e1d6] py-4 text-[10px] text-stone-600 sm:gap-4 lg:gap-5 lg:text-base"><div className="flex items-center gap-1"><BadgeCheck size={20} className="text-[#7c2020]" /> Original artwork</div><div className="flex items-center border-x border-[#e8e1d6] px-3 gap-1"><Leaf size={20} className="text-[#7c2020]" /> Handmade &amp; eco-friendly</div><div className="flex items-center gap-1"><Truck size={20} className="text-[#7c2020]" /> Ships from Nepal</div></div>
                         <p className="mt-5 text-[10px] font-semibold text-stone-700 lg:text-xs">Quantity</p>
@@ -114,6 +179,27 @@ export const ProductDetailPage = ({ products, addToCart, wishlist, toggleWishlis
                         <div className="mt-3 flex items-center gap-2 rounded border border-[#eee5d8] bg-[#f5f0e7] px-3 py-3 text-[10px] text-stone-600 lg:text-sm"><Truck size={14} className="text-[#7c2020]" /> Estimated delivery: {product.delivery || 'Not specified'} <ChevronRight size={13} className="ml-auto" /></div>
                     </div>
                 </section>
+
+                {featureRows.length > 0 && (
+                    <section className="mt-8 w-full rounded-[1rem] border border-[#e7e0d4] bg-[#f5f0e8] p-4 shadow-sm sm:p-6">
+                        <div className="mb-4 flex items-center justify-between border-b border-[#d8ccbb] pb-3">
+                            <h2 className="text-xl font-black tracking-tight text-[#1d1b1a] sm:text-2xl">Key Features</h2>
+                        </div>
+
+                        <div className="overflow-hidden rounded-[0.75rem] border border-[#d8ccbb] bg-[#fbf8f3]">
+                            <div className="grid grid-cols-[1.3fr_2.4fr] bg-[#efe8df] text-[10px] font-bold uppercase tracking-[0.12em] text-[#4a4139] sm:text-xs">
+                                <div className="border-r border-[#d8ccbb] px-3 py-3 sm:px-4">Feature</div>
+                                <div className="px-3 py-3 sm:px-4">Details</div>
+                            </div>
+                            {featureRows.map((row, index) => (
+                                <div key={`${row.label}-${index}`} className="grid grid-cols-[1.3fr_2.4fr] border-t border-[#e7e0d4] bg-[#fffdfb] text-[11px] text-[#1f1a17] sm:text-sm">
+                                    <div className="border-r border-[#e7e0d4] px-3 py-3 font-semibold text-[#2f2a26] sm:px-4">{row.label}</div>
+                                    <div className="px-3 py-3 text-[#1f1a17] sm:px-4">{row.value}</div>
+                                </div>
+                            ))}
+                        </div>
+                    </section>
+                )}
 
                 <section className="mt-14 border-t border-[#e7e0d4] pt-5">
                     <div className="flex gap-6 overflow-x-auto border-b border-[#e7e0d4] text-[10px] font-semibold whitespace-nowrap sm:gap-7 lg:text-sm" role="tablist" aria-label="Product information">
