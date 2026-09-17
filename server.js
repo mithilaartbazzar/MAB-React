@@ -725,6 +725,7 @@ app.get('/product/:slug', async (req, res, next) => {
             '<meta name="description" content="Discover authentic Mithila art, handmade crafts, textiles, home decor, and cultural gifts from local artists.">': `<meta name="description" content="${escapeHtmlAttribute(description)}">`,
             '<meta property="og:title" content="Mithila Chitrakala Store - Premium Traditional Art">': `<meta property="og:title" content="${escapeHtmlAttribute(title)}">`,
             '<meta property="og:description" content="Explore authentic Mithila artwork, handmade crafts, textiles, and cultural treasures from local artists.">': `<meta property="og:description" content="${escapeHtmlAttribute(description)}">`,
+            '<meta property="og:url" content="/">': `<meta property="og:url" content="${escapeHtmlAttribute(pageUrl)}">`,
             '<meta property="og:image" content="https://res.cloudinary.com/djmbuuz28/image/upload/v1761108817/logo.png">': `<meta property="og:image" content="${escapeHtmlAttribute(product.image)}">`,
             '<meta name="twitter:title" content="Mithila Chitrakala Store - Premium Traditional Art">': `<meta name="twitter:title" content="${escapeHtmlAttribute(title)}">`,
             '<meta name="twitter:description" content="Explore authentic Mithila artwork, handmade crafts, textiles, and cultural treasures from local artists.">': `<meta name="twitter:description" content="${escapeHtmlAttribute(description)}">`,
