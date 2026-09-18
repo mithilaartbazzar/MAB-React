@@ -4,6 +4,7 @@ import { ArrowLeft, ArrowRight, ArrowUpRight, BadgeCheck, Check, ChevronDown, Ch
 import { Badge } from '../components/Badge';
 import { ProductCard } from '../components/ProductCard';
 import { dbService } from '../services/dbservices';
+import { handleShareProduct } from '../services/shareProduct';
 
 const parseKeyFeatures = (keyFeatures) => {
     if (!keyFeatures) return [];
@@ -147,27 +148,17 @@ export const ProductDetailPage = ({ products, addToCart, wishlist, toggleWishlis
     };
 
     const handleShare = async () => {
-        const shareData = {
-            title: product.name,
-            text: product.description || `View ${product.name} at Mithila Chitrakala Store.`,
-            url: window.location.href,
-        };
-
-        if (navigator.share) {
-            try {
-                await navigator.share(shareData);
-            } catch (error) {
-                if (error.name !== 'AbortError') console.error('Error sharing product:', error);
-            }
-            return;
-        }
-
         try {
-            await navigator.clipboard.writeText(shareData.url);
-            setIsShareCopied(true);
-            setTimeout(() => setIsShareCopied(false), 2000);
+            await handleShareProduct({
+                product,
+                baseUrl: window.location.origin,
+                onCopy: () => {
+                    setIsShareCopied(true);
+                    setTimeout(() => setIsShareCopied(false), 2000);
+                },
+            });
         } catch (error) {
-            console.error('Could not copy product link:', error);
+            console.error('Could not prepare product share link:', error);
         }
     };
 

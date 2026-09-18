@@ -706,6 +706,102 @@ const escapeHtmlAttribute = (value) => String(value || '')
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;');
 
+const defaultShareImage = 'https://res.cloudinary.com/djmbuuz28/image/upload/v1761108817/logo.png';
+
+const buildProductShareImageUrl = (product = {}) => {
+    const configuredCloudName = cloudinaryCloudName || 'djmbuuz28';
+    const rawPublicId = String(product.product_image_id || product.image_public_id || product.cloudinary_public_id || '').trim();
+
+    if (rawPublicId) {
+        const normalizedPublicId = rawPublicId
+            .replace(/^https?:\/\/[^/]+\/[^/]+\/image\/upload\/(?:v\d+\/)?/, '')
+            .replace(/^https?:\/\/[^/]+\//, '')
+            .replace(/\.[^.]+$/, '')
+            .replace(/^\//, '');
+
+        if (normalizedPublicId) {
+            return `https://res.cloudinary.com/${configuredCloudName}/image/upload/w_1200,h_630,c_fill,f_jpg,q_auto/${normalizedPublicId}`;
+        }
+    }
+
+    if (typeof product.image === 'string' && product.image.includes('/image/upload/')) {
+        try {
+            const parsedUrl = new URL(product.image);
+            const pathParts = parsedUrl.pathname.split('/').filter(Boolean);
+            const uploadIndex = pathParts.indexOf('upload');
+            if (uploadIndex !== -1) {
+                const publicId = pathParts.slice(uploadIndex + 1).join('/').replace(/^v\d+\//, '').replace(/\.[^.]+$/, '');
+                if (publicId) {
+                    return `https://res.cloudinary.com/${configuredCloudName}/image/upload/w_1200,h_630,c_fill,f_jpg,q_auto/${publicId}`;
+                }
+            }
+        } catch (error) {
+            console.warn('Unable to normalize Cloudinary product image URL for share preview:', error.message);
+        }
+    }
+
+    return product.image || defaultShareImage;
+};
+
+app.get('/share/product/:id', async (req, res) => {
+    try {
+        const productId = req.params.id;
+        const frontendBaseUrl = process.env.PUBLIC_FRONTEND_URL || process.env.VITE_APP_URL || `${req.protocol}://${req.get('host')}`;
+        const targetProductUrl = `${frontendBaseUrl.replace(/\/+$/, '')}/product/${encodeURIComponent(productId)}`;
+
+        const { data: product, error } = await supabase
+            .from('products')
+            .select('id, slug, name, title, description, image, product_image_id, image_public_id, cloudinary_public_id')
+            .eq('id', productId)
+            .maybeSingle();
+
+        if (error) {
+            console.error('Share product lookup failed:', error.message);
+            return res.redirect(`${frontendBaseUrl.replace(/\/+$/, '')}/`);
+        }
+
+        if (!product) {
+            return res.redirect(`${frontendBaseUrl.replace(/\/+$/, '')}/`);
+        }
+
+        const productTitle = String(product.title || product.name || 'Mithila Chitrakala Store').trim();
+        const productDescription = String(product.description || `Discover ${productTitle} at Mithila Chitrakala Store.`).trim();
+        const shareImage = buildProductShareImageUrl(product);
+        const ogUrl = `${frontendBaseUrl.replace(/\/+$/, '')}/product/${encodeURIComponent(product.slug || productId)}`;
+        const pageTitle = `${productTitle} | Mithila Chitrakala Store`;
+        const safeDescription = productDescription || `Discover ${productTitle} at Mithila Chitrakala Store.`;
+
+        const html = `<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>${escapeHtmlAttribute(pageTitle)}</title>
+    <meta name="description" content="${escapeHtmlAttribute(safeDescription)}" />
+    <meta property="og:type" content="product" />
+    <meta property="og:title" content="${escapeHtmlAttribute(pageTitle)}" />
+    <meta property="og:description" content="${escapeHtmlAttribute(safeDescription)}" />
+    <meta property="og:image" content="${escapeHtmlAttribute(shareImage)}" />
+    <meta property="og:url" content="${escapeHtmlAttribute(ogUrl)}" />
+    <meta property="twitter:card" content="summary_large_image" />
+    <meta property="twitter:title" content="${escapeHtmlAttribute(pageTitle)}" />
+    <meta property="twitter:description" content="${escapeHtmlAttribute(safeDescription)}" />
+    <meta property="twitter:image" content="${escapeHtmlAttribute(shareImage)}" />
+    <script>
+      window.location.replace(${JSON.stringify(ogUrl)});
+    </script>
+  </head>
+  <body></body>
+</html>`;
+
+        res.set('Content-Type', 'text/html; charset=utf-8');
+        res.send(html);
+    } catch (error) {
+        console.error('Share proxy error:', error);
+        return res.redirect('/');
+    }
+});
+
 app.get('/product/:slug', async (req, res, next) => {
     try {
         const { data: product, error } = await supabase
