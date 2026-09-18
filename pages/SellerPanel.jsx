@@ -331,8 +331,8 @@ export const SellerPanel = ({ currentUser }) => {
             .map((row) => {
                 const [feature = '', ...rest] = row.split('|');
                 return {
-                    feature: feature.trim(),
-                    detail: rest.join('|').trim(),
+                    feature,
+                    detail: rest.join('|'),
                 };
             });
 
@@ -340,7 +340,7 @@ export const SellerPanel = ({ currentUser }) => {
     };
 
     const serializeFeatureRows = (rows = []) => rows
-        .map((row) => `${(row.feature || '').trim()}|${(row.detail || '').trim()}`)
+        .map((row) => `${row.feature || ''}|${row.detail || ''}`)
         .join('\n');
 
     const cleanKeyFeaturesForStorage = (value = '') => String(value || '')
