@@ -16,13 +16,15 @@ export const getArtAdvice = async (userPrompt) => {
         });
 
         if (!response.ok) {
-            throw new Error(`Server returned ${response.status}`);
+            const errorData = await response.json().catch(() => ({}));
+            throw new Error(errorData.error || `Server returned ${response.status}`);
         }
 
         const data = await response.json();
+        if (!data.text) throw new Error('Gemini returned an empty response.');
         return data.text;
     } catch (error) {
         console.error("Gemini AI Server Error:", error);
-        return "The spirits of Mithila are currently resting. Please try again later for art wisdom.";
+        throw error;
     }
 };

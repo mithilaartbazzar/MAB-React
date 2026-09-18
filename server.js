@@ -27,6 +27,8 @@ const geminiApiKey = process.env.VITE_GEMINI_API_KEY || process.env.GEMINI_API_K
 const cloudinaryApiKey = process.env.CLOUDINARY_API_KEY;
 const cloudinaryApiSecret = process.env.CLOUDINARY_API_SECRET;
 const cloudinaryCloudName = process.env.CLOUDINARY_CLOUD_NAME || process.env.VITE_CLOUDINARY_CLOUD_NAME;
+const geminiModel = process.env.GEMINI_MODEL || 'gemini-3.8-flash';
+const fallbackGeminiModel = 'gemini-3-flash-preview';
 
 if (!supabaseUrl || !supabaseKey) {
     console.error("Missing Supabase credentials in .env");
@@ -109,21 +111,34 @@ const stripStoreApprovalFields = (record = {}) => {
 // --- Gemini API Route ---
 app.post('/api/gemini', async (req, res) => {
     try {
-        const { userPrompt } = req.body;
-        const result = await genAI.models.generateContent({
-            model: "gemini-3-flash-preview",
-            contents: userPrompt,
+        const { userPrompt } = req.body || {};
+        if (!String(userPrompt || '').trim()) {
+            return res.status(400).json({ error: 'A question is required.' });
+        }
+
+        const request = {
+            contents: String(userPrompt).trim(),
             config: {
-                systemInstruction: `You are an expert art consultant specializing in Mithila (Maithili) art, 
-                also known as Madhubani art. You are deeply knowledgeable about its history, 
+                systemInstruction: `You are an expert art consultant specializing in Mithila (Maithili) art,
+                also known as Madhubani art. You are deeply knowledgeable about its history,
                 symbolism, traditional techniques, and the cultural heritage of the Mithila region.
                 Keep your responses concise but impactful.`
             }
-        });
+        };
+
+        let result;
+        try {
+            result = await genAI.models.generateContent({ model: geminiModel, ...request });
+        } catch (error) {
+            const modelWasRejected = /model|not found|unsupported|invalid/i.test(error.message || '');
+            if (!modelWasRejected || geminiModel === fallbackGeminiModel) throw error;
+            console.warn(`Gemini model "${geminiModel}" was rejected; using ${fallbackGeminiModel}.`);
+            result = await genAI.models.generateContent({ model: fallbackGeminiModel, ...request });
+        }
         res.json({ text: result.text });
     } catch (error) {
-        console.error("Gemini Error:", error);
-        res.status(500).json({ error: error.message });
+        console.error('Gemini Error:', error);
+        res.status(500).json({ error: 'Gemini could not answer right now. Please try again.' });
     }
 });
 
