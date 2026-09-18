@@ -792,7 +792,7 @@ app.get('/share/product/:id', async (req, res) => {
 
         const productTitle = String(product.title || product.name || 'Mithila Chitrakala Store').trim();
         const productDescription = String(product.description || `Discover ${productTitle} at Mithila Chitrakala Store.`).trim();
-        const shareImage = buildProductShareImageUrl(product);
+        const shareImage = defaultShareImage;
         const ogUrl = `${frontendBaseUrl.replace(/\/+$/, '')}/product/${encodeURIComponent(product.slug || productId)}`;
         const pageTitle = `${productTitle} | Mithila Chitrakala Store`;
         const safeDescription = productDescription || `Discover ${productTitle} at Mithila Chitrakala Store.`;
@@ -858,7 +858,7 @@ app.get('/product/:slug', async (req, res, next) => {
         Object.entries(metadata).forEach(([source, replacement]) => {
             html = html.replace(source, replacement);
         });
-        html = html.replace('</head>', `${shareImageMetadata(buildProductShareImageUrl(product))}\n</head>`);
+        html = html.replace('</head>', `${shareImageMetadata(defaultShareImage)}\n</head>`);
         html = html.replace('</head>', `<link rel="canonical" href="${escapeHtmlAttribute(pageUrl)}">\n</head>`);
         res.send(html);
     } catch (error) {
