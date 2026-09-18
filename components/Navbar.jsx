@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import {
     ShoppingCart,
@@ -8,40 +8,69 @@ import {
     Store,
     Heart,
     Search,
+    ChevronDown,
 } from 'lucide-react';
-
-
 
 const NAV_LINKS = [
     { to: '/', label: 'Home', match: (path) => path === '/' },
-    { to: '/products', label: 'Shop', match: (path) => path.startsWith('/products') || path.startsWith('/product/') },
+    {
+        to: '/products',
+        label: 'Shop',
+        match: (path) => path.startsWith('/products') || path.startsWith('/product/'),
+        hasDropdown: true,
+        items: [
+            { label: 'All Works', to: '/products' },
+            { label: 'Paintings', to: '/products?cat=paintings' },
+            { label: 'Home Decor', to: '/products?cat=home-decor' },
+            { label: 'Textiles', to: '/products?cat=textile-art' },
+            { label: 'Crafts', to: '/products?cat=crafts' },
+        ],
+    },
     { to: '/journal', label: 'Journal', match: (path) => path.startsWith('/journal') },
-    { to: '/advice', label: 'AI Art Consultant', match: (path) => path.startsWith('/advice') },
+    { to: '/advice', label: 'Art Consultants', match: (path) => path.startsWith('/advice') },
 ];
 
-const DesktopNavLink = ({ to, active, children }) => (
-    <Link
-        to={to}
-        className={`relative px-3 py-2 text-[13px] font-medium tracking-wide transition-colors ${
-            active ? 'text-[#7C2020]' : 'text-[#5B5449] hover:text-[#241F1A]'
+const DesktopNavLink = ({ to, active, children, hasDropdown = false, onClick }) => (
+    <button
+        type="button"
+        onClick={onClick || (() => null)}
+        className={`group relative inline-flex items-center gap-1.5 px-2.5 py-2 text-[13px] font-medium tracking-[0.02em] transition-colors sm:text-[12px] ${
+            active ? 'text-[#F3D9A8]' : 'text-[#F5EFE7]/90 hover:text-[#FFF9F2]'
         }`}
     >
-        {children}
+        <span>{children}</span>
+        {hasDropdown && <ChevronDown size={14} className="opacity-80" />}
         {active && (
-            <span className="absolute bottom-0 left-3 right-3 h-[2px] rounded-full bg-[#7C2020]" aria-hidden />
+            <span className="absolute -bottom-1 left-2 right-2 h-[2px] rounded-full bg-[#E0B96E]" aria-hidden />
         )}
-    </Link>
+    </button>
 );
 
 export const Navbar = ({ cartCount, currentUser, setCurrentUser }) => {
     const [searchOpen, setSearchOpen] = useState(false);
     const [query, setQuery] = useState('');
+    const [openDropdown, setOpenDropdown] = useState(null);
+    const searchWrapRef = useRef(null);
     const location = useLocation();
     const navigate = useNavigate();
 
     useEffect(() => {
         setSearchOpen(false);
+        setOpenDropdown(null);
     }, [location.pathname]);
+
+    useEffect(() => {
+        if (!searchOpen) return undefined;
+
+        const handlePointerDown = (event) => {
+            if (searchWrapRef.current && !searchWrapRef.current.contains(event.target)) {
+                setSearchOpen(false);
+            }
+        };
+
+        document.addEventListener('mousedown', handlePointerDown);
+        return () => document.removeEventListener('mousedown', handlePointerDown);
+    }, [searchOpen]);
 
     const logout = () => {
         setCurrentUser(null);
@@ -67,49 +96,66 @@ export const Navbar = ({ cartCount, currentUser, setCurrentUser }) => {
     const sellerLink = currentUser && (currentUser.role === 'seller' || currentUser.role === 'admin');
 
     return (
-        <header className="fixed inset-x-0 top-0 z-[100] print:hidden">
-
-            <div className="border-b border-[#E7E0D2] bg-[#FAF7F2]/95 backdrop-blur-md shadow-[0_4px_24px_-8px_rgba(36,31,26,0.08)]">
-                <div className="mx-auto flex max-w-[1280px] items-center justify-between gap-2 px-4 py-3 sm:px-6 lg:gap-4 lg:py-3.5">
-                    <Link to="/" className="hidden items-center gap-2.5 group shrink-0 lg:flex">
-                        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#7C2020] shadow-md shadow-[#7C2020]/25 transition-transform group-hover:scale-[1.03] lg:h-10 lg:w-10">
+        <header className="fixed inset-x-0 top-0 z-[100] print:hidden" ref={searchWrapRef}>
+            <div className="mx-auto mt-2 w-[calc(100%-0.75rem)] max-w-[1280px] rounded-[20px] border border-white/15 bg-[#1A1A1A]/40 shadow-[0_18px_45px_rgba(0,0,0,0.48)] backdrop-blur-xl sm:mt-3 sm:w-[calc(100%-1.5rem)] sm:rounded-[26px]">
+                <div className="flex items-center justify-between gap-2 px-3 py-2.5 sm:gap-2 sm:px-5 sm:py-3 lg:px-4">
+                    <Link to="/" className="flex items-center gap-2.5 shrink-0 sm:gap-3">
+                        <div className="flex h-8 w-8 items-center justify-center rounded-full border border-[#E7C77A] bg-[#F2D98C] shadow-[0_0_0_2px_rgba(242,217,140,0.2)] transition-transform duration-200 hover:scale-[1.02] sm:h-9 sm:w-9">
                             <img
-                                className="h-8 w-8 rounded-full object-cover"
+                                className="h-6 w-6 rounded-full object-cover sm:h-8 sm:w-8"
                                 src="https://res.cloudinary.com/djmbuuz28/image/upload/v1761108817/logo.png"
                                 alt="Mithila Chitrakala Store"
                             />
                         </div>
-                        <div className="flex flex-col leading-tight">
-                            <span className="font-playfair text-lg font-bold text-[#241F1A] sm:text-xl">Mithila Chitrakala</span>
-                            <span className="text-[9px] font-semibold uppercase tracking-[0.22em] text-[#8B8378]">Store</span>
-                        </div>
-                    </Link>
-
-                    <Link to="/" className="flex items-center justify-center gap-2 group lg:hidden">
-                        <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[#7C2020] shadow-md shadow-[#7C2020]/20">
-                            <img
-                                className="h-7 w-7 rounded-full object-cover"
-                                src="https://res.cloudinary.com/djmbuuz28/image/upload/v1761108817/logo.png"
-                                alt=""
-                            />
-                        </div>
                         <div className="flex flex-col leading-none">
-                            <span className="font-playfair text-[15px] font-bold text-[#241F1A]">Mithila Chitrakala</span>
-                            <span className="text-[8px] font-semibold uppercase tracking-[0.2em] text-[#8B8378]">Store</span>
+                            <span className="font-playfair text-[14px] font-bold text-[#F7F1E7] sm:text-[18px]">Mithila Chitrakala</span>
+                            <span className="mt-0.5 hidden text-[7px] font-semibold uppercase tracking-[0.32em] text-[#D5B57B] sm:block sm:text-[8px]">Store</span>
                         </div>
                     </Link>
 
                     <nav className="hidden flex-1 items-center justify-center gap-1 lg:flex" aria-label="Main">
-                        {NAV_LINKS.map((link) => (
-                            <DesktopNavLink key={link.label} to={link.to} active={isActive(link)}>
-                                {link.label}
-                            </DesktopNavLink>
-                        ))}
+                        {NAV_LINKS.map((link) => {
+                            const isDropdownOpen = openDropdown === link.label;
+
+                            return (
+                                <div key={link.label} className="relative">
+                                    <DesktopNavLink
+                                        to={link.to}
+                                        active={isActive(link)}
+                                        hasDropdown={link.hasDropdown}
+                                        onClick={() => {
+                                            if (link.hasDropdown) {
+                                                setOpenDropdown((prev) => (prev === link.label ? null : link.label));
+                                            } else {
+                                                navigate(link.to);
+                                            }
+                                        }}
+                                    >
+                                        {link.label}
+                                    </DesktopNavLink>
+
+                                    {link.hasDropdown && isDropdownOpen && (
+                                        <div className="absolute left-1/2 top-full mt-3 w-52 -translate-x-1/2 rounded-2xl border border-[#E7C77A]/20 bg-[#1E1A17]/95 p-2 shadow-[0_18px_35px_rgba(0,0,0,0.28)] backdrop-blur-xl">
+                                            {link.items.map((item) => (
+                                                <Link
+                                                    key={item.label}
+                                                    to={item.to}
+                                                    onClick={() => setOpenDropdown(null)}
+                                                    className="block rounded-xl px-3 py-2 text-sm text-[#F5EFE7]/85 transition-colors hover:bg-white/5 hover:text-[#F3D9A8]"
+                                                >
+                                                    {item.label}
+                                                </Link>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+                            );
+                        })}
                         {sellerLink && (
                             <Link
                                 to="/seller"
-                                className={`inline-flex items-center gap-1.5 px-3 py-2 text-[13px] font-medium ${
-                                    location.pathname === '/seller' ? 'text-[#7C2020]' : 'text-[#5B5449] hover:text-[#241F1A]'
+                                className={`inline-flex items-center gap-1.5 px-2.5 py-2 text-[13px] font-medium tracking-[0.02em] transition-colors ${
+                                    location.pathname === '/seller' ? 'text-[#F3D9A8]' : 'text-[#F5EFE7]/90 hover:text-[#FFF9F2]'
                                 }`}
                             >
                                 {currentUser.role === 'admin' ? <Shield size={14} /> : <Store size={14} />}
@@ -118,44 +164,44 @@ export const Navbar = ({ cartCount, currentUser, setCurrentUser }) => {
                         )}
                     </nav>
 
-                    <div className="flex items-center justify-end gap-0.5 sm:gap-2 lg:flex-1">
+                    <div className="flex items-center justify-end gap-1.5 sm:gap-2">
                         <button
                             type="button"
                             onClick={() => setSearchOpen((v) => !v)}
-                            className="inline-flex h-10 w-10 items-center justify-center rounded-full text-[#5B5449] transition-colors hover:bg-[#E7E0D2]/60 hover:text-[#241F1A]"
+                            className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-white/10 bg-white/5 text-[#F5EFE7] transition-colors hover:bg-white/10 sm:h-8 sm:w-8"
                             aria-label="Search"
                         >
-                            <Search size={20} />
+                            <Search size={16} className="sm:h-[18px] sm:w-[18px]" />
                         </button>
 
                         <Link
                             to={currentUser ? '/profile' : '/login'}
-                            className="hidden h-10 w-10 items-center justify-center rounded-full text-[#5B5449] transition-colors hover:bg-[#E7E0D2]/60 hover:text-[#241F1A] md:inline-flex"
+                            className="hidden h-10 w-10 items-center justify-center rounded-full border border-white/10 bg-white/5 text-[#F5EFE7] transition-colors hover:bg-white/10 md:inline-flex sm:h-8 sm:w-8"
                             title={currentUser ? 'Account' : 'Sign in'}
                         >
-                            <UserIcon size={20} />
+                            <UserIcon size={18} />
                         </Link>
 
                         <Link
                             to="/wishlist"
-                            className={`hidden h-10 w-10 items-center justify-center rounded-full transition-colors md:inline-flex ${
+                            className={`hidden h-10 w-10 items-center justify-center rounded-full border border-white/10 transition-colors sm:h-8 sm:w-8 md:inline-flex ${
                                 location.pathname === '/wishlist'
-                                    ? 'bg-[#7C2020]/10 text-[#7C2020]'
-                                    : 'text-[#5B5449] hover:bg-[#E7E0D2]/60 hover:text-[#241F1A]'
+                                    ? 'bg-[#F3D9A8]/15 text-[#F3D9A8]'
+                                    : 'bg-white/5 text-[#F5EFE7] hover:bg-white/10'
                             }`}
                             title="Wishlist"
                         >
-                            <Heart size={20} fill={location.pathname === '/wishlist' ? 'currentColor' : 'none'} />
+                            <Heart size={18} fill={location.pathname === '/wishlist' ? 'currentColor' : 'none'} />
                         </Link>
 
                         <Link
                             to="/cart"
-                            className="relative inline-flex h-10 w-10 items-center justify-center rounded-full bg-[#7C2020] text-white shadow-md transition-transform hover:scale-[1.03]"
+                            className="relative inline-flex h-8 w-8 items-center justify-center rounded-full border border-[#E7C77A]/40 bg-[#B14A2E] text-white shadow-[0_10px_20px_rgba(177,74,46,0.35)] transition-transform hover:scale-[1.03] sm:h-8 sm:w-8"
                             title="Cart"
                         >
-                            <ShoppingCart size={20} />
+                            <ShoppingCart size={16} className="sm:h-[18px] sm:w-[18px]" />
                             {cartCount > 0 && (
-                                <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-[#241F1A] px-1 text-[9px] font-bold text-white ring-2 ring-[#FAF7F2]">
+                                <span className="absolute -right-1.5 -top-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-[#F7F1E7] px-1 text-[9px] font-bold text-[#1E1A17] ring-2 ring-[#1E1A17]">
                                     {cartCount}
                                 </span>
                             )}
@@ -165,32 +211,36 @@ export const Navbar = ({ cartCount, currentUser, setCurrentUser }) => {
                             <button
                                 type="button"
                                 onClick={logout}
-                                className="hidden h-10 w-10 items-center justify-center rounded-full text-[#8B8378] hover:text-[#7C2020] lg:inline-flex"
+                                className="hidden h-10 w-10 items-center justify-center rounded-full border border-white/10 bg-white/5 text-[#E7D9C2] hover:text-[#F3D9A8] lg:inline-flex sm:h-8 sm:w-8"
                                 title="Sign out"
                             >
-                                <LogOut size={18} />
+                                <LogOut size={16} />
                             </button>
                         )}
                     </div>
                 </div>
 
                 {searchOpen && (
-                    <div className="border-t border-[#E7E0D2] bg-[#FCF9F2] px-4 py-3 sm:px-6">
-                        <form onSubmit={runSearch} className="mx-auto flex max-w-xl gap-2">
+                    <div className="overflow-hidden border-t border-white/10  px-3 py-3 transition-all duration-300 ease-out sm:px-6">
+                        <form
+                            onSubmit={runSearch}
+                            className="mx-auto flex max-w-xl gap-2"
+                            style={{ animation: 'searchSlideIn 0.25s ease-out' }}
+                        >
                             <div className="relative flex-1">
-                                <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-[#8B8378]" size={18} />
+                                <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-[#D5B57B]" size={18} />
                                 <input
                                     type="search"
                                     value={query}
                                     onChange={(e) => setQuery(e.target.value)}
                                     placeholder="Search art, artists, motifs..."
-                                    className="w-full rounded-full border border-[#E7E0D2] bg-white py-2.5 pl-11 pr-4 text-sm text-[#241F1A] outline-none focus:border-[#7C2020]/40 focus:ring-2 focus:ring-[#7C2020]/10"
+                                    className="w-full rounded-full border border-[#E7C77A]/90 bg-[#F8F5F1]/80 py-2.5 pl-11 pr-4 text-sm text-[#241F1A] shadow-[inset_0_0_0_1px_rgba(231,199,122,0.12)] outline-none transition-all duration-200 focus:border-[#E0B96E] focus:ring-2 focus:ring-[#E0B96E]/20"
                                     autoFocus
                                 />
                             </div>
                             <button
                                 type="submit"
-                                className="rounded-full bg-[#7C2020] px-5 text-sm font-semibold text-white hover:bg-[#5E1717]"
+                                className="rounded-full bg-[#B14A2E] px-4 text-sm font-semibold text-white shadow-[0_10px_25px_rgba(177,74,46,0.35)] transition-all duration-200 hover:-translate-y-0.5 hover:bg-[#8E3824] sm:px-5"
                             >
                                 Search
                             </button>
@@ -198,7 +248,18 @@ export const Navbar = ({ cartCount, currentUser, setCurrentUser }) => {
                     </div>
                 )}
             </div>
-
+            <style>{`
+                @keyframes searchSlideIn {
+                  from {
+                    opacity: 0;
+                    transform: translateY(-6px) scale(0.98);
+                  }
+                  to {
+                    opacity: 1;
+                    transform: translateY(0) scale(1);
+                  }
+                }
+            `}</style>
         </header>
     );
 };
