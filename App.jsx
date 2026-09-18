@@ -23,6 +23,12 @@ const ScrollToTop = () => {
     return null; 
 };
 
+const RouteFooter = () => {
+    const { pathname } = useLocation();
+
+    return pathname === '/login' ? null : <Footer />;
+};
+
 // Components
 import { Navbar } from './components/Navbar';
 import { BottomNav } from './components/BottomNav';
@@ -245,7 +251,7 @@ export default function App() {
                     </Routes>
                 </main>
                 <BottomNav currentUser={currentUser} />
-                <Footer />
+                <RouteFooter />
             </div>
         </Router>
     );
