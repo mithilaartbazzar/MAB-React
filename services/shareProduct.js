@@ -4,7 +4,7 @@ export const buildProductShareUrl = (productId, baseUrl = typeof window !== 'und
     }
 
     const origin = (baseUrl || (typeof window !== 'undefined' ? window.location.origin : '') || '').replace(/\/+$/, '');
-    return `${origin}/product/${encodeURIComponent(productId)}`;
+    return `${origin}/product/${encodeURIComponent(productId)}?share=2`;
 };
 
 export const handleShareProduct = async ({

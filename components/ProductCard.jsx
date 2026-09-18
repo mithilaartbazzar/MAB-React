@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { Star, ArrowRight, ShoppingCart, Heart, Eye, Share2, Check } from 'lucide-react';
 import { Badge } from './Badge';
 import { QuickViewModal } from './QuickViewModal';
+import { buildProductShareUrl } from '../services/shareProduct';
 
 export const ProductCard = ({ product, addToCart, isWishlisted, toggleWishlist }) => {
     const [isQuickViewOpen, setIsQuickViewOpen] = useState(false);
@@ -50,7 +51,7 @@ export const ProductCard = ({ product, addToCart, isWishlisted, toggleWishlist }
         const shareData = {
             title: `MCS - ${product.name}`,
             text: product.description,
-            url: `${window.location.origin}/product/${product.slug}`
+            url: buildProductShareUrl(product.slug, window.location.origin)
         };
 
         if (navigator.share) {
