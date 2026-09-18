@@ -4,7 +4,7 @@ export const buildProductShareUrl = (productId, baseUrl = typeof window !== 'und
     }
 
     const origin = (baseUrl || (typeof window !== 'undefined' ? window.location.origin : '') || '').replace(/\/+$/, '');
-    return `${origin}/share/product/${encodeURIComponent(productId)}`;
+    return `${origin}/product/${encodeURIComponent(productId)}`;
 };
 
 export const handleShareProduct = async ({
@@ -13,13 +13,13 @@ export const handleShareProduct = async ({
     onCopy,
     onError,
 } = {}) => {
-    if (!product?.id) {
+    if (!product?.name) {
         const message = 'A product id is required before sharing.';
         onError?.(message);
         throw new Error(message);
     }
 
-    const shareUrl = buildProductShareUrl(product.id, baseUrl);
+    const shareUrl = buildProductShareUrl((product.name).toLowerCase().replaceAll(" ", "-"), baseUrl);
     const shareData = {
         title: product.name || 'Mithila Chitrakala Store',
         text: product.description || `View ${product.name || 'this product'} at Mithila Chitrakala Store.`,
