@@ -160,6 +160,29 @@ export const LoginPage = ({ onLogin }) => {
 
     const isLogin = authMode === 'login';
     const isRegister = authMode === 'register';
+    const welcomeCopy = isLogin
+        ? {
+            eyebrow: 'Your heritage awaits',
+            title: <>Welcome back<br /><em>to Mithila</em></>,
+            intro: <>Sign in to continue discovering<br className="hidden sm:block" /> authentic art, handmade with love<br className="hidden sm:block" /> and rooted in tradition.</>,
+            heading: 'Welcome back to Mithila',
+            subheading: 'Sign in to continue your journey through authentic Mithila art.'
+        }
+        : isRegister
+            ? {
+                eyebrow: 'Begin your story',
+                title: <>Make room<br /><em>for Mithila</em></>,
+                intro: <>Create your account and bring<br className="hidden sm:block" /> the color, craft, and spirit<br className="hidden sm:block" /> of Mithila into your world.</>,
+                heading: 'Start your Mithila journey',
+                subheading: 'Create an account and become part of our heritage community.'
+            }
+            : {
+                eyebrow: 'One step from home',
+                title: <>Complete your<br /><em>heritage profile</em></>,
+                intro: <>Tell us a little more about<br className="hidden sm:block" /> yourself so your Mithila journey<br className="hidden sm:block" /> can begin.</>,
+                heading: 'Complete your profile',
+                subheading: 'A few more details and your heritage profile is ready.'
+            };
 
     return (
         <div className="login-page">
@@ -167,9 +190,9 @@ export const LoginPage = ({ onLogin }) => {
                 <section className="login-page__art-panel" aria-label="Mithila Chitrakala welcome">
                     <div className="login-page__art-wash" />
                     <div className="login-page__art-copy">
-                        <p className="login-page__eyebrow">Tradition <span /> Art <span /> Culture</p>
-                        <h1>Welcome Back<br /><em>to Mithila</em></h1>
-                        <p className="login-page__intro">Sign in to continue your journey<br className="hidden sm:block" /> with authentic Mithila art, handcrafted<br className="hidden sm:block" /> with love and tradition.</p>
+                        <p className="login-page__eyebrow">{welcomeCopy.eyebrow} <span /> Mithila <span /> Art</p>
+                        <h1>{welcomeCopy.title}</h1>
+                        <p className="login-page__intro">{welcomeCopy.intro}</p>
                         <div className="login-page__ornament"><span /> <span>✦</span> <span /></div>
                     </div>
                     <div className="login-page__art-credit">A living tradition, made by hand</div>
@@ -195,8 +218,8 @@ export const LoginPage = ({ onLogin }) => {
                     )}
 
                     <div className="login-page__heading">
-                        <h2>{authMode === 'login' ? 'Welcome back' : authMode === 'register' ? 'Create your account' : 'Complete your profile'}</h2>
-                        <p>{authMode === 'login' ? 'Sign in to continue your journey.' : authMode === 'register' ? 'Join us and be part of the Mithila art community.' : 'A few more details and your heritage profile is ready.'}</p>
+                        <h2>{welcomeCopy.heading}</h2>
+                        <p>{welcomeCopy.subheading}</p>
                     </div>
 
                     {error && <p className="login-page__error" role="alert">{error}</p>}
