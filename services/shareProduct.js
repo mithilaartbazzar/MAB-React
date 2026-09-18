@@ -19,7 +19,7 @@ export const handleShareProduct = async ({
         throw new Error(message);
     }
 
-    const shareUrl = buildProductShareUrl((product.name).toLowerCase().replaceAll(" ", "-"), baseUrl);
+    const shareUrl = buildProductShareUrl(product.slug, baseUrl);
     const shareData = {
         title: product.name || 'Mithila Chitrakala Store',
         text: product.description || `View ${product.name || 'this product'} at Mithila Chitrakala Store.`,

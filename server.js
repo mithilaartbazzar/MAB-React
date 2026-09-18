@@ -749,7 +749,9 @@ const buildProductShareImageUrl = (product = {}) => {
             }
         }
 
-        return candidate;
+        if (/^https?:\/\//i.test(candidate)) return candidate;
+
+        return `https://res.cloudinary.com/${configuredCloudName}/image/upload/w_1200,h_630,c_fill,f_jpg,q_auto/${candidate}`;
     };
 
     for (const imageCandidate of candidateImages) {
@@ -802,10 +804,10 @@ app.get('/share/product/:id', async (req, res) => {
     <meta property="og:description" content="${escapeHtmlAttribute(safeDescription)}" />
     <meta property="og:image" content="${escapeHtmlAttribute(shareImage)}" />
     <meta property="og:url" content="${escapeHtmlAttribute(ogUrl)}" />
-    <meta property="twitter:card" content="summary_large_image" />
-    <meta property="twitter:title" content="${escapeHtmlAttribute(pageTitle)}" />
-    <meta property="twitter:description" content="${escapeHtmlAttribute(safeDescription)}" />
-    <meta property="twitter:image" content="${escapeHtmlAttribute(shareImage)}" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="${escapeHtmlAttribute(pageTitle)}" />
+    <meta name="twitter:description" content="${escapeHtmlAttribute(safeDescription)}" />
+    <meta name="twitter:image" content="${escapeHtmlAttribute(shareImage)}" />
     <script>
       window.location.replace(${JSON.stringify(ogUrl)});
     </script>
@@ -841,10 +843,10 @@ app.get('/product/:slug', async (req, res, next) => {
             '<meta property="og:title" content="Mithila Chitrakala Store - Premium Traditional Art">': `<meta property="og:title" content="${escapeHtmlAttribute(title)}">`,
             '<meta property="og:description" content="Explore authentic Mithila artwork, handmade crafts, textiles, and cultural treasures from local artists.">': `<meta property="og:description" content="${escapeHtmlAttribute(description)}">`,
             '<meta property="og:url" content="/">': `<meta property="og:url" content="${escapeHtmlAttribute(pageUrl)}">`,
-            '<meta property="og:image" content="https://res.cloudinary.com/djmbuuz28/image/upload/v1761108817/logo.png">': `<meta property="og:image" content="${escapeHtmlAttribute(product.image)}">`,
+            '<meta property="og:image" content="https://res.cloudinary.com/djmbuuz28/image/upload/v1761108817/logo.png">': `<meta property="og:image" content="${escapeHtmlAttribute(buildProductShareImageUrl(product))}">`,
             '<meta name="twitter:title" content="Mithila Chitrakala Store - Premium Traditional Art">': `<meta name="twitter:title" content="${escapeHtmlAttribute(title)}">`,
             '<meta name="twitter:description" content="Explore authentic Mithila artwork, handmade crafts, textiles, and cultural treasures from local artists.">': `<meta name="twitter:description" content="${escapeHtmlAttribute(description)}">`,
-            '<meta name="twitter:image" content="https://res.cloudinary.com/djmbuuz28/image/upload/v1761108817/logo.png">': `<meta name="twitter:image" content="${escapeHtmlAttribute(product.image)}">`,
+            '<meta name="twitter:image" content="https://res.cloudinary.com/djmbuuz28/image/upload/v1761108817/logo.png">': `<meta name="twitter:image" content="${escapeHtmlAttribute(buildProductShareImageUrl(product))}">`,
         };
 
         Object.entries(metadata).forEach(([source, replacement]) => {
