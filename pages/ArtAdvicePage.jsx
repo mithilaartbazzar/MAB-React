@@ -83,7 +83,7 @@ export const ArtAdvicePage = () => {
                                             Digital<br />Guardian
                                         </div>
                                         <div className="mt-2 text-[10px] font-black uppercase tracking-[0.22em] text-[#7C2020]">
-                                            Powered by Gemini
+                                            Mithila Oracle by Taigra Nexus Labs
                                         </div>
                                     </div>
                                 </div>
