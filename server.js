@@ -710,37 +710,56 @@ const defaultShareImage = 'https://res.cloudinary.com/djmbuuz28/image/upload/v17
 
 const buildProductShareImageUrl = (product = {}) => {
     const configuredCloudName = cloudinaryCloudName || 'djmbuuz28';
-    const rawPublicId = String(product.product_image_id || product.image_public_id || product.cloudinary_public_id || '').trim();
 
-    if (rawPublicId) {
-        const normalizedPublicId = rawPublicId
+    const candidateImages = [
+        ...(Array.isArray(product.images) ? product.images : []),
+        product.image,
+        product.product_image_id,
+        product.image_public_id,
+        product.cloudinary_public_id,
+    ].filter(Boolean);
+
+    const normalizeCloudinaryImage = (value) => {
+        const candidate = String(value || '').trim();
+        if (!candidate) return null;
+
+        const directPublicId = candidate
             .replace(/^https?:\/\/[^/]+\/[^/]+\/image\/upload\/(?:v\d+\/)?/, '')
             .replace(/^https?:\/\/[^/]+\//, '')
             .replace(/\.[^.]+$/, '')
             .replace(/^\//, '');
 
-        if (normalizedPublicId) {
-            return `https://res.cloudinary.com/${configuredCloudName}/image/upload/w_1200,h_630,c_fill,f_jpg,q_auto/${normalizedPublicId}`;
+        if (directPublicId && directPublicId !== candidate) {
+            return `https://res.cloudinary.com/${configuredCloudName}/image/upload/w_1200,h_630,c_fill,f_jpg,q_auto/${directPublicId}`;
         }
-    }
 
-    if (typeof product.image === 'string' && product.image.includes('/image/upload/')) {
-        try {
-            const parsedUrl = new URL(product.image);
-            const pathParts = parsedUrl.pathname.split('/').filter(Boolean);
-            const uploadIndex = pathParts.indexOf('upload');
-            if (uploadIndex !== -1) {
-                const publicId = pathParts.slice(uploadIndex + 1).join('/').replace(/^v\d+\//, '').replace(/\.[^.]+$/, '');
-                if (publicId) {
-                    return `https://res.cloudinary.com/${configuredCloudName}/image/upload/w_1200,h_630,c_fill,f_jpg,q_auto/${publicId}`;
+        if (candidate.includes('/image/upload/')) {
+            try {
+                const parsedUrl = new URL(candidate);
+                const pathParts = parsedUrl.pathname.split('/').filter(Boolean);
+                const uploadIndex = pathParts.indexOf('upload');
+                if (uploadIndex !== -1) {
+                    const publicId = pathParts.slice(uploadIndex + 1).join('/').replace(/^v\d+\//, '').replace(/\.[^.]+$/, '');
+                    if (publicId) {
+                        return `https://res.cloudinary.com/${configuredCloudName}/image/upload/w_1200,h_630,c_fill,f_jpg,q_auto/${publicId}`;
+                    }
                 }
+            } catch (error) {
+                console.warn('Unable to normalize Cloudinary product image URL for share preview:', error.message);
             }
-        } catch (error) {
-            console.warn('Unable to normalize Cloudinary product image URL for share preview:', error.message);
+        }
+
+        return candidate;
+    };
+
+    for (const imageCandidate of candidateImages) {
+        const normalized = normalizeCloudinaryImage(imageCandidate);
+        if (normalized) {
+            return normalized;
         }
     }
 
-    return product.image || defaultShareImage;
+    return defaultShareImage;
 };
 
 app.get('/share/product/:id', async (req, res) => {
