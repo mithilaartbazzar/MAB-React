@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { dbService } from '../services/dbservices';
 import { supabase } from '../services/supabaseClient';
-import { SectionHeading } from '../components/SectionHeading';
 import { Sparkles, Mail, ArrowRight, Lock, User as UserIcon, Store, Phone, MapPin } from 'lucide-react';
 
 export const LoginPage = ({ onLogin }) => {
@@ -159,18 +158,50 @@ export const LoginPage = ({ onLogin }) => {
         }
     };
 
+    const isLogin = authMode === 'login';
+    const isRegister = authMode === 'register';
+
     return (
-        <div className="pt-40 pb-32 px-6 max-w-xl mx-auto min-h-screen">
-            <div className="bg-[#f8f6f2] rounded-[2rem] md:rounded-[4rem] p-10 md:p-10 border border-[#e5e1d8] shadow-2xl mithila-card-shadow">
-                <SectionHeading
-                    subtitle={authMode === 'login' ? "Welcome Back" : authMode === 'register' ? "Join the Circle" : "Complete Profile"}
-                    title={authMode === 'login' ? "Artist Portal" : authMode === 'register' ? "New Heritage" : "Almost Done"}
-                    centered
-                />
+        <div className="login-page">
+            <div className="login-page__shell">
+                <section className="login-page__art-panel" aria-label="Mithila Chitrakala welcome">
+                    <div className="login-page__art-wash" />
+                    <div className="login-page__art-copy">
+                        <p className="login-page__eyebrow">Tradition <span /> Art <span /> Culture</p>
+                        <h1>Welcome Back<br /><em>to Mithila</em></h1>
+                        <p className="login-page__intro">Sign in to continue your journey<br className="hidden sm:block" /> with authentic Mithila art, handcrafted<br className="hidden sm:block" /> with love and tradition.</p>
+                        <div className="login-page__ornament"><span /> <span>✦</span> <span /></div>
+                    </div>
+                    <div className="login-page__art-credit">A living tradition, made by hand</div>
+                    <div className="login-page__benefits" aria-label="Store values">
+                        <span><b>♡</b> Support Local Artisans</span>
+                        <span><b>♧</b> Preserve Mithila Heritage</span>
+                        <span><b>♧</b> Authentic Handcrafted Art</span>
+                    </div>
+                </section>
 
-                {error && <p className="text-red-700 text-center mb-6 font-bold text-xs">{error}</p>}
+                <section className="login-page__form-panel">
+                    <div className="login-page__brand-lockup">
+                        <img src="https://res.cloudinary.com/djmbuuz28/image/upload/v1761108817/logo.png" alt="" />
+                        <strong>Mithila Chitrakala</strong>
+                        <small>Store</small>
+                    </div>
 
-                <form onSubmit={handleSubmit} className="space-y-6">
+                    {authMode !== 'completeProfile' && (
+                        <div className="login-page__tabs" role="tablist" aria-label="Account access">
+                            <button type="button" className={isLogin ? 'is-active' : ''} onClick={() => { setAuthMode('login'); setError(''); }}>Sign In</button>
+                            <button type="button" className={isRegister ? 'is-active' : ''} onClick={() => { setAuthMode('register'); setError(''); }}>Create Account</button>
+                        </div>
+                    )}
+
+                    <div className="login-page__heading">
+                        <h2>{authMode === 'login' ? 'Welcome back' : authMode === 'register' ? 'Create your account' : 'Complete your profile'}</h2>
+                        <p>{authMode === 'login' ? 'Sign in to continue your journey.' : authMode === 'register' ? 'Join us and be part of the Mithila art community.' : 'A few more details and your heritage profile is ready.'}</p>
+                    </div>
+
+                    {error && <p className="login-page__error" role="alert">{error}</p>}
+
+                    <form onSubmit={handleSubmit} className="login-page__form space-y-6">
                     {authMode === 'completeProfile' && (
                         <div className="space-y-6">
                             <p className="text-center text-xs text-stone-500 mb-6">
@@ -360,6 +391,7 @@ export const LoginPage = ({ onLogin }) => {
                         </>
                     )}
                 </form>
+                </section>
             </div>
         </div>
     );
