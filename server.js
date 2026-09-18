@@ -707,6 +707,11 @@ const escapeHtmlAttribute = (value) => String(value || '')
     .replace(/>/g, '&gt;');
 
 const defaultShareImage = 'https://res.cloudinary.com/djmbuuz28/image/upload/v1761108817/logo.png';
+const shareImageMetadata = (imageUrl) => `
+    <meta property="og:image:secure_url" content="${escapeHtmlAttribute(imageUrl)}" />
+    <meta property="og:image:type" content="image/jpeg" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />`;
 
 const buildProductShareImageUrl = (product = {}) => {
     const configuredCloudName = cloudinaryCloudName || 'djmbuuz28';
@@ -803,6 +808,7 @@ app.get('/share/product/:id', async (req, res) => {
     <meta property="og:title" content="${escapeHtmlAttribute(pageTitle)}" />
     <meta property="og:description" content="${escapeHtmlAttribute(safeDescription)}" />
     <meta property="og:image" content="${escapeHtmlAttribute(shareImage)}" />
+    ${shareImageMetadata(shareImage)}
     <meta property="og:url" content="${escapeHtmlAttribute(ogUrl)}" />
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content="${escapeHtmlAttribute(pageTitle)}" />
@@ -852,6 +858,7 @@ app.get('/product/:slug', async (req, res, next) => {
         Object.entries(metadata).forEach(([source, replacement]) => {
             html = html.replace(source, replacement);
         });
+        html = html.replace('</head>', `${shareImageMetadata(buildProductShareImageUrl(product))}\n</head>`);
         html = html.replace('</head>', `<link rel="canonical" href="${escapeHtmlAttribute(pageUrl)}">\n</head>`);
         res.send(html);
     } catch (error) {
