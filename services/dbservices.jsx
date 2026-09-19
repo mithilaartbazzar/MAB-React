@@ -1,21 +1,30 @@
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ||'/api';
+const TRANSIENT_DB_STATUSES = new Set([502, 503, 504]);
+const DB_REQUEST_RETRIES = 3;
+
+const wait = (milliseconds) => new Promise((resolve) => setTimeout(resolve, milliseconds));
 
 const callDbService = async (action, payload = {}) => {
     try {
-        const response = await fetch(`${API_BASE_URL}/db`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({ action, payload })
-        });
+        for (let attempt = 0; attempt <= DB_REQUEST_RETRIES; attempt += 1) {
+            const response = await fetch(`${API_BASE_URL}/db`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ action, payload })
+            });
 
-        if (!response.ok) {
-             const errorData = await response.json().catch(() => ({}));
-             throw new Error(errorData.error || `Server returned ${response.status}`);
+            if (response.ok) return await response.json();
+
+            const errorData = await response.json().catch(() => ({}));
+            const isLastAttempt = attempt === DB_REQUEST_RETRIES;
+            if (!TRANSIENT_DB_STATUSES.has(response.status) || isLastAttempt) {
+                throw new Error(errorData.error || `Server returned ${response.status}`);
+            }
+
+            await wait(500 * (attempt + 1));
         }
-
-        return await response.json();
     } catch (error) {
         console.error(`DB Service Error [${action}]:`, error);
         throw error;
