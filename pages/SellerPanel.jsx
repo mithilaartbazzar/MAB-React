@@ -10,16 +10,6 @@ import { SectionHeading } from '../components/SectionHeading';
 import { Badge } from '../components/Badge';
 import { InvoiceView } from '../components/InvoiceView';
 
-const DEFAULT_PRODUCT_CATEGORIES = [
-    'Paintings',
-    'Wall Art',
-    'Textile Art',
-    'Accessories',
-    'Home Decor',
-    'Gift Items',
-    'Crafts',
-];
-
 const splitProductCategories = (value) => String(value || '')
     .split(',')
     .map((category) => category.trim())
@@ -178,15 +168,16 @@ export const SellerPanel = ({ currentUser }) => {
                 const commissionData = await dbService.getGlobalCommission();
                 setGlobalCommission(commissionData?.globalCommission ?? 15);
             } else {
-                const [p, o, w] = await Promise.all([
+                const [p, o, w, c] = await Promise.all([
                     dbService.getProducts(currentUser.id),
                     dbService.getOrders(currentUser.id),
-                    dbService.getWishlists(currentUser.id)
+                    dbService.getWishlists(currentUser.id),
+                    dbService.getProductCategories()
                 ]);
                 setProducts(p);
                 setOrders(o);
                 setWishlists(w);
-                setSavedCategories([]);
+                setSavedCategories((c || []).flatMap((category) => splitProductCategories(category.name)));
             }
             calculateSellerStats();
         } finally {
@@ -366,11 +357,7 @@ export const SellerPanel = ({ currentUser }) => {
         }));
     };
 
-    const productCategories = [...new Set([
-        ...DEFAULT_PRODUCT_CATEGORIES,
-        ...savedCategories,
-        ...products.flatMap((product) => splitProductCategories(product.category)),
-    ])]
+    const productCategories = [...new Set(savedCategories)]
         .sort((a, b) => a.localeCompare(b));
 
     const handleCategorySelect = (event) => {
