@@ -717,11 +717,6 @@ app.post('/api/db', async (req, res) => {
 
 app.use(express.static(path.join(__dirname, 'dist')));
 
-// The old misspelled URL must not fall through to the SPA entry point.
-app.get('/robot.txt', (req, res) => {
-    res.sendStatus(404);
-});
-
 const escapeHtmlAttribute = (value) => String(value || '')
     .replace(/&/g, '&amp;')
     .replace(/"/g, '&quot;')
