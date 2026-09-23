@@ -1,0 +1,12 @@
+User-agent: *
+Allow: /
+
+# Keep private and application-only routes out of search results.
+Disallow: /api/
+Disallow: /cart
+Disallow: /login
+Disallow: /profile
+Disallow: /seller
+Disallow: /wishlist
+
+Sitemap: https://mithilachitrakalastore.com.np/sitemap.xml
