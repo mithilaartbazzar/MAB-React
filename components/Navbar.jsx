@@ -97,7 +97,7 @@ export const Navbar = ({ cartCount, currentUser, setCurrentUser }) => {
 
     return (
         <header className="fixed inset-x-0 top-0 z-[100] print:hidden" ref={searchWrapRef}>
-            <div className="mx-auto mt-2 w-[calc(100%-0.75rem)] max-w-[1280px] rounded-[20px] border border-white/15 bg-[#1A1A1A]/50 shadow-[0_18px_45px_rgba(0,0,0,0.28)] backdrop-blur-xl sm:mt-3 sm:w-[calc(100%-1.5rem)] sm:rounded-[26px]">
+            <div className="mx-auto mt-2 w-[calc(100%-0.75rem)] max-w-[1280px] rounded-[20px] border border-white/15 bg-[#1A1A1A]/90 shadow-[0_18px_45px_rgba(0,0,0,0.28)] backdrop-blur-xl sm:mt-3 sm:w-[calc(100%-1.5rem)] sm:rounded-[26px]">
                 <div className="flex items-center justify-between gap-2 px-3 py-2.5 sm:gap-2 sm:px-5 sm:py-3 lg:px-4">
                     <Link to="/" className="flex items-center gap-2.5 shrink-0 sm:gap-3">
                         <div className="flex h-8 w-8 items-center justify-center rounded-full border border-[#E7C77A] bg-[#F2D98C] shadow-[0_0_0_2px_rgba(242,217,140,0.2)] transition-transform duration-200 hover:scale-[1.02] sm:h-9 sm:w-9">
