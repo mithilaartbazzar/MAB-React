@@ -45,6 +45,7 @@ import { WishlistPage } from './pages/WishlistPage';
 import { SellerPanel } from './pages/SellerPanel';
 import { LoginPage } from './pages/LoginPage';
 import { PrivacyPolicy } from "./pages/PrivacyPolicy";
+import { TermsOfService } from './pages/TermsOfService';
 import CulturalJournalPage from './pages/CulturalJournalPage';
 
 
@@ -248,6 +249,7 @@ export default function App() {
                             } 
                         />
                         <Route path="/privacy-policy" element={<PrivacyPolicy />} />
+                        <Route path="/terms-of-service" element={<TermsOfService />} />
                     </Routes>
                 </main>
                 <BottomNav currentUser={currentUser} />
