@@ -4,20 +4,19 @@
     position: relative;
     width: 100%;
     padding: 0;
-    border-radius: 1rem;
     box-sizing: border-box;
     overflow-x: hidden;
 }
 
 .mithila-hero-shell {
     width: 100%;
-    max-width: 1280px;
-    height: clamp(250px, 30vw, 380px);
+    max-width: none;
+    height: clamp(260px, 35vw, 380px);
     margin: 0 auto;
     background: #251f1d;
-    border: 1px solid rgba(124, 32, 32, 0.14);
-    box-shadow: 0 24px 80px -30px rgba(36, 31, 26, 0.56);
-    border-radius: 1.75rem;
+    border: 0;
+    box-shadow: none;
+    border-radius: 0;
     overflow: hidden;
 }
 
@@ -239,13 +238,13 @@
 
 @media (max-width: 768px) {
     .mithila-hero-section {
-        padding:0 0.5rem;
+        padding:0;
     }
 
     .mithila-hero-shell {
         width: min(100%, 768px);
         height: 230px;
-        border-radius: 0.8rem;
+        border-radius: 0;
     }
 
     .mithila-hero-controls {
@@ -256,7 +255,7 @@
 @media (max-width: 480px) {
     .mithila-hero-shell {
         height: 170px;
-        border-radius: 0.8rem;
+        border-radius: 0;
     }
 
     .mithila-hero-image {

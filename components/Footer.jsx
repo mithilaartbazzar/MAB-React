@@ -34,7 +34,7 @@ export const Footer = () => {
     return (
         <footer id="contact" className="scroll-mt-28 bg-stone-950 text-white print:hidden">
             <div className="mithila-divider"></div>
-            <div className="relative overflow-hidden px-4 pb-[92px] pt-12 paper-texture sm:px-6 sm:pb-[110px] sm:pt-24 lg:px-6 lg:pb-16">
+            <div className="relative overflow-hidden px-4 pb-[92px] pt-10 paper-texture sm:px-6 sm:pb-[110px] sm:pt-14 lg:px-6 lg:pb-12">
                 <div className="absolute -top-32 -right-32 w-96 h-96 bg-[#5c1111]/10 rounded-full blur-[120px] pointer-events-none"></div>
                 <div className="absolute -bottom-32 -left-32 w-96 h-96 bg-amber-600/5 rounded-full blur-[120px] pointer-events-none"></div>
 
@@ -49,7 +49,7 @@ export const Footer = () => {
                                   alt="Logo"
                                 />
                                 <div className="flex flex-col">
-                                    <h3 className="font-dancing text-xl font-bold leading-none text-red-600 sm:text-2xl">Mithila Chitrakala Store</h3>
+                                    <h3 className="font-playfair text-xl font-bold leading-none text-stone-100 sm:text-2xl">Mithila Chitrakala Store</h3>
                                     <span className="text-[8px] font-black uppercase tracking-[0.3em] text-stone-500 mt-1">Est. Heritage &bull; Janakpur</span>
                                 </div>
                             </div>
@@ -69,7 +69,7 @@ export const Footer = () => {
 
                         {/* The Vault */}
                         <div>
-                            <h4 className="mb-4 font-playfair text-base font-black text-amber-500 sm:mb-8 sm:text-lg">The Vault</h4>
+                            <h4 className="mb-4 font-playfair text-base font-black text-stone-100 sm:mb-8 sm:text-lg">Quick Links</h4>
                             <ul className="space-y-2.5 text-[10px] font-black uppercase tracking-widest text-stone-500 sm:space-y-4 sm:text-[11px]">
                                 <li><Link to="/products" className="hover:text-white hover:pl-1 transition-all inline-block">Our Collection</Link></li>
                                 <li><Link to="/products?cat=paintings" className="hover:text-white hover:pl-1 transition-all inline-block">Paintings</Link></li>
@@ -81,7 +81,7 @@ export const Footer = () => {
 
                         {/* Concierge */}
                         <div>
-                            <h4 className="mb-4 font-playfair text-base font-black text-amber-500 sm:mb-8 sm:text-lg">Concierge</h4>
+                            <h4 className="mb-4 font-playfair text-base font-black text-stone-100 sm:mb-8 sm:text-lg">Customer Care</h4>
                             <ul className="space-y-2.5 text-[10px] font-black uppercase tracking-widest text-stone-500 sm:space-y-4 sm:text-[11px]">
                                 <li><Link to="/profile" className="hover:text-white hover:pl-1 transition-all inline-block" title='Track Your Order'>Track Collection</Link></li>
                                 <li><Link to="#" className="hover:text-white hover:pl-1 transition-all inline-block" title='Authentication'>Authentication</Link></li>
@@ -93,7 +93,7 @@ export const Footer = () => {
 
                         {/* Journal */}
                         <div className="col-span-2 sm:col-span-1">
-                            <h4 className="mb-4 font-playfair text-base font-black text-amber-500 sm:mb-8 sm:text-lg">Journal</h4>
+                            <h4 className="mb-4 font-playfair text-base font-black text-stone-100 sm:mb-8 sm:text-lg">Join Our Newsletter</h4>
                             <p className="mb-3 text-[10px] font-black uppercase leading-relaxed tracking-widest text-stone-500 sm:mb-5 sm:text-[11px]">Join our circle for heritage drops &amp; artisan stories.</p>
                             <form onSubmit={handleJournalSubscribe} className="flex gap-2">
                                 <input

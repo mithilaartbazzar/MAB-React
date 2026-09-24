@@ -38,7 +38,6 @@ const TRUST_ITEMS = [
     { icon: Truck, title: 'Nepal-Wide Delivery', text: 'Reliable shipping across the region' },
 ];
 
-const DEFAULT_SLIDES = [];
 const EMPTY_HERO_SLIDE = { image: '', link: '/products', cta: 'Explore Collection' };
 
 const HOME_CATEGORY_ALIASES = {
@@ -60,6 +59,14 @@ const normalizeHeroSlide = (slide) => ({
     active: slide.active ?? true,
 });
 
+const DEFAULT_SLIDES = [
+    {
+        id: 'default-hero',
+        image: 'https://res.cloudinary.com/djmbuuz28/image/upload/v1789363791/Overhead_Mithila_Folk_Dance_Celebration_icgoxi.png',
+        link: '/products',
+        cta: 'Shop Now',
+    },
+];
 const HeroSection = ({ heroSlides }) => {
     const [current, setCurrent] = useState(0);
     const [previous, setPrevious] = useState(0);
@@ -256,33 +263,34 @@ export const HomePage = ({ products, addToCart, wishlist, toggleWishlist }) => {
 
     return (
         <div className="bg-[#FAF7F2] pb-12 text-[#241F1A] lg:pb-0">
-            <div className="pt-[4.5rem] lg:pt-[4.6rem]">
-                <Reveal className="lg:mx-auto lg:px-4 lg:pt-6 delay-100">
+            <div className="pt-[3.2rem] lg:pt-[3.8rem]">
+                <Reveal className="lg:mx-auto delay-100">
                     <HeroSection heroSlides={heroSlides} />
                 </Reveal>
             </div>
 
-            <section className="mx-auto max-w-[1280px] px-4 py-6 sm:px-6 sm:py-12 lg:px-8 lg:py-16">
+            <section className="mx-auto max-w-[1280px] px-4 py-8 sm:px-6 sm:py-12 lg:px-10 lg:py-14">
                 <SectionHead title="Shop by Category" subtitle="Discover art, crafts and cultural pieces from Mithila" viewAllLink="/products" />
-                <div className="no-scrollbar -mx-4 flex gap-2 overflow-x-auto px-4 pb-1 sm:mx-0 sm:gap-4 sm:px-0 lg:grid lg:grid-cols-6 lg:gap-4 lg:overflow-visible">
+                <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-6 lg:gap-4">
                     {CATEGORIES.map((cat) => (
                         <Link
                             key={cat.key}
                             to={`/products?cat=${cat.key}`}
-                            className="group w-[88px] shrink-0 flex-col items-center gap-1.5 sm:w-[140px] sm:gap-2 lg:w-auto lg:shrink lg:flex"
+                            className="group flex min-w-0 flex-col gap-2"
                         >
                             <div className="w-full overflow-hidden rounded-xl border border-[#E7E0D2] bg-white shadow-[0_12px_30px_-18px_rgba(36,31,26,0.28)] transition-transform duration-300 group-hover:-translate-y-1 sm:rounded-2xl">
-                                <div className="aspect-square">
+                                <div className="aspect-[1.55/1]">
                                     <img src={categoryImage(cat)} alt={cat.label} className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" loading="lazy" />
                                 </div>
                             </div>
-                            <span className="mt-1 block text-center text-[10px] font-semibold leading-tight text-[#241F1A] sm:mt-2 sm:text-xs">{cat.label}</span>
+                            <span className="block px-1 font-playfair text-[12px] font-bold leading-tight text-[#241F1A] sm:text-sm">{cat.label} <ArrowRight size={12} className="ml-1 inline-block text-[#7C2020]" /></span>
                         </Link>
                     ))}
                 </div>
             </section>
 
-            <section className="mx-auto max-w-[1280px] px-4 pb-6 sm:px-6 sm:pb-12 lg:px-8 lg:pb-16">
+            <section className="bg-[#F3EBDD] py-8 sm:py-12 lg:py-14">
+                <div className="mx-auto max-w-[1280px] px-4 sm:px-6 lg:px-10">
                 <SectionHead title="Featured Mithila Art" subtitle="Original art pieces, handpicked for you" viewAllLink="/products" />
                 {featuredFill.length === 0 ? (
                     <p className="rounded-2xl border border-dashed border-[#E7E0D2] bg-white/50 px-6 py-12 text-center text-sm text-[#8B8378]">
@@ -302,11 +310,12 @@ export const HomePage = ({ products, addToCart, wishlist, toggleWishlist }) => {
                         ))}
                     </div>
                 )}
+                </div>
             </section>
 
             <section id="our-story" className="scroll-mt-28 mx-auto max-w-[1280px] px-4 pb-6 sm:px-6 sm:pb-12 lg:px-8 lg:pb-16">
                 <Reveal>
-                    <div className="relative overflow-hidden rounded-[1.7rem] border border-[#E7E0D2] bg-[#E8DCC8] shadow-[0_16px_36px_-23px_rgba(36,31,26,0.32)]">
+                    <div className="relative overflow-hidden rounded-[8px] border border-[#E7E0D2] bg-[#E8DCC8] shadow-[0_16px_36px_-23px_rgba(36,31,26,0.32)]">
                         <div className="grid items-center md:grid-cols-2">
                             <div className="relative order-2 md:order-1">
                                 <img
