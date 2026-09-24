@@ -105,7 +105,7 @@ export const ProductDetailPage = ({ products, addToCart, wishlist, toggleWishlis
         if (!product) return [];
         return products
             .filter((item) => item.category === product.category && item.id !== product.id)
-            .concat(products.filter((item) => item.category !== product.category && item.id !== product.id).slice(0, 4));
+            .concat(products.filter((item) => item.category !== product.category && item.id !== product.id));
     }, [product, products]);
 
     const customTags = useMemo(() => {
