@@ -809,7 +809,7 @@ app.get('/share/product/:id', async (req, res) => {
 
         const productTitle = String(product.title || product.name || 'Mithila Chitrakala Store').trim();
         const productDescription = String(product.description || `Discover ${productTitle} at Mithila Chitrakala Store.`).trim();
-        const shareImage = defaultShareImage;
+        const shareImage = buildProductShareImageUrl(product);
         const ogUrl = `${frontendBaseUrl.replace(/\/+$/, '')}/product/${encodeURIComponent(product.slug || productId)}`;
         const pageTitle = `${productTitle} | Mithila Chitrakala Store`;
         const safeDescription = productDescription || `Discover ${productTitle} at Mithila Chitrakala Store.`;
@@ -860,22 +860,22 @@ app.get('/product/:slug', async (req, res, next) => {
         const description = product.description || `Discover ${product.name} at Mithila Chitrakala Store.`;
         const pageUrl = `${req.protocol}://${req.get('host')}${req.originalUrl}`;
         let html = fs.readFileSync(path.join(__dirname, 'dist', 'index.html'), 'utf8');
-        const metadata = {
-            '<title>Mithila Chitrakala Store - Premium Traditional Art</title>': `<title>${escapeHtmlAttribute(title)}</title>`,
-            '<meta name="description" content="Discover authentic Mithila art, handmade crafts, textiles, home decor, and cultural gifts from local artists.">': `<meta name="description" content="${escapeHtmlAttribute(description)}">`,
-            '<meta property="og:title" content="Mithila Chitrakala Store - Premium Traditional Art">': `<meta property="og:title" content="${escapeHtmlAttribute(title)}">`,
-            '<meta property="og:description" content="Explore authentic Mithila artwork, handmade crafts, textiles, and cultural treasures from local artists.">': `<meta property="og:description" content="${escapeHtmlAttribute(description)}">`,
-            '<meta property="og:url" content="/">': `<meta property="og:url" content="${escapeHtmlAttribute(pageUrl)}">`,
-            '<meta property="og:image" content="https://res.cloudinary.com/djmbuuz28/image/upload/v1761108817/logo.png">': `<meta property="og:image" content="${escapeHtmlAttribute(buildProductShareImageUrl(product))}">`,
-            '<meta name="twitter:title" content="Mithila Chitrakala Store - Premium Traditional Art">': `<meta name="twitter:title" content="${escapeHtmlAttribute(title)}">`,
-            '<meta name="twitter:description" content="Explore authentic Mithila artwork, handmade crafts, textiles, and cultural treasures from local artists.">': `<meta name="twitter:description" content="${escapeHtmlAttribute(description)}">`,
-            '<meta name="twitter:image" content="https://res.cloudinary.com/djmbuuz28/image/upload/v1761108817/logo.png">': `<meta name="twitter:image" content="${escapeHtmlAttribute(buildProductShareImageUrl(product))}">`,
+        const shareImage = buildProductShareImageUrl(product);
+        const replaceMetaContent = (selector, content) => {
+            const pattern = new RegExp(`(<meta\\s+${selector}\\s+content=")[^"]*("\\s*/?>)`, 'i');
+            html = html.replace(pattern, `$1${escapeHtmlAttribute(content)}$2`);
         };
 
-        Object.entries(metadata).forEach(([source, replacement]) => {
-            html = html.replace(source, replacement);
-        });
-        html = html.replace('</head>', `${shareImageMetadata(defaultShareImage)}\n</head>`);
+        html = html.replace(/<title>[^<]*<\/title>/i, `<title>${escapeHtmlAttribute(title)}</title>`);
+        replaceMetaContent('name="description"', description);
+        replaceMetaContent('property="og:title"', title);
+        replaceMetaContent('property="og:description"', description);
+        replaceMetaContent('property="og:url"', pageUrl);
+        replaceMetaContent('property="og:image"', shareImage);
+        replaceMetaContent('name="twitter:title"', title);
+        replaceMetaContent('name="twitter:description"', description);
+        replaceMetaContent('name="twitter:image"', shareImage);
+        html = html.replace('</head>', `${shareImageMetadata(shareImage)}\n</head>`);
         html = html.replace('</head>', `<link rel="canonical" href="${escapeHtmlAttribute(pageUrl)}">\n</head>`);
         res.send(html);
     } catch (error) {

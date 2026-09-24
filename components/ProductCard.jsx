@@ -74,7 +74,7 @@ export const ProductCard = ({ product, addToCart, isWishlisted, toggleWishlist }
     return (
         <>
             <div className="group flex h-full flex-col overflow-hidden rounded-[7px] border border-[#e3dbcf] bg-[#fbf9f5] shadow-[0_3px_14px_rgba(70,52,32,0.05)] transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_12px_24px_rgba(70,52,32,0.12)]">
-                <div className="relative aspect-[1/1.12] overflow-hidden bg-[#e9e0d4]">
+                <div className="relative aspect-[1.15/1] overflow-hidden bg-[#e9e0d4]">
                     <Link to={`/product/${product.slug}`} className="block h-full">
                         <img 
                             src={product.image} 

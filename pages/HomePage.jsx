@@ -9,18 +9,24 @@ import {
     Lock,
     HeartHandshake,
     BookOpen,
+    Image as ImageIcon,
+    Package,
+    Home,
+    Shirt,
+    Palette,
+    Gift,
 } from 'lucide-react';
 import { dbService } from '../services/dbservices';
 import { Reveal } from '../components/Reveal';
 import { ProductCard } from '../components/ProductCard';
 
 const CATEGORIES = [
-    { key: 'paintings', label: 'Paintings', fallback: 'https://res.cloudinary.com/djmbuuz28/image/upload/v1789361816/Cozy_Madhubani_Art_Display_zdqqyb.png' },
-    { key: 'crafts', label: 'Handmade Crafts', fallback: 'https://res.cloudinary.com/djmbuuz28/image/upload/v1789362149/Mithila_Folk_Art_Craft_Display_asqu81.png' },
-    { key: 'home-decor', label: 'Home Decor', fallback: 'https://res.cloudinary.com/djmbuuz28/image/upload/v1789361747/Sunlit_Madhubani_Folk-Art_Cushion_klxbkq.png' },
-    { key: 'textiles', label: 'Clothing & Textiles', fallback: 'https://res.cloudinary.com/djmbuuz28/image/upload/v1789361579/Artisanal_Folk_Textile_Display_bgkfql.png' },
-    { key: 'art-products', label: 'Art Products', fallback: 'https://res.cloudinary.com/djmbuuz28/image/upload/v1789363065/Mithila_Art_Still_Life_Vignette_i1trvb.png' },
-    { key: 'cultural-gifts', label: 'Cultural Gifts', fallback: 'https://res.cloudinary.com/djmbuuz28/image/upload/v1789362834/Mithila_Artisan_Gift_Box_Still_Life_g78pvw.png' },
+    { key: 'paintings', label: 'Paintings', icon: ImageIcon, fallback: 'https://res.cloudinary.com/djmbuuz28/image/upload/v1789361816/Cozy_Madhubani_Art_Display_zdqqyb.png' },
+    { key: 'crafts', label: 'Handmade Crafts', icon: Package, fallback: 'https://res.cloudinary.com/djmbuuz28/image/upload/v1789362149/Mithila_Folk_Art_Craft_Display_asqu81.png' },
+    { key: 'home-decor', label: 'Home Decor', icon: Home, fallback: 'https://res.cloudinary.com/djmbuuz28/image/upload/v1789361747/Sunlit_Madhubani_Folk-Art_Cushion_klxbkq.png' },
+    { key: 'textiles', label: 'Clothing & Textiles', icon: Shirt, fallback: 'https://res.cloudinary.com/djmbuuz28/image/upload/v1789361579/Artisanal_Folk_Textile_Display_bgkfql.png' },
+    { key: 'art-products', label: 'Art Products', icon: Palette, fallback: 'https://res.cloudinary.com/djmbuuz28/image/upload/v1789363065/Mithila_Art_Still_Life_Vignette_i1trvb.png' },
+    { key: 'cultural-gifts', label: 'Cultural Gifts', icon: Gift, fallback: 'https://res.cloudinary.com/djmbuuz28/image/upload/v1789362834/Mithila_Artisan_Gift_Box_Still_Life_g78pvw.png' },
 ];
 
 const FALLBACK_ARTISTS = [
@@ -276,14 +282,19 @@ export const HomePage = ({ products, addToCart, wishlist, toggleWishlist }) => {
                         <Link
                             key={cat.key}
                             to={`/products?cat=${cat.key}`}
-                            className="group flex min-w-0 flex-col gap-2"
+                            className="group flex min-w-0 flex-col overflow-visible rounded-xl border border-[#E7E0D2] bg-white pb-3 shadow-[0_8px_22px_rgba(70,52,32,0.1)] transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_14px_28px_rgba(70,52,32,0.16)] sm:rounded-2xl"
                         >
-                            <div className="w-full overflow-hidden rounded-xl border border-[#E7E0D2] bg-white shadow-[0_12px_30px_-18px_rgba(36,31,26,0.28)] transition-transform duration-300 group-hover:-translate-y-1 sm:rounded-2xl">
-                                <div className="aspect-[1.55/1]">
-                                    <img src={categoryImage(cat)} alt={cat.label} className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" loading="lazy" />
+                            <div className="relative">
+                                <div className="w-full overflow-hidden rounded-t-xl bg-white sm:rounded-t-2xl">
+                                    <div className="aspect-[1.55/1]">
+                                        <img src={categoryImage(cat)} alt={cat.label} className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" loading="lazy" />
+                                    </div>
                                 </div>
+                                <span className="absolute -bottom-3 left-3 flex h-7 w-7 items-center justify-center rounded-full border border-[#E7E0D2] bg-[#FAF7F2] text-[#9B6C47] shadow-sm sm:h-8 sm:w-8">
+                                    <cat.icon size={14} strokeWidth={1.7} />
+                                </span>
                             </div>
-                            <span className="block px-1 font-playfair text-[12px] font-bold leading-tight text-[#241F1A] sm:text-sm">{cat.label} <ArrowRight size={12} className="ml-1 inline-block text-[#7C2020]" /></span>
+                            <span className="block px-3 pt-3 font-playfair text-[12px] font-bold leading-tight text-[#241F1A] sm:text-sm">{cat.label} <ArrowRight size={12} className="ml-1 inline-block text-[#7C2020]" /></span>
                         </Link>
                     ))}
                 </div>
