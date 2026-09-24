@@ -723,7 +723,7 @@ const escapeHtmlAttribute = (value) => String(value || '')
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;');
 
-const defaultShareImage = 'https://res.cloudinary.com/djmbuuz28/image/upload/v1761108817/logo.png';
+const defaultShareImage = 'https://res.cloudinary.com/djmbuuz28/image/upload/w_1200,h_630,c_pad,b_white,f_jpg,q_auto/v1790219754/LOGO_only_Zoomed_for_search_results_ynpjvm.png';
 const shareImageMetadata = (imageUrl) => `
     <meta property="og:image:secure_url" content="${escapeHtmlAttribute(imageUrl)}" />
     <meta property="og:image:type" content="image/jpeg" />
