@@ -1,33 +1,3 @@
 User-agent: *
 Allow: /
-
-# Keep private and application-only routes out of search results.
-Disallow: /api/
-Disallow: /cart
-Disallow: /login
-Disallow: /profile
-Disallow: /seller
-Disallow: /wishlist
-
 Sitemap: https://mithilachitrakalastore.com.np/sitemap.xml
-
-User-agent: Googlebot
-User-agent: Googlebot-Image
-User-agent: Bingbot
-User-agent: DuckDuckBot
-User-agent: YandexBot
-User-agent: Applebot
-User-agent: Amazonbot
-User-agent: Bytespider
-User-agent: OAI-SearchBot
-User-agent: ChatGPT-User
-User-agent: ClaudeBot
-User-agent: PerplexityBot
-User-agent: Google-Extended
-Allow: /
-Disallow: /api/
-Disallow: /cart
-Disallow: /login
-Disallow: /profile
-Disallow: /seller
-Disallow: /wishlist
