@@ -72,10 +72,10 @@ export const ProductDetailPage = ({ products, addToCart, wishlist, toggleWishlis
             'og:title': product.name,
             'og:description': product.description || `Discover ${product.name} at Mithila Chitrakala Store.`,
             'og:url': pageUrl,
-            'og:image': 'https://res.cloudinary.com/djmbuuz28/image/upload/v1761108817/logo.png',
+            'og:image': product.image,
             'twitter:title': product.name,
             'twitter:description': product.description || `Discover ${product.name} at Mithila Chitrakala Store.`,
-            'twitter:image': 'https://res.cloudinary.com/djmbuuz28/image/upload/v1761108817/logo.png',
+            'twitter:image': product.image,
         };
 
         Object.entries(metaValues).forEach(([key, content]) => {
