@@ -58,7 +58,8 @@ export const Footer = () => {
                             </p>
                             <div className="space-y-2 text-[11px] text-stone-500 sm:space-y-3 sm:text-xs">
                                 <p className="flex items-center gap-3"><MapPin size={14} className="text-[#5c1111]" /> Janakpur Dham, Nepal</p>
-                                <p className="flex items-center gap-3"><Mail size={14} className="text-[#5c1111]" /> hello@mithilaartbazzar.com</p>
+                                <p className="flex items-center gap-3"><Mail size={14} className="text-[#5c1111]" /> hello@mithilachitrakalastore.com.np
+</p>
                             </div>
                             <div className="flex gap-3">
                                 <a href="https://www.instagram.com/mithilachitrakalastore" className="flex h-9 w-9 items-center justify-center rounded-full border border-white/5 bg-white/5 transition-all hover:-translate-y-1 hover:border-[#5c1111] hover:bg-[#5c1111] sm:h-10 sm:w-10" target='_blank' rel="noreferrer" title="Instagram"><i className="fa-brands fa-instagram text-[14px] sm:text-[16px]"></i></a>
