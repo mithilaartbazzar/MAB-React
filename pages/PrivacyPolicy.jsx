@@ -32,7 +32,7 @@ const sections = [
     },
     {
         title: 'Changes and contact',
-        body: 'We may update this policy as the store develops. The latest version will always be posted here with its revision date. For privacy questions or requests, email hello@mithilaartbazzar.com and include enough detail for us to identify your request.',
+        body: 'We may update this policy as the store develops. The latest version will always be posted here with its revision date. For privacy questions or requests, email hello@mithilachitrakalastore.com.np and include enough detail for us to identify your request.',
     },
 ];
 
@@ -55,7 +55,7 @@ export const PrivacyPolicy = () => (
             <aside className="h-fit rounded-[0.5rem] border border-[#e7e0d2] bg-white p-5 shadow-[0_20px_80px_-50px_rgba(36,31,26,0.45)] lg:sticky lg:top-28">
                 <div className="flex items-center gap-3 text-[#7c2020]"><LockKeyhole size={18} /><span className="text-xs font-black uppercase tracking-[0.18em]">Your privacy</span></div>
                 <p className="mt-4 text-sm leading-6 text-[#71695e]">We collect what helps us serve your order and keep the store useful. We do not sell your personal information.</p>
-                <a href="mailto:hello@mithilaartbazzar.com" className="mt-5 flex items-center gap-2 text-xs font-black text-[#7c2020] hover:text-[#241F1A]"><Mail size={14} /> Ask a privacy question</a>
+                <a href="mailto:hello@mithilachitrakalastore.com.np" className="mt-5 flex items-center gap-2 text-xs font-black text-[#7c2020] hover:text-[#241F1A]"><Mail size={14} /> Ask a privacy question</a>
             </aside>
 
             <article className="max-w-3xl space-y-10">

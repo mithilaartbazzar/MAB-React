@@ -32,7 +32,7 @@ const sections = [
     },
     {
         title: 'Updates and contact',
-        body: 'We may update these terms as our store, products, or services change. The latest version will be posted here with its revision date. Questions about an order or these terms can be sent to hello@mithilaartbazzar.com.',
+        body: 'We may update these terms as our store, products, or services change. The latest version will be posted here with its revision date. Questions about an order or these terms can be sent to hello@mithilachitrakalastore.com.np.',
     },
 ];
 
@@ -64,7 +64,7 @@ export const TermsOfService = () => (
                         <p className="mt-3 text-sm leading-7 text-[#5f574d] sm:text-base sm:leading-8">{section.body}</p>
                     </section>
                 ))}
-                <a href="mailto:hello@mithilaartbazzar.com" className="flex items-center gap-2 text-sm font-black text-[#7c2020] hover:text-[#241F1A]"><Mail size={16} /> Contact the store</a>
+                <a href="mailto:hello@mithilachitrakalastore.com.np" className="flex items-center gap-2 text-sm font-black text-[#7c2020] hover:text-[#241F1A]"><Mail size={16} /> Contact the store</a>
             </article>
         </main>
     </div>

@@ -91,7 +91,7 @@ export const InvoiceView = ({ order, onClose, role, isCombined, combinedOrders }
             pdf.setTextColor(115, 115, 115);
             pdf.text('MCS Central Hub, Ward 26', margin, y);
             pdf.text('Janakpur Dham, Nepal', margin, y + 4);
-            pdf.text('contact@mithilaartbazzar.com', margin, y + 8);
+            pdf.text('contact@mithilachitrakalastore.com.np', margin, y + 8);
 
             // Invoice details (right)
             setFont('helvetica', 'bold', 8);
@@ -269,7 +269,7 @@ export const InvoiceView = ({ order, onClose, role, isCombined, combinedOrders }
 
             // QR Code
             try {
-                const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&format=png&data=${encodeURIComponent(`https://mithilaartbazzar.onrender.com/verify/${invoiceNo}`)}`;
+                const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&format=png&data=${encodeURIComponent(`https://mithilachitrakalastore.com.np/verify/${invoiceNo}`)}`;
                 const response = await fetch(qrUrl);
                 const blob = await response.blob();
                 const qrDataUrl = await new Promise((resolve) => {
@@ -375,7 +375,7 @@ export const InvoiceView = ({ order, onClose, role, isCombined, combinedOrders }
                                 <div className="text-[10px] text-stone-400 leading-relaxed font-medium">
                                     MCS Central Hub, Ward 13<br/>
                                     Janakpur Dham, Nepal<br/>
-                                    contact@mithilaartbazzar.com
+                                    <a href="mailto:contact@mithilachitrakalastore.com.np" className="text-stone-400 hover:text-stone-900">contact@mithilachitrakalastore.com.np</a>
                                 </div>
                             </div>
                             <div className="text-right space-y-2">
