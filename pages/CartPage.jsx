@@ -49,8 +49,6 @@ export const CartPage = ({ cart, updateQty, remove, clearCart, currentUser }) =>
                 return acc;
             }, {});
 
-            const commissionConfig = await dbService.getGlobalCommission();
-            const commissionPct = Number(commissionConfig?.globalCommission ?? 12);
             const orders = [];
 
             // Create separate orders for each seller
@@ -59,8 +57,6 @@ export const CartPage = ({ cart, updateQty, remove, clearCart, currentUser }) =>
                 const sellerSubtotal = items.reduce((acc, item) => acc + item.price * item.quantity, 0);
                 const sellerShippingFee = sellerSubtotal > 5000 ? 0 : 250;
                 const orderTotal = sellerSubtotal + sellerShippingFee;
-                const commissionAmt = (orderTotal * commissionPct) / 100;
-
                 const newOrder = {
                     id: orderId,
                     date: new Date().toISOString(),
@@ -72,9 +68,6 @@ export const CartPage = ({ cart, updateQty, remove, clearCart, currentUser }) =>
                     customer_payment_status: 'pending',
                     customer_payment_verified: false,
                     mcs_payment_status: 'pending',
-                    commission_percentage: commissionPct,
-                    commission_amount: commissionAmt,
-                    seller_payable_amount: orderTotal - commissionAmt,
                     customer: {
                         ...shippingDetails
                     }

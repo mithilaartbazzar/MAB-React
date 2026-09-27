@@ -51,7 +51,7 @@ export const SellerPanel = ({ currentUser }) => {
     const [activeTab, setActiveTab] = useState('dashboard');
     const [selectedOrder, setSelectedOrder] = useState(null);
     const [invoiceOrder, setInvoiceOrder] = useState(null);
-    const [globalCommission, setGlobalCommission] = useState(15);
+    const [globalCommission, setGlobalCommission] = useState(12);
     const [lowStockThreshold, setLowStockThreshold] = useState(5);
     const [showAddProductModal, setShowAddProductModal] = useState(false);
     const [editingProductId, setEditingProductId] = useState(null);
@@ -166,7 +166,7 @@ export const SellerPanel = ({ currentUser }) => {
                 setJournalPosts(j || []);
                 setSavedCategories((c || []).flatMap((category) => splitProductCategories(category.name)));
                 const commissionData = await dbService.getGlobalCommission();
-                setGlobalCommission(commissionData?.globalCommission ?? 15);
+                setGlobalCommission(commissionData?.globalCommission ?? 12);
             } else {
                 const [p, o, w, c] = await Promise.all([
                     dbService.getProducts(currentUser.id),
@@ -1167,8 +1167,9 @@ export const SellerPanel = ({ currentUser }) => {
                                             </div>
                                             <button 
                                                 onClick={async () => {
-                                                    await dbService.setGlobalCommission(globalCommission, currentUser.id);
-                                                    loadData();
+                                                    const savedConfig = await dbService.setGlobalCommission(globalCommission, currentUser.id);
+                                                    setGlobalCommission(savedConfig.globalCommission);
+                                                    await loadData();
                                                     alert("Global commission updated successfully.");
                                                 }}
                                                 className="px-8 py-4 bg-[#5c1111] text-white rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-[#2a2723] transition-all whitespace-nowrap shadow-md"

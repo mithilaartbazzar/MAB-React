@@ -378,17 +378,30 @@ app.post('/api/db', async (req, res) => {
                 break;
             }
             case 'getGlobalCommission': {
-                const { data, error } = await supabase.from('app_config').select('globalCommission').single();
+                const { data, error } = await supabase
+                    .from('app_config')
+                    .select('globalCommission')
+                    .eq('id', 1)
+                    .maybeSingle();
                 if (error) throw new Error(error.message);
-                result = { globalCommission: data.globalCommission };
+                result = { globalCommission: Number(data?.globalCommission ?? 12) };
                 break;
             }
             case 'setGlobalCommission': {
                 const { commission, adminId } = payload;
-                const { error } = await supabase.from('app_config').update({ globalCommission: commission }).eq('id', 1);
+                const commissionRate = Number(commission);
+                if (!Number.isFinite(commissionRate) || commissionRate < 0 || commissionRate > 100) {
+                    throw new Error('Commission rate must be between 0 and 100.');
+                }
+
+                const { data, error } = await supabase
+                    .from('app_config')
+                    .upsert({ id: 1, globalCommission: commissionRate }, { onConflict: 'id' })
+                    .select('globalCommission')
+                    .single();
                 if (error) throw new Error(error.message);
-                if (adminId) await logAction(`Admin updated global commission to ${commission}%`, adminId);
-                result = { success: true };
+                if (adminId) await logAction(`Admin updated global commission to ${commissionRate}%`, adminId);
+                result = { success: true, globalCommission: Number(data.globalCommission) };
                 break;
             }
             case 'getProducts': {
@@ -495,8 +508,16 @@ app.post('/api/db', async (req, res) => {
             }
             case 'saveOrder': {
                 const { order } = payload;
-                const configData = await supabase.from('app_config').select('globalCommission').single();
-                const perc = configData.data?.globalCommission || 12;
+                const { data: configData, error: configError } = await supabase
+                    .from('app_config')
+                    .select('globalCommission')
+                    .eq('id', 1)
+                    .maybeSingle();
+                if (configError) throw new Error(configError.message);
+                const perc = Number(configData?.globalCommission ?? 12);
+                if (!Number.isFinite(perc) || perc < 0 || perc > 100) {
+                    throw new Error('The configured commission rate is invalid.');
+                }
                 const commAmt = (order.total * perc) / 100;
                 const sellerAmt = order.total - commAmt;
 
