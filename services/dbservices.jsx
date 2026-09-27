@@ -50,6 +50,7 @@ export const dbService = {
     getProductCategories: () => callDbService('getProductCategories'),
     addProductCategory: (category) => callDbService('addProductCategory', { category }),
     getOrders: (sellerId, customerId) => callDbService('getOrders', { sellerId, customerId }),
+    getPublicInvoices: (invoiceNumbers) => callDbService('getPublicInvoices', { invoiceNumbers }),
     saveOrder: (order) => callDbService('saveOrder', { order }),
     updateOrderStatus: (id, status, role, userId) => callDbService('updateOrderStatus', { id, status, role, userId }),
     updateOrderDetails: (orderId, customer, userId) => callDbService('updateOrderDetails', { orderId, customer, userId }),

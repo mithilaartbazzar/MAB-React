@@ -468,6 +468,31 @@ app.post('/api/db', async (req, res) => {
                 result = data;
                 break;
             }
+            case 'getPublicInvoices': {
+                const invoiceNumbers = [...new Set((payload.invoiceNumbers || [])
+                    .map((invoiceNumber) => String(invoiceNumber || '').trim())
+                    .filter(Boolean))];
+                if (invoiceNumbers.length === 0 || invoiceNumbers.length > 20) {
+                    throw new Error('One or more invoice numbers are required.');
+                }
+
+                const { data, error } = await supabase
+                    .from('orders')
+                    .select('invoice_no, date, total, status, customer_payment_status, items')
+                    .in('invoice_no', invoiceNumbers);
+                if (error) throw new Error(error.message);
+                result = (data || []).map((invoice) => ({
+                    ...invoice,
+                    items: (invoice.items || []).map((item) => ({
+                        name: item.name,
+                        quantity: item.quantity,
+                        price: item.price,
+                        category: item.category,
+                        material: item.material,
+                    })),
+                }));
+                break;
+            }
             case 'saveOrder': {
                 const { order } = payload;
                 const configData = await supabase.from('app_config').select('globalCommission').single();

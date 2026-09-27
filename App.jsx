@@ -47,6 +47,7 @@ import { LoginPage } from './pages/LoginPage';
 import { PrivacyPolicy } from "./pages/PrivacyPolicy";
 import { TermsOfService } from './pages/TermsOfService';
 import CulturalJournalPage from './pages/CulturalJournalPage';
+import { InvoiceVerificationPage } from './pages/InvoiceVerificationPage';
 
 
 const Preloader = () => (
@@ -250,6 +251,8 @@ export default function App() {
                         />
                         <Route path="/privacy-policy" element={<PrivacyPolicy />} />
                         <Route path="/terms-of-service" element={<TermsOfService />} />
+                        <Route path="/verify" element={<InvoiceVerificationPage />} />
+                        <Route path="/verify/:invoiceNo" element={<InvoiceVerificationPage />} />
                     </Routes>
                 </main>
                 <BottomNav currentUser={currentUser} />

@@ -2,6 +2,17 @@ import React, { useRef, useState } from 'react';
 import { Printer, Download, X, ShieldCheck, Loader2 } from 'lucide-react';
 import jsPDF from 'jspdf';
 
+const createVerificationUrl = (invoiceNumbers) => {
+    const uniqueInvoiceNumbers = [...new Set(invoiceNumbers.filter(Boolean))];
+    if (uniqueInvoiceNumbers.length === 1) {
+        return new URL(`/verify/${encodeURIComponent(uniqueInvoiceNumbers[0])}`, window.location.origin).toString();
+    }
+
+    const verificationUrl = new URL('/verify', window.location.origin);
+    verificationUrl.searchParams.set('invoices', uniqueInvoiceNumbers.join(','));
+    return verificationUrl.toString();
+};
+
 export const InvoiceView = ({ order, onClose, role, isCombined, combinedOrders }) => {
     const invoiceRef = useRef(null);
     const [downloading, setDownloading] = useState(false);
@@ -269,7 +280,11 @@ export const InvoiceView = ({ order, onClose, role, isCombined, combinedOrders }
 
             // QR Code
             try {
-                const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&format=png&data=${encodeURIComponent(`https://mithilachitrakalastore.com.np/verify/${invoiceNo}`)}`;
+                const invoiceNumbers = isCombined && combinedOrders?.length
+                    ? combinedOrders.map((combinedOrder) => combinedOrder.invoice_no)
+                    : [displayData.invoice_no];
+                const verificationUrl = createVerificationUrl(invoiceNumbers);
+                const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&format=png&data=${encodeURIComponent(verificationUrl)}`;
                 const response = await fetch(qrUrl);
                 const blob = await response.blob();
                 const qrDataUrl = await new Promise((resolve) => {
@@ -479,7 +494,7 @@ export const InvoiceView = ({ order, onClose, role, isCombined, combinedOrders }
                             </div>
                             <div className="text-right flex flex-col items-end gap-1">
                                 <img 
-                                    src={`https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(`https://mithilachitrakala.onrender.com/verify/${displayOrder.invoice_no || displayOrder.id}`)}`} 
+                                    src={`https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(createVerificationUrl(isCombined && combinedOrders?.length ? combinedOrders.map((combinedOrder) => combinedOrder.invoice_no) : [displayOrder.invoice_no]))}`} 
                                     className="w-20 h-20" 
                                     alt="verification-qr" 
                                     crossOrigin="anonymous"
