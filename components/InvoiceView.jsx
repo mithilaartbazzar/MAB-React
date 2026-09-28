@@ -2,6 +2,8 @@ import React, { useRef, useState } from 'react';
 import { Printer, Download, X, ShieldCheck, Loader2 } from 'lucide-react';
 import jsPDF from 'jspdf';
 
+const STORE_PAN_NUMBER = '14450215';
+
 const createVerificationUrl = (invoiceNumbers) => {
     const uniqueInvoiceNumbers = [...new Set(invoiceNumbers.filter(Boolean))];
     if (uniqueInvoiceNumbers.length === 1) {
@@ -103,6 +105,7 @@ export const InvoiceView = ({ order, onClose, role, isCombined, combinedOrders }
             pdf.text('MCS Central Hub, Ward 26', margin, y);
             pdf.text('Janakpur Dham, Nepal', margin, y + 4);
             pdf.text('contact@mithilachitrakalastore.com.np', margin, y + 8);
+            pdf.text(`PAN No: ${STORE_PAN_NUMBER}`, margin, y + 12);
 
             // Invoice details (right)
             setFont('helvetica', 'bold', 8);
@@ -390,6 +393,7 @@ export const InvoiceView = ({ order, onClose, role, isCombined, combinedOrders }
                                 <div className="text-[10px] text-stone-400 leading-relaxed font-medium">
                                     MCS Central Hub, Ward 13<br/>
                                     Janakpur Dham, Nepal<br/>
+                                    PAN No: {STORE_PAN_NUMBER}<br/>
                                     <a href="mailto:contact@mithilachitrakalastore.com.np" className="text-stone-400 hover:text-stone-900">contact@mithilachitrakalastore.com.np</a>
                                 </div>
                             </div>
