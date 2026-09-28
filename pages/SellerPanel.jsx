@@ -15,6 +15,22 @@ const splitProductCategories = (value) => String(value || '')
     .map((category) => category.trim())
     .filter(Boolean);
 
+let chartLibraryPromise;
+
+const loadChartLibrary = () => {
+    if (window.Chart) return Promise.resolve();
+    if (!chartLibraryPromise) {
+        chartLibraryPromise = new Promise((resolve, reject) => {
+            const script = document.createElement('script');
+            script.src = 'https://cdn.jsdelivr.net/npm/chart.js';
+            script.onload = resolve;
+            script.onerror = reject;
+            document.head.appendChild(script);
+        });
+    }
+    return chartLibraryPromise;
+};
+
 // Helper Component for Sidebar Tabs
 const TabBtn = ({ children, active, onClick, icon }) => (
     <button 
@@ -206,8 +222,15 @@ export const SellerPanel = ({ currentUser }) => {
         setStats(s);
     };
 
-    const renderCharts = () => {
-        if (!window.Chart || !salesChartRef.current) return;
+    const renderCharts = async () => {
+        if (!salesChartRef.current) return;
+        try {
+            await loadChartLibrary();
+        } catch (error) {
+            console.error('Failed to load seller dashboard charts:', error);
+            return;
+        }
+        if (!salesChartRef.current) return;
         if (chartInstance.current) chartInstance.current.destroy();
         const ctx = salesChartRef.current.getContext('2d');
         chartInstance.current = new window.Chart(ctx, {

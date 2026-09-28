@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { lazy, Suspense, useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { dbService } from './services/dbservices';
+import { StoreLoadingScreen } from './components/StoreLoadingScreen';
 
 // 1. New Scroll Management Component
 const ScrollToTop = () => {
@@ -36,58 +37,19 @@ import { Footer } from './components/Footer';
 
 // Pages
 import { HomePage } from './pages/HomePage';
-import { ProductsPage } from './pages/ProductsPage';
-import { ProductDetailPage } from './pages/ProductDetailPage';
-import { CartPage } from './pages/CartPage';
-import { ArtAdvicePage } from './pages/ArtAdvicePage';
-import { ProfilePage } from './pages/ProfilePage';
-import { WishlistPage } from './pages/WishlistPage';
-import { SellerPanel } from './pages/SellerPanel';
-import { LoginPage } from './pages/LoginPage';
-import { PrivacyPolicy } from "./pages/PrivacyPolicy";
-import { TermsOfService } from './pages/TermsOfService';
-import CulturalJournalPage from './pages/CulturalJournalPage';
-import { InvoiceVerificationPage } from './pages/InvoiceVerificationPage';
+const ProductsPage = lazy(() => import('./pages/ProductsPage').then((module) => ({ default: module.ProductsPage })));
+const ProductDetailPage = lazy(() => import('./pages/ProductDetailPage').then((module) => ({ default: module.ProductDetailPage })));
+const CartPage = lazy(() => import('./pages/CartPage').then((module) => ({ default: module.CartPage })));
+const ArtAdvicePage = lazy(() => import('./pages/ArtAdvicePage').then((module) => ({ default: module.ArtAdvicePage })));
+const ProfilePage = lazy(() => import('./pages/ProfilePage').then((module) => ({ default: module.ProfilePage })));
+const WishlistPage = lazy(() => import('./pages/WishlistPage').then((module) => ({ default: module.WishlistPage })));
+const SellerPanel = lazy(() => import('./pages/SellerPanel').then((module) => ({ default: module.SellerPanel })));
+const LoginPage = lazy(() => import('./pages/LoginPage').then((module) => ({ default: module.LoginPage })));
+const PrivacyPolicy = lazy(() => import('./pages/PrivacyPolicy').then((module) => ({ default: module.PrivacyPolicy })));
+const TermsOfService = lazy(() => import('./pages/TermsOfService').then((module) => ({ default: module.TermsOfService })));
+const CulturalJournalPage = lazy(() => import('./pages/CulturalJournalPage'));
+const InvoiceVerificationPage = lazy(() => import('./pages/InvoiceVerificationPage').then((module) => ({ default: module.InvoiceVerificationPage })));
 
-
-const Preloader = () => (
-    <div className="fixed inset-0 z-[2000] bg-[#efece6] flex flex-col items-center justify-center animate-in fade-in duration-700">
-        <div className="relative">
-            {/* Animated Ring */}
-            <div className="absolute inset-0 -m-4 border-2 border-[#5c1111]/10 rounded-[2.5rem] animate-ping duration-[3000ms]"></div>
-            
-            {/* Logo Box */}
-            <div className="w-20 h-20 flex rounded-[0.5rem] items-center justify-center text-white font-black text-4xl shadow-2xl relative z-10 animate-bounce">
-                <img
-                   className="w-20 h-20 rounded-[0.5rem] object-contain"
-                   src="https://res.cloudinary.com/djmbuuz28/image/upload/v1761108817/logo.png" 
-                   alt="" 
-                   />
-            </div>
-        </div>
-
-        <div className="mt-12 text-center space-y-4">
-            <div className="flex flex-col items-center">
-                <span className="font-dancing text-4xl font-bold text-[#2a2723] tracking-tight animate-pulse">Mithila</span>
-                <span className="text-[10px] font-black uppercase tracking-[0.5em] text-[#5c1111]/70 mt-1">Chitrakala Store</span>
-            </div>
-            
-            <div className="pt-8 flex flex-col items-center gap-3">
-                <div className="w-48 h-[1px] bg-stone-200 relative overflow-hidden">
-                    <div className="absolute inset-y-0 left-0 bg-[#5c1111] w-1/2 animate-[loading-bar_2s_infinite_ease-in-out]"></div>
-                </div>
-                <p className="text-[9px] font-black uppercase tracking-[0.2em] text-stone-400 animate-pulse">Harmonizing Heritage Portals...</p>
-            </div>
-        </div>
-
-        <style>{`
-            @keyframes loading-bar {
-                0% { transform: translateX(-100%); }
-                100% { transform: translateX(200%); }
-            }
-        `}</style>
-    </div>
-);
 
 // Load cart and wishlist from localStorage immediately when the module loads
 const loadCartFromStorage = () => {
@@ -115,36 +77,34 @@ const initialCart = loadCartFromStorage();
 const initialWishlist = [];
 const initialUser = loadUserFromStorage();
 
-const preloadHeroImages = async (slides) => {
-    const activeSlides = (slides || []).filter((slide) => slide.active !== false && slide.image);
-
-    await Promise.all(activeSlides.map((slide, index) => new Promise((resolve) => {
-        const image = new Image();
-        image.fetchPriority = index === 0 ? 'high' : 'auto';
-        image.onload = resolve;
-        image.onerror = resolve;
-        image.src = slide.image;
-    })));
-};
-
 export default function App() {
-    const [isAppLoading, setIsAppLoading] = useState(true);
+    const [showLoadingScreen, setShowLoadingScreen] = useState(true);
+    const [isLoadingScreenExiting, setIsLoadingScreenExiting] = useState(false);
     const [products, setProducts] = useState([]);
+    const [productsLoading, setProductsLoading] = useState(true);
     const [cart, setCart] = useState(initialCart);
     const [wishlist, setWishlist] = useState(initialWishlist);
     const [currentUser, setCurrentUser] = useState(initialUser);
+
+    useEffect(() => {
+        const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        const exitDelay = reducedMotion ? 300 : 7000;
+        const removeDelay = reducedMotion ? 1100 : 7650;
+        const exitTimer = window.setTimeout(() => setIsLoadingScreenExiting(true), exitDelay);
+        const removeTimer = window.setTimeout(() => setShowLoadingScreen(false), removeDelay);
+
+        return () => {
+            window.clearTimeout(exitTimer);
+            window.clearTimeout(removeTimer);
+        };
+    }, []);
     
     useEffect(() => {
         const loadInitialData = async () => {
             try {
-                // Minimum preloader time for aesthetic impact
-                const minLoaderPromise = new Promise(resolve => setTimeout(resolve, 2200));
-                const dataPromise = dbService.getProducts();
-                const heroPromise = dbService.getHeroSlides();
-                
-                const [data, heroSlides] = await Promise.all([dataPromise, heroPromise, minLoaderPromise]);
-                await preloadHeroImages(heroSlides);
+                const data = await dbService.getProducts();
                 setProducts(data);
+                setProductsLoading(false);
 
                 if (currentUser) {
                     try {
@@ -174,9 +134,8 @@ export default function App() {
                     setWishlist([]); // Clear wishlist on logout or for guests on load
                 }
             } catch (error) {
+                setProductsLoading(false);
                 console.error("Failed to harmonize portals:", error);
-            } finally {
-                setIsAppLoading(false);
             }
         };
         loadInitialData();
@@ -222,14 +181,14 @@ export default function App() {
     const clearCart = () => setCart([]);
     const cartCount = cart.reduce((acc, item) => acc + item.quantity, 0);
 
-    if (isAppLoading) return <Preloader />;
-
     return (
         <Router>
             <ScrollToTop />
-            <div className="min-h-screen flex flex-col selection:bg-[#5c1111] selection:text-white animate-in fade-in zoom-in-95 duration-1000">
+            {showLoadingScreen && <StoreLoadingScreen isExiting={isLoadingScreenExiting} />}
+            <div inert={showLoadingScreen} className="min-h-screen flex flex-col selection:bg-[#5c1111] selection:text-white animate-in fade-in zoom-in-95 duration-1000">
                 <Navbar cartCount={cartCount} currentUser={currentUser} setCurrentUser={setCurrentUser} />
                 <main className="flex-grow pb-20 lg:pb-0">
+                    <Suspense fallback={null}>
                     <Routes>
                         <Route path="/" element={<HomePage products={products} addToCart={addToCart} wishlist={wishlist} toggleWishlist={toggleWishlist} />} />
                         <Route path="/products" element={<ProductsPage products={products} addToCart={addToCart} wishlist={wishlist} toggleWishlist={toggleWishlist} />} />
@@ -254,6 +213,7 @@ export default function App() {
                         <Route path="/verify" element={<InvoiceVerificationPage />} />
                         <Route path="/verify/:invoiceNo" element={<InvoiceVerificationPage />} />
                     </Routes>
+                    </Suspense>
                 </main>
                 <BottomNav currentUser={currentUser} />
                 <RouteFooter />

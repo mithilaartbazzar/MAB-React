@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Send, MapPin, Mail } from 'lucide-react';
+import { Send, MapPin, Mail, Camera, Music2 } from 'lucide-react';
 import { dbService } from '../services/dbservices';
 
 export const Footer = () => {
@@ -61,9 +61,9 @@ export const Footer = () => {
                                 <p className="flex items-center gap-3"><Mail size={14} className="text-[#5c1111]" /> <a href="mailto:hello@mithilachitrakalastore.com.np" className="text-stone-400 hover:text-stone-900">hello@mithilachitrakalastore.com.np</a></p> 
                             </div>
                             <div className="flex gap-3">
-                                <a href="https://www.instagram.com/mithilachitrakalastore" className="flex h-9 w-9 items-center justify-center rounded-full border border-white/5 bg-white/5 transition-all hover:-translate-y-1 hover:border-[#5c1111] hover:bg-[#5c1111] sm:h-10 sm:w-10" target='_blank' rel="noreferrer" title="Instagram"><i className="fa-brands fa-instagram text-[14px] sm:text-[16px]"></i></a>
-                                <a href="https://www.facebook.com/profile.php?id=61578104247563" className="flex h-9 w-9 items-center justify-center rounded-full border border-white/5 bg-white/5 transition-all hover:-translate-y-1 hover:border-[#5c1111] hover:bg-[#5c1111] sm:h-10 sm:w-10" target='_blank' rel="noreferrer" title="Facebook"><i className="fa-brands fa-facebook-f text-[14px] sm:text-[16px]"></i></a>
-                                <a href="https://www.tiktok.com/@mithila_chitrakala" className="flex h-9 w-9 items-center justify-center rounded-full border border-white/5 bg-white/5 transition-all hover:-translate-y-1 hover:border-[#5c1111] hover:bg-[#5c1111] sm:h-10 sm:w-10" target='_blank' rel="noreferrer" title="TikTok"><i className="fa-brands fa-tiktok text-[13px] sm:text-[15px]"></i></a>
+                                <a href="https://www.instagram.com/mithilachitrakalastore" className="flex h-9 w-9 items-center justify-center rounded-full border border-white/5 bg-white/5 transition-all hover:-translate-y-1 hover:border-[#5c1111] hover:bg-[#5c1111] sm:h-10 sm:w-10" target='_blank' rel="noreferrer" title="Instagram"><Camera size={16} /></a>
+                                <a href="https://www.facebook.com/profile.php?id=61578104247563" className="flex h-9 w-9 items-center justify-center rounded-full border border-white/5 bg-white/5 transition-all hover:-translate-y-1 hover:border-[#5c1111] hover:bg-[#5c1111] sm:h-10 sm:w-10" target='_blank' rel="noreferrer" title="Facebook"><span className="font-sans text-base font-bold">f</span></a>
+                                <a href="https://www.tiktok.com/@mithila_chitrakala" className="flex h-9 w-9 items-center justify-center rounded-full border border-white/5 bg-white/5 transition-all hover:-translate-y-1 hover:border-[#5c1111] hover:bg-[#5c1111] sm:h-10 sm:w-10" target='_blank' rel="noreferrer" title="TikTok"><Music2 size={16} /></a>
                             </div>
                         </div>
 
