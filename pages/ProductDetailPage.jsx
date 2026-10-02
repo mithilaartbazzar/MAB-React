@@ -127,12 +127,12 @@ export const ProductDetailPage = ({ products, addToCart, wishlist, toggleWishlis
     const currentPrice = Number(product?.price) || 0;
     const comparePrice = Number(product?.compare_price ?? product?.original_price ?? product?.mrp ?? 0) || 0;
     const isFramedArtwork = /paint|canvas|artwork|frame/i.test(`${product?.category || ''} ${product?.name || ''}`);
-    const detailRows = [
+    const detailRows = product ? [
         { label: 'Material', value: product.material || 'Not specified', icon: Palette },
         { label: 'Size', value: product.length || 'Not specified', icon: Ruler },
         { label: isFramedArtwork ? 'Frame' : 'Care', value: isFramedArtwork ? 'Not included' : (product.instruction || 'Handle with care'), icon: Frame },
         { label: 'Authenticity', value: product.authenticity || 'Not specified', icon: CircleCheck },
-    ];
+    ] : [];
 
     const scrollCarousel = (direction) => {
         carouselRef.current?.scrollBy({ left: direction === 'left' ? -360 : 360, behavior: 'smooth' });
