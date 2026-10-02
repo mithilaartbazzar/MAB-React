@@ -1,4 +1,4 @@
-import React, { lazy, Suspense, useState, useEffect } from 'react';
+import React, { lazy, Suspense, useState, useEffect, useRef } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { dbService } from './services/dbservices';
 import { StoreLoadingScreen } from './components/StoreLoadingScreen';
@@ -22,6 +22,21 @@ const ScrollToTop = () => {
     }, [pathname, hash]); // Trigger on route or hash change
 
     return null; 
+};
+
+const MetaPixelPageView = () => {
+    const { pathname, search, hash } = useLocation();
+    const lastTrackedLocation = useRef(`${window.location.pathname}${window.location.search}${window.location.hash}`);
+
+    useEffect(() => {
+        const currentLocation = `${pathname}${search}${hash}`;
+        if (lastTrackedLocation.current === currentLocation) return;
+
+        lastTrackedLocation.current = currentLocation;
+        window.fbq?.('track', 'PageView');
+    }, [pathname, search, hash]);
+
+    return null;
 };
 
 const RouteFooter = () => {
@@ -184,6 +199,7 @@ export default function App() {
     return (
         <Router>
             <ScrollToTop />
+            <MetaPixelPageView />
             {showLoadingScreen && <StoreLoadingScreen isExiting={isLoadingScreenExiting} />}
             <div inert={showLoadingScreen} className="min-h-screen flex flex-col selection:bg-[#5c1111] selection:text-white animate-in fade-in zoom-in-95 duration-1000">
                 <Navbar cartCount={cartCount} currentUser={currentUser} setCurrentUser={setCurrentUser} />
