@@ -63,7 +63,7 @@ export const Footer = () => {
                             <div className="flex gap-3">
                                 <a href="https://www.instagram.com/mithilachitrakalastore" className="flex h-9 w-9 items-center justify-center rounded-full border border-white/5 bg-white/5 transition-all hover:-translate-y-1 hover:border-[#5c1111] hover:bg-[#5c1111] sm:h-10 sm:w-10" target='_blank' rel="noreferrer" title="Instagram"><Camera size={16} /></a>
                                 <a href="https://www.facebook.com/profile.php?id=61578104247563" className="flex h-9 w-9 items-center justify-center rounded-full border border-white/5 bg-white/5 transition-all hover:-translate-y-1 hover:border-[#5c1111] hover:bg-[#5c1111] sm:h-10 sm:w-10" target='_blank' rel="noreferrer" title="Facebook"><span className="font-sans text-base font-bold">f</span></a>
-                                <a href="https://www.tiktok.com/@mithila_chitrakala" className="flex h-9 w-9 items-center justify-center rounded-full border border-white/5 bg-white/5 transition-all hover:-translate-y-1 hover:border-[#5c1111] hover:bg-[#5c1111] sm:h-10 sm:w-10" target='_blank' rel="noreferrer" title="TikTok"><Music2 size={16} /></a>
+                                <a href="https://www.tiktok.com/@mithilachitrakalastore" className="flex h-9 w-9 items-center justify-center rounded-full border border-white/5 bg-white/5 transition-all hover:-translate-y-1 hover:border-[#5c1111] hover:bg-[#5c1111] sm:h-10 sm:w-10" target='_blank' rel="noreferrer" title="TikTok"><Music2 size={16} /></a>
                             </div>
                         </div>
 
