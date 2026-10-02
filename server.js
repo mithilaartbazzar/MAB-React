@@ -75,6 +75,72 @@ const normalizeProductData = (productData = {}) => {
     };
 };
 
+const getFrontendBaseUrl = (req) => {
+    const configuredBaseUrl = process.env.PUBLIC_FRONTEND_URL || process.env.VITE_APP_URL || process.env.VITE_FRONTEND_URL;
+    if (configuredBaseUrl) return configuredBaseUrl.replace(/\/+$/, '');
+    if (process.env.NODE_ENV === 'production') {
+        return 'https://mithilachitrakalastore.com.np';
+    }
+    return `${req.protocol}://${req.get('host')}`.replace(/\/+$/, '');
+};
+
+const getMetaAvailability = (product = {}) => {
+    const stockValue = Number(product.stock ?? product.inventory ?? 0) || 0;
+    const status = String(product.status || '').trim().toLowerCase();
+    if (status && ['draft', 'archived', 'deleted', 'inactive'].includes(status)) {
+        return 'out of stock';
+    }
+    return stockValue > 0 ? 'in stock' : 'out of stock';
+};
+
+const normalizeMetaProduct = (product = {}, req) => {
+    const productId = String(product.id || product.slug || product.name || 'meta-product').trim();
+    const slug = String(product.slug || product.name || productId || '').trim();
+    const title = String(product.title || product.name || 'Mithila Chitrakala Store Product').trim();
+    const rawKeyFeatures = String(product.key_features || '').trim();
+    const parsedKeyFeatures = rawKeyFeatures
+        .split(/\r?\n|\r/)
+        .map((line) => line.replace(/\|/g, ' • ').replace(/\s+/g, ' ').trim())
+        .filter(Boolean)
+        .slice(0, 6)
+        .join(' • ');
+    const baseDescription = String(product.description || product.short_description || `Premium handcrafted product from Mithila Chitrakala Store.`).trim().replace(/\s+/g, ' ');
+    const description = parsedKeyFeatures
+        ? `${baseDescription}${baseDescription.endsWith('.') ? ' ' : '. '}Features: ${parsedKeyFeatures}`
+        : baseDescription;
+    const priceValue = Number(product.price ?? product.sale_price ?? product.final_price ?? 0) || 0;
+    const stockValue = Number(product.stock ?? product.inventory ?? 0) || 0;
+    const category = String(product.category || product.product_type || product.type || 'General').trim() || 'General';
+    const brand = String(product.storeName || product.brand || 'Mithila Chitrakala Store').trim() || 'Mithila Chitrakala Store';
+    const productCode = String(product.product_code || product.sku || product.code || '').trim();
+    const frontendBaseUrl = getFrontendBaseUrl(req);
+    const productUrl = `${frontendBaseUrl}/product/${encodeURIComponent(slug || productId)}`;
+    const imageLink = buildProductShareImageUrl(product);
+    const rawCondition = String(product.condition || product.product_condition || 'new').trim().toLowerCase();
+
+    return {
+        id: productId,
+        title,
+        description,
+        availability: getMetaAvailability(product),
+        condition: ['new', 'used', 'refurbished', 'like_new'].includes(rawCondition) ? rawCondition : 'new',
+        price: priceValue.toFixed(2),
+        currency: 'NPR',
+        link: productUrl,
+        image_link: imageLink,
+        additional_image_link: Array.isArray(product.images) ? product.images.filter(Boolean).slice(0, 10) : [],
+        brand,
+        category,
+        product_type: category,
+        sku: productCode || undefined,
+        product_code: productCode || undefined,
+        inventory: stockValue,
+        availability_status: getMetaAvailability(product),
+        item_group_id: productId,
+        mpn: productCode || undefined,
+    };
+};
+
 const resolveProductStoreName = async (sellerId, fallbackStoreName = '') => {
     const trimmedFallback = String(fallbackStoreName || '').trim();
     if (trimmedFallback) return trimmedFallback;
@@ -155,6 +221,33 @@ app.get('/api/cloudinary/signature', (req, res) => {
     const signature = crypto.createHash('sha1').update(`${signatureBase}${cloudinaryApiSecret}`).digest('hex');
 
     res.json({ apiKey: cloudinaryApiKey, cloudName: cloudinaryCloudName, timestamp, folder, signature });
+});
+
+app.get('/api/meta/products-feed', async (req, res) => {
+    try {
+        const { data: products, error } = await supabase.from('products').select('*');
+        if (error) throw new Error(error.message);
+
+        const activeProducts = (products || [])
+            .filter((product) => {
+                const visible = product.visible_to_users !== false && product.visible_to_users !== 'false';
+                const status = String(product.status || '').trim().toLowerCase();
+                const hiddenStatus = ['draft', 'archived', 'deleted', 'inactive'];
+                return visible && !(status && hiddenStatus.includes(status));
+            })
+            .map((product) => normalizeMetaProduct(product, req));
+
+        res.json({
+            source: 'existing-products-database',
+            currency: 'NPR',
+            generated_at: new Date().toISOString(),
+            total_products: activeProducts.length,
+            products: activeProducts,
+        });
+    } catch (error) {
+        console.error('Meta feed generation failed:', error);
+        res.status(500).json({ error: 'Unable to generate the Meta product feed right now.' });
+    }
 });
 
 // --- Supabase DB Proxy Route ---
