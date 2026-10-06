@@ -39,9 +39,9 @@ export const Footer = () => {
                 <div className="absolute -bottom-32 -left-32 w-96 h-96 bg-amber-600/5 rounded-full blur-[120px] pointer-events-none"></div>
 
                 <div className="max-w-7xl mx-auto relative z-10">
-                    <div className="grid grid-cols-2 gap-x-5 gap-y-8 sm:gap-10 md:grid-cols-2 lg:grid-cols-[1.4fr_1fr_1fr_1.2fr] lg:gap-16">
-                        {/* Brand */}
-                        <div className="col-span-2 space-y-4 sm:space-y-6 lg:col-span-1">
+                    <div className="grid gap-8 md:grid-cols-2 xl:grid-cols-[1.3fr_1.1fr_1fr_1.1fr] xl:gap-10">
+                        {/* Brand / intro */}
+                        <div className="space-y-5 xl:pr-6">
                             <div className="flex items-center gap-3">
                                 <img
                                   className="h-9 w-9 rounded-[0.5rem] shadow-lg sm:h-10 sm:w-10"
@@ -50,16 +50,18 @@ export const Footer = () => {
                                 />
                                 <div className="flex flex-col">
                                     <h3 className="font-playfair text-xl font-bold leading-none text-stone-100 sm:text-2xl">Mithila Chitrakala Store</h3>
-                                    <span className="text-[8px] font-black uppercase tracking-[0.3em] text-stone-500 mt-1">Est. Heritage &bull; Janakpur</span>
+                                    <span className="mt-1 text-[8px] font-black uppercase tracking-[0.3em] text-stone-500">Est. Heritage &bull; Janakpur</span>
                                 </div>
                             </div>
-                            <p className="max-w-sm text-xs font-light leading-relaxed text-stone-500 sm:text-sm">
-                                Elevating thousands of years of Mithila tradition to the modern stage. We work directly with rural artisans to bring their divine stories to your home.
+                            <p className="max-w-md text-sm font-light leading-relaxed text-stone-300">
+                                Elevating thousands of years of Mithila tradition to the modern stage. We work directly with rural artisans to make authentic cultural stories accessible to homes across Nepal and beyond.
                             </p>
-                            <div className="space-y-2 text-[11px] text-stone-500 sm:space-y-3 sm:text-xs">
-                                <p className="flex items-center gap-3"><MapPin size={14} className="text-[#5c1111]" /> Janakpur Dham, Nepal</p>
-                                <p className="flex items-center gap-3"><Mail size={14} className="text-[#5c1111]" /> <a href="mailto:hello@mithilachitrakalastore.com.np" className="text-stone-400 hover:text-stone-900">hello@mithilachitrakalastore.com.np</a></p> 
+
+                            <div className="space-y-2.5 text-[11px] text-stone-300 sm:text-xs">
+                                <p className="flex items-center gap-3"><MapPin size={14} className="text-[#5c1111]" /> Janakpur Dham, Madhesh Province, Nepal</p>
+                                <p className="flex items-center gap-3"><Mail size={14} className="text-[#5c1111]" /> <a href="mailto:hello@mithilachitrakalastore.com.np" className="text-stone-300 transition-colors hover:text-stone-100">hello@mithilachitrakalastore.com.np</a></p>
                             </div>
+
                             <div className="flex gap-3">
                                 <a href="https://www.instagram.com/mithilachitrakalastore" className="flex h-9 w-9 items-center justify-center rounded-full border border-white/5 bg-white/5 transition-all hover:-translate-y-1 hover:border-[#5c1111] hover:bg-[#5c1111] sm:h-10 sm:w-10" target='_blank' rel="noreferrer" title="Instagram"><Camera size={16} /></a>
                                 <a href="https://www.facebook.com/profile.php?id=61578104247563" className="flex h-9 w-9 items-center justify-center rounded-full border border-white/5 bg-white/5 transition-all hover:-translate-y-1 hover:border-[#5c1111] hover:bg-[#5c1111] sm:h-10 sm:w-10" target='_blank' rel="noreferrer" title="Facebook"><span className="font-sans text-base font-bold">f</span></a>
@@ -67,58 +69,103 @@ export const Footer = () => {
                             </div>
                         </div>
 
-                        {/* The Vault */}
+                        {/* General information */}
                         <div>
-                            <h4 className="mb-4 font-playfair text-base font-black text-stone-100 sm:mb-8 sm:text-lg">Quick Links</h4>
-                            <ul className="space-y-2.5 text-[10px] font-black uppercase tracking-widest text-stone-500 sm:space-y-4 sm:text-[11px]">
-                                <li><Link to="/products" className="hover:text-white hover:pl-1 transition-all inline-block">Our Collection</Link></li>
-                                <li><Link to="/products?cat=paintings" className="hover:text-white hover:pl-1 transition-all inline-block">Paintings</Link></li>
-                                <li><Link to="/products?cat=home-decor" className="hover:text-white hover:pl-1 transition-all inline-block">Home Decor</Link></li>
-                                <li><Link to="/advice" className="hover:text-white hover:pl-1 transition-all inline-block">AI Art Consultant</Link></li>
-                                <li><Link to="/wishlist" className="hover:text-white hover:pl-1 transition-all inline-block">My Wishlist</Link></li>
-                            </ul>
+                            <h4 className="mb-4 font-playfair text-base font-black text-stone-100 sm:text-lg">General Information</h4>
+                            <div className="space-y-4 text-[11px] leading-relaxed text-stone-300 sm:text-xs">
+                                <div>
+                                    <p className="font-semibold uppercase tracking-[0.14em] text-stone-200">Business Name</p>
+                                    <p>Mithila Chitrakala Store</p>
+                                </div>
+                                <div>
+                                    <p className="font-semibold uppercase tracking-[0.14em] text-stone-200">Business Type</p>
+                                    <p>Heritage art, handcrafted decor & cultural retail</p>
+                                </div>
+                                <div>
+                                    <p className="font-semibold uppercase tracking-[0.14em] text-stone-200">Registration No.</p>
+                                    <p>24734/436/2083/084</p>
+                                </div>
+                                <div>
+                                    <p className="font-semibold uppercase tracking-[0.14em] text-stone-200">Registration Authority</p>
+                                    <p>Department of Cottage and Small Industries - DCSI, Nepal</p>
+                                </div>
+                                <div>
+                                    <p className="font-semibold uppercase tracking-[0.14em] text-stone-200">PAN No.</p>
+                                    <p>14450215</p>
+                                </div>
+                            </div>
                         </div>
 
-                        {/* Concierge */}
+                        {/* Categories */}
                         <div>
-                            <h4 className="mb-4 font-playfair text-base font-black text-stone-100 sm:mb-8 sm:text-lg">Customer Care</h4>
-                            <ul className="space-y-2.5 text-[10px] font-black uppercase tracking-widest text-stone-500 sm:space-y-4 sm:text-[11px]">
-                                <li><Link to="/profile" className="hover:text-white hover:pl-1 transition-all inline-block" title='Track Your Order'>Track Collection</Link></li>
-                                <li><Link to="#" className="hover:text-white hover:pl-1 transition-all inline-block" title='Authentication'>Authentication</Link></li>
-                                <li><Link to="#" className="hover:text-white hover:pl-1 transition-all inline-block" title='Shipping & Returns'>Shipping & Returns</Link></li>
-                                <li><Link to="/privacy-policy" className="hover:text-white hover:pl-1 transition-all inline-block" title='Privacy Policy'>Privacy Policy</Link></li>
-                                <li><Link to="/terms-of-service" className="hover:text-white hover:pl-1 transition-all inline-block" title='Terms of Service'>Terms of Service</Link></li>
+                            <h4 className="mb-4 font-playfair text-base font-black text-stone-100 sm:text-lg">Explore</h4>
+                            <ul className="space-y-2.5 text-[10px] font-black uppercase tracking-[0.14em] text-stone-300 sm:space-y-3 sm:text-[11px]">
+                                <li><Link to="/products?cat=paintings" className="transition-colors hover:text-white">Paintings</Link></li>
+                                <li><Link to="/products?cat=home-decor" className="transition-colors hover:text-white">Home Decor</Link></li>
+                                <li><Link to="/products" className="transition-colors hover:text-white">Our Collection</Link></li>
+                                <li><Link to="/advice" className="transition-colors hover:text-white">AI Art Consultant</Link></li>
+                                <li><Link to="/wishlist" className="transition-colors hover:text-white">Wishlist</Link></li>
                             </ul>
+
+                            <div className="mt-7">
+                                <h4 className="mb-3 font-playfair text-base font-black text-stone-100 sm:text-lg">Customer Care</h4>
+                                <ul className="space-y-2.5 text-[10px] font-black uppercase tracking-[0.14em] text-stone-300 sm:space-y-3 sm:text-[11px]">
+                                    <li><Link to="/profile" className="transition-colors hover:text-white">Track Collection</Link></li>
+                                    <li><Link to="/privacy-policy" className="transition-colors hover:text-white">Privacy Policy</Link></li>
+                                    <li><Link to="/terms-of-service" className="transition-colors hover:text-white">Terms of Service</Link></li>
+                                </ul>
+                            </div>
                         </div>
 
-                        {/* Journal */}
-                        <div className="col-span-2 sm:col-span-1">
-                            <h4 className="mb-4 font-playfair text-base font-black text-stone-100 sm:mb-8 sm:text-lg">Join Our Newsletter</h4>
-                            <p className="mb-3 text-[10px] font-black uppercase leading-relaxed tracking-widest text-stone-500 sm:mb-5 sm:text-[11px]">Join our circle for heritage drops &amp; artisan stories.</p>
-                            <form onSubmit={handleJournalSubscribe} className="flex gap-2">
-                                <input
-                                    type="email"
-                                    required
-                                    value={email}
-                                    onChange={(event) => setEmail(event.target.value)}
-                                    placeholder="Your email..."
-                                    className="min-w-0 flex-1 rounded-xl border border-white/10 bg-white/5 px-3 py-2.5 text-xs transition-all placeholder:text-stone-600 focus:border-[#5c1111] focus:bg-white/10 focus:outline-none sm:px-4 sm:py-3 sm:text-sm"
-                                />
-                                <button disabled={loading} type="submit" className="shrink-0 rounded-xl bg-[#5c1111] px-3 py-2.5 shadow-lg transition-all hover:-translate-y-0.5 hover:bg-red-700 disabled:opacity-70 sm:px-4 sm:py-3" title="Subscribe">
-                                    <Send size={14} className="sm:h-4 sm:w-4" />
-                                </button>
-                            </form>
-                            {status.message && (
-                                <p className={`mt-4 text-[9px] font-black uppercase tracking-widest ${status.type === 'success' ? 'text-green-300' : 'text-red-300'}`}>{status.message}</p>
-                            )}
-                            <p className="text-stone-700 text-[9px] font-bold uppercase tracking-widest mt-4">Small batches. No spam.</p>
+                        {/* Contact & newsletter */}
+                        <div>
+                            <h4 className="mb-4 font-playfair text-base font-black text-stone-100 sm:text-lg">Contact &amp; Grievance</h4>
+                            <div className="space-y-4 text-[11px] leading-relaxed text-stone-300 sm:text-xs">
+                                <div>
+                                    <p className="font-semibold uppercase tracking-[0.14em] text-stone-200">Business Address</p>
+                                    <p>Janakpur Dham, Madhesh Province, Nepal</p>
+                                </div>
+                                <div>
+                                    <p className="font-semibold uppercase tracking-[0.14em] text-stone-200">Email</p>
+                                    <a href="mailto:hello@mithilachitrakalastore.com.np" className="text-stone-300 transition-colors hover:text-white">hello@mithilachitrakalastore.com.np</a>
+                                </div>
+                                <div>
+                                    <p className="font-semibold uppercase tracking-[0.14em] text-stone-200">Grievance Contact</p>
+                                    <p>contact@mithilachitrakalastore.com.np, +977 981-8270104</p>
+                                </div>
+                                <div>
+                                    <p className="font-semibold uppercase tracking-[0.14em] text-stone-200">Management</p>
+                                    <p>Grievance Management Team</p>
+                                </div>
+                            </div>
+
+                            <div className="mt-7">
+                                <h4 className="mb-3 font-playfair text-base font-black text-stone-100 sm:text-lg">Join Our Newsletter</h4>
+                                <p className="mb-3 text-[10px] font-black uppercase leading-relaxed tracking-[0.14em] text-stone-300 sm:text-[11px]">Join our circle for heritage drops &amp; artisan stories.</p>
+                                <form onSubmit={handleJournalSubscribe} className="flex gap-2">
+                                    <input
+                                        type="email"
+                                        required
+                                        value={email}
+                                        onChange={(event) => setEmail(event.target.value)}
+                                        placeholder="Your email..."
+                                        className="min-w-0 flex-1 rounded-xl border border-white/10 bg-white/5 px-3 py-2.5 text-xs transition-all placeholder:text-stone-600 focus:border-[#5c1111] focus:bg-white/10 focus:outline-none sm:px-4 sm:py-3 sm:text-sm"
+                                    />
+                                    <button disabled={loading} type="submit" className="shrink-0 rounded-xl bg-[#5c1111] px-3 py-2.5 shadow-lg transition-all hover:-translate-y-0.5 hover:bg-red-700 disabled:opacity-70 sm:px-4 sm:py-3" title="Subscribe">
+                                        <Send size={14} className="sm:h-4 sm:w-4" />
+                                    </button>
+                                </form>
+                                {status.message && (
+                                    <p className={`mt-4 text-[9px] font-black uppercase tracking-[0.14em] ${status.type === 'success' ? 'text-green-300' : 'text-red-300'}`}>{status.message}</p>
+                                )}
+                            </div>
                         </div>
                     </div>
 
                     {/* Bottom bar */}
                     <div className="mt-10 flex flex-col items-center justify-between gap-4 border-t border-white/5 pt-6 sm:mt-20 sm:gap-6 sm:pt-10 md:flex-row">
                         <div className="flex flex-col items-center gap-2 text-center sm:items-start sm:text-left">
-                            <p className="text-[9px] font-black uppercase tracking-[0.2em] text-stone-600 sm:text-[10px] sm:tracking-[0.3em]">
+                            <p className="text-[9px] font-black uppercase tracking-[0.2em] text-stone-400 sm:text-[10px] sm:tracking-[0.3em]">
                                 &copy; 2025 Mithila Chitrakala Store &bull; Heritage Reserved
                             </p>
                             <a
