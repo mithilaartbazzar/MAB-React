@@ -54,7 +54,7 @@ export const Footer = () => {
                                 </div>
                             </div>
                             <p className="max-w-md text-sm font-light leading-relaxed text-stone-300">
-                                Elevating thousands of years of Mithila tradition to the modern stage. We work directly with rural artisans to make authentic cultural stories accessible to homes across Nepal and beyond.
+                                We bring Mithila art into everyday life through traditional paintings, hand-painted clothing and accessories, and handcrafted textile products. We also accept custom orders and designs—share your idea, and we’ll work with you to create a piece made just for you.
                             </p>
 
                             <div className="space-y-2.5 text-[11px] text-stone-300 sm:text-xs">
@@ -79,7 +79,7 @@ export const Footer = () => {
                                 </div>
                                 <div>
                                     <p className="font-semibold uppercase tracking-[0.14em] text-stone-200">Business Type</p>
-                                    <p>Heritage art, handcrafted decor & cultural retail</p>
+                                    <p>Mithila paintings, hand-painted clothing and accessories, handcrafted textile products, decor, and custom-made designs</p>
                                 </div>
                                 <div>
                                     <p className="font-semibold uppercase tracking-[0.14em] text-stone-200">Registration No.</p>
@@ -131,7 +131,7 @@ export const Footer = () => {
                                 </div>
                                 <div>
                                     <p className="font-semibold uppercase tracking-[0.14em] text-stone-200">Grievance Contact</p>
-                                    <p>contact@mithilachitrakalastore.com.np, +977 981-8270104</p>
+                                    <p>contact@mithilachitrakalastore.com.np,<br /> +977 981-8270104</p>
                                 </div>
                                 <div>
                                     <p className="font-semibold uppercase tracking-[0.14em] text-stone-200">Management</p>
