@@ -123,7 +123,7 @@ export const Footer = () => {
                             <div className="space-y-4 text-[11px] leading-relaxed text-stone-300 sm:text-xs">
                                 <div>
                                     <p className="font-semibold uppercase tracking-[0.14em] text-stone-200">Business Address</p>
-                                    <p>Janakpur Dham, Madhesh Province, Nepal</p>
+                                    <p>kabadhall, Pidari, Janakpur Dham - 13, Madhesh Province, Nepal</p>
                                 </div>
                                 <div>
                                     <p className="font-semibold uppercase tracking-[0.14em] text-stone-200">Email</p>
