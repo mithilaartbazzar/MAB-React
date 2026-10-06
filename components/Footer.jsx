@@ -58,8 +58,8 @@ export const Footer = () => {
                             </p>
 
                             <div className="space-y-2.5 text-[11px] text-stone-300 sm:text-xs">
-                                <p className="flex items-center gap-3"><MapPin size={14} className="text-[#5c1111]" /> Janakpur Dham, Madhesh Province, Nepal</p>
-                                <p className="flex items-center gap-3"><Mail size={14} className="text-[#5c1111]" /> <a href="mailto:hello@mithilachitrakalastore.com.np" className="text-stone-300 transition-colors hover:text-stone-100">hello@mithilachitrakalastore.com.np</a></p>
+                                <p className="flex items-center gap-3"><MapPin size={18} className="text-[#d58e6d]" />Kabadhall, Pidari, Janakpur Dham - 13, Madhesh Province, Nepal</p>
+                                <p className="flex items-center gap-3"><Mail size={14} className="text-[#d58e6d]" /> <a href="mailto:hello@mithilachitrakalastore.com.np" className="text-stone-300 transition-colors hover:text-stone-100">hello@mithilachitrakalastore.com.np</a></p>
                             </div>
 
                             <div className="flex gap-3">
