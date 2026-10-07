@@ -14,7 +14,7 @@ export const BottomNav = ({ currentUser }) => {
     ];
 
     return (
-        <div className="fixed bottom-0 left-0 right-0 z-[110] border-t border-[#E7E0D2] bg-[#FAF7F2]/95 px-4 py-2.5 pb-5 backdrop-blur-lg lg:hidden print:hidden">
+        <div className="fixed bottom-2 left-2 right-2 z-[110] bg-white/30 backdrop-blur-sm border border-white/10 rounded-full p-6 shadow-xl px-4 py-2 pb-3 backdrop-blur-lg lg:hidden print:hidden">
             <div className="mx-auto flex max-w-lg items-center justify-between">
                 {navItems.map((item) => {
                     const isActive =
@@ -26,7 +26,7 @@ export const BottomNav = ({ currentUser }) => {
                             key={item.path}
                             to={item.path}
                             className={`flex flex-1 flex-col items-center gap-0.5 transition-colors ${
-                                isActive ? 'text-[#7C2020]' : 'text-[#8B8378]'
+                                isActive ? 'text-[#7C2020]' : 'text-salt-500 hover:text-salt-700'
                             }`}
                         >
                             <item.icon size={22} strokeWidth={isActive ? 2.25 : 1.75} fill={item.icon === Heart && isActive ? 'currentColor' : 'none'} />

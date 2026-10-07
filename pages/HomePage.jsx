@@ -208,9 +208,9 @@ const SectionHead = ({ title, subtitle, viewAllLink }) => (
 export const HomePage = ({ products, addToCart, wishlist, toggleWishlist }) => {
     const [heroSlides, setHeroSlides] = useState([]);
     const [journalPosts, setJournalPosts] = useState([]);
-    const featured = products.filter((p) => p.featured).slice(0, 5);
-    const featuredFill = featured.length < 5
-        ? [...featured, ...products.filter((p) => !p.featured).slice(0, 5 - featured.length)]
+    const featured = products.filter((p) => p.featured).slice(0, 6);
+    const featuredFill = featured.length < 6
+        ? [...featured, ...products.filter((p) => !p.featured).slice(0, 6 - featured.length)]
         : featured;
 
     const categoryImage = (cat) => cat.fallback;
@@ -308,7 +308,7 @@ export const HomePage = ({ products, addToCart, wishlist, toggleWishlist }) => {
                         New artworks are being curated. Visit the shop to browse the full collection.
                     </p>
                 ) : (
-                    <div className="grid grid-cols-2 gap-2 sm:gap-4 lg:grid-cols-5">
+                    <div className="grid grid-cols-2 gap-1 sm:gap-2 lg:grid-cols-6">
                         {featuredFill.map((p, idx) => (
                             <Reveal key={p.id} delay={idx * 60}>
                                 <ProductCard

@@ -100,9 +100,9 @@ export const Navbar = ({ cartCount, currentUser, setCurrentUser }) => {
             <div className="w-full border-b border-white/10 bg-[#171512]/95 shadow-[0_8px_24px_rgba(0,0,0,0.2)] backdrop-blur-xl">
                 <div className="flex items-center justify-between gap-2 px-3 py-2.5 sm:gap-2 sm:px-5 sm:py-3 lg:px-4">
                     <Link to="/" className="flex items-center gap-2.5 shrink-0 sm:gap-3">
-                        <div className="flex h-8 w-8 items-center justify-center rounded-full border border-[#E7C77A] bg-[#F2D98C] shadow-[0_0_0_2px_rgba(242,217,140,0.2)] transition-transform duration-200 hover:scale-[1.02] sm:h-9 sm:w-9">
+                        <div className="flex h-8 w-8 items-center justify-center rounded-full border border-[#E7C77A] bg-[#fff5d6] shadow-[0_0_0_2px_rgba(242,217,140,0.2)] transition-transform duration-200 hover:scale-[1.02] sm:h-9 sm:w-9">
                             <img
-                                className="h-6 w-6 rounded-full object-cover sm:h-8 sm:w-8"
+                                className="h-8 w-8 rounded-full object-cover sm:h-8 sm:w-8"
                                 src="https://res.cloudinary.com/djmbuuz28/image/upload/v1761108817/logo.png"
                                 alt="Mithila Chitrakala Store"
                             />
