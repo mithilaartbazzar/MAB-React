@@ -45,6 +45,23 @@ const TRUST_ITEMS = [
 ];
 
 const EMPTY_HERO_SLIDE = { image: '', link: '/products', cta: 'Explore Collection' };
+const HERO_IMAGE_WIDTHS = [640, 960, 1280, 1920];
+
+const getHeroImageSources = (image) => {
+    const uploadPath = '/image/upload/';
+    if (!image.includes(uploadPath)) return { src: image };
+
+    const optimizeAtWidth = (width) => image.replace(
+        uploadPath,
+        `${uploadPath}f_auto,q_auto:good,w_${width}/`
+    );
+
+    return {
+        src: optimizeAtWidth(1280),
+        srcSet: HERO_IMAGE_WIDTHS.map((width) => `${optimizeAtWidth(width)} ${width}w`).join(', '),
+        sizes: '100vw',
+    };
+};
 
 const HOME_CATEGORY_ALIASES = {
     'handmade-crafts': 'crafts',
@@ -125,6 +142,8 @@ const HeroSection = ({ heroSlides }) => {
 
     const currentSlide = slides[current] || slides[0] || EMPTY_HERO_SLIDE;
     const previousSlide = slides[previous] || slides[0] || EMPTY_HERO_SLIDE;
+    const currentImage = getHeroImageSources(currentSlide.image);
+    const previousImage = getHeroImageSources(previousSlide.image);
 
     return (
         <section
@@ -143,14 +162,16 @@ const HeroSection = ({ heroSlides }) => {
                 >
                     <div
                         className="mithila-hero-image-layer mithila-hero-image-layer-previous"
-                        style={{ backgroundImage: `url("${previousSlide.image}")` }}
                         aria-hidden="true"
-                    />
+                    >
+                        <img {...previousImage} alt="" />
+                    </div>
                     <div
                         className="mithila-hero-image-layer mithila-hero-image-layer-current"
-                        style={{ backgroundImage: `url("${currentSlide.image}")` }}
                         aria-hidden="true"
-                    />
+                    >
+                        <img {...currentImage} alt="" fetchPriority="high" />
+                    </div>
                     <div className="mithila-hero-vignette" aria-hidden="true" />
 
                     <div className="mithila-hero-overlay-row">

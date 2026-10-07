@@ -14,10 +14,10 @@ export function StoreLoadingScreen({ isExiting = false }) {
             <div className="store-loader__border store-loader__border--bottom" aria-hidden="true" />
 
             <div className="store-loader__peacock store-loader__peacock--left" aria-hidden="true">
-                <img src={PEACOCK_IMAGE_URL} alt="" fetchPriority="high" />
+                <img src={PEACOCK_IMAGE_URL} alt="" loading="lazy" fetchPriority="low" />
             </div>
             <div className="store-loader__peacock store-loader__peacock--right" aria-hidden="true">
-                <img src={PEACOCK_IMAGE_URL} alt="" fetchPriority="high" />
+                <img src={PEACOCK_IMAGE_URL} alt="" loading="lazy" fetchPriority="low" />
             </div>
 
             <div className="store-loader__center">
@@ -26,7 +26,7 @@ export function StoreLoadingScreen({ isExiting = false }) {
                         className="store-loader__logo"
                         src={LOGO_IMAGE_URL}
                         alt="Mithila Chitrakala Store"
-                        fetchPriority="high"
+                        fetchPriority="low"
                     />
                 </div>
                 <p className="store-loader__store-name">Mithila Chitrakala Store</p>

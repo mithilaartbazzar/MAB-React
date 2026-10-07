@@ -103,8 +103,8 @@ export default function App() {
 
     useEffect(() => {
         const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-        const exitDelay = reducedMotion ? 300 : 7000;
-        const removeDelay = reducedMotion ? 1100 : 7650;
+        const exitDelay = reducedMotion ? 150 : 300;
+        const removeDelay = reducedMotion ? 450 : 950;
         const exitTimer = window.setTimeout(() => setIsLoadingScreenExiting(true), exitDelay);
         const removeTimer = window.setTimeout(() => setShowLoadingScreen(false), removeDelay);
 
