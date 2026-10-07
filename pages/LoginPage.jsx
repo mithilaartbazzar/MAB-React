@@ -62,8 +62,11 @@ export const LoginPage = ({ onLogin }) => {
             const profileNeedsCompletion = !existingUser?.name || !existingUser?.address ||
                 !existingUser?.age || !existingUser?.gender;
             if (existingUser && !profileNeedsCompletion) {
+                const emailAdminToken = existingUser.role === 'admin'
+                    ? await dbService.createAdminEmailSession(session.access_token)
+                    : undefined;
                 await supabase.auth.signOut();
-                const userWithAvatar = { ...existingUser, avatar_url };
+                const userWithAvatar = { ...existingUser, avatar_url, emailAdminToken };
                 onLogin(userWithAvatar);
             } else {
                 setAuthMode('completeProfile');

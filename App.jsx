@@ -126,7 +126,11 @@ export default function App() {
                         const allUsers = await dbService.getUsers();
                         const refreshedUser = allUsers.find(user => user.id === currentUser.id);
                         if (refreshedUser) {
-                            setCurrentUser(refreshedUser);
+                            if (refreshedUser.role === 'admin' && !currentUser.emailAdminToken) {
+                                setCurrentUser(null);
+                                return;
+                            }
+                            setCurrentUser({ ...refreshedUser, emailAdminToken: currentUser.emailAdminToken });
                         }
                     } catch (userSyncError) {
                         console.error('Failed to sync current user from database:', userSyncError);

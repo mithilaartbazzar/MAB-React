@@ -63,6 +63,54 @@ export const dbService = {
     getWishlists: (sellerId) => callDbService('getWishlists', { sellerId }),
     addToWishlist: (userId, productId) => callDbService('addToWishlist', { userId, productId }),
     removeFromWishlist: (userId, productId) => callDbService('removeFromWishlist', { userId, productId }),
+    sendManualEmail: async (payload, emailAdminToken) => {
+        const response = await fetch(`${API_BASE_URL}/email/manual`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                Authorization: `Bearer ${emailAdminToken || ''}`,
+            },
+            body: JSON.stringify(payload)
+        });
+
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok) {
+            throw new Error(data.error || `Server returned ${response.status}`);
+        }
+        return data;
+    },
+    getResendTemplates: async (emailAdminToken) => {
+        const response = await fetch(`${API_BASE_URL}/email/templates`, {
+            headers: { Authorization: `Bearer ${emailAdminToken || ''}` },
+        });
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok) {
+            throw new Error(data.error || `Server returned ${response.status}`);
+        }
+        return data.templates || [];
+    },
+    getResendTemplate: async (templateId, emailAdminToken) => {
+        const response = await fetch(`${API_BASE_URL}/email/templates/${encodeURIComponent(templateId)}`, {
+            headers: { Authorization: `Bearer ${emailAdminToken || ''}` },
+        });
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok) {
+            throw new Error(data.error || `Server returned ${response.status}`);
+        }
+        return data.template;
+    },
+    createAdminEmailSession: async (supabaseAccessToken) => {
+        const response = await fetch(`${API_BASE_URL}/email/admin-session`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ supabaseAccessToken }),
+        });
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok) {
+            throw new Error(data.error || `Server returned ${response.status}`);
+        }
+        return data.emailAdminToken;
+    },
     getHeroSlides: () => callDbService('getHeroSlides'),
     saveHeroSlide: (slide, adminId) => callDbService('saveHeroSlide', { slide, adminId }),
     deleteHeroSlide: (id, adminId) => callDbService('deleteHeroSlide', { id, adminId }),

@@ -7,6 +7,7 @@ import { createClient } from '@supabase/supabase-js';
 import { GoogleGenAI } from '@google/genai';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { Resend } from 'resend';
 
 dotenv.config();
 
@@ -15,6 +16,24 @@ const __dirname = path.dirname(__filename);
 
 const app = express();
 const PORT = process.env.PORT || 10000;
+const APP_NAME = 'Mithila Chitrakala Store';
+const EMAIL_SENDERS = {
+    hello: process.env.EMAIL_HELLO || 'hello@mithilachitrakalastore.com.np',
+    orders: process.env.EMAIL_ORDERS || 'orders@mithilachitrakalastore.com.np',
+    support: process.env.EMAIL_SUPPORT || 'support@mithilachitrakalastore.com.np',
+    security: process.env.EMAIL_SECURITY || 'security@mithilachitrakalastore.com.np',
+};
+const RESEND_TEMPLATES = {
+    welcome: process.env.RESEND_TEMPLATE_WELCOME || '',
+    verification: process.env.RESEND_TEMPLATE_VERIFICATION || '',
+    passwordReset: process.env.RESEND_TEMPLATE_PASSWORD_RESET || '',
+    orderConfirmation: process.env.RESEND_TEMPLATE_ORDER_CONFIRMATION || '',
+    orderStatus: process.env.RESEND_TEMPLATE_ORDER_STATUS || '',
+    shipping: process.env.RESEND_TEMPLATE_SHIPPING || '',
+    support: process.env.RESEND_TEMPLATE_SUPPORT || '',
+};
+const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
+const ADMIN_EMAIL_TOKEN_SECRET = process.env.ADMIN_EMAIL_TOKEN_SECRET || process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_SERVICE_ROLE_KEY || '';
 
 app.use(cors());
 app.use(express.json());
@@ -22,7 +41,7 @@ app.use(express.urlencoded({ extended: true }));
 
 const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
 // We recommend using the SERVICE_ROLE_KEY here for secure backend operations
-const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_ANON_KEY;
+const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_ANON_KEY;
 const geminiApiKey = process.env.VITE_GEMINI_API_KEY || process.env.GEMINI_API_KEY;
 const cloudinaryApiKey = process.env.CLOUDINARY_API_KEY;
 const cloudinaryApiSecret = process.env.CLOUDINARY_API_SECRET;
@@ -47,6 +66,52 @@ const describeSupabaseError = (error) => [
     error.details ? `Details: ${error.details}` : '',
     error.hint ? `Hint: ${error.hint}` : ''
 ].filter(Boolean).join(' ');
+
+const createAdminEmailToken = (adminId) => {
+    if (!ADMIN_EMAIL_TOKEN_SECRET) return '';
+    const payload = Buffer.from(JSON.stringify({
+        sub: String(adminId),
+        exp: Date.now() + (12 * 60 * 60 * 1000),
+    })).toString('base64url');
+    const signature = crypto.createHmac('sha256', ADMIN_EMAIL_TOKEN_SECRET).update(payload).digest('base64url');
+    return `${payload}.${signature}`;
+};
+
+const getAdminEmailTokenSubject = (req) => {
+    if (!ADMIN_EMAIL_TOKEN_SECRET) return null;
+    const token = String(req.get('authorization') || '').replace(/^Bearer\s+/i, '').trim();
+    const [payload, signature] = token.split('.');
+    if (!payload || !signature) return null;
+
+    const expectedSignature = crypto.createHmac('sha256', ADMIN_EMAIL_TOKEN_SECRET).update(payload).digest();
+    const providedSignature = Buffer.from(signature, 'base64url');
+    if (providedSignature.length !== expectedSignature.length || !crypto.timingSafeEqual(providedSignature, expectedSignature)) return null;
+
+    try {
+        const decoded = JSON.parse(Buffer.from(payload, 'base64url').toString('utf8'));
+        if (!decoded.sub || !Number.isFinite(decoded.exp) || decoded.exp <= Date.now()) return null;
+        return String(decoded.sub);
+    } catch {
+        return null;
+    }
+};
+
+const getActiveAdminForEmailRequest = async (req) => {
+    const adminId = getAdminEmailTokenSubject(req);
+    if (!adminId) return { error: 'A valid admin session is required.', status: ADMIN_EMAIL_TOKEN_SECRET ? 401 : 503 };
+
+    const { data: admin, error } = await supabase
+        .from('users')
+        .select('id, role, status')
+        .eq('id', adminId)
+        .maybeSingle();
+
+    if (error) throw new Error(error.message);
+    if (!admin || admin.role !== 'admin' || admin.status !== 'active') {
+        return { error: 'Only active administrators can use manual email tools.', status: 403 };
+    }
+    return { admin };
+};
 
 const createSlug = (value) => String(value || '')
     .toLowerCase()
@@ -88,6 +153,523 @@ const getFrontendBaseUrl = (req) => {
         return 'https://mithilachitrakalastore.com.np';
     }
     return `${req.protocol}://${req.get('host')}`.replace(/\/+$/, '');
+};
+
+const escapeHtml = (value = '') => String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+
+const htmlToPlainText = (html = '') => String(html)
+    .replace(/<style\b[^>]*>[\s\S]*?<\/style>/gi, '')
+    .replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, '')
+    .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/<\/(p|div|li|h[1-6])\s*>/gi, '\n')
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/&nbsp;/gi, ' ')
+    .replace(/&amp;/gi, '&')
+    .replace(/&lt;/gi, '<')
+    .replace(/&gt;/gi, '>')
+    .replace(/&quot;/gi, '"')
+    .replace(/&#039;/gi, "'")
+    .replace(/[ \t]+/g, ' ')
+    .replace(/\n\s+/g, '\n')
+    .trim();
+
+const formatDisplayDate = (dateValue, fallback = new Date()) => {
+    const date = dateValue ? new Date(dateValue) : new Date(fallback);
+    if (Number.isNaN(date.getTime())) return String(dateValue || new Date().toISOString());
+    return new Intl.DateTimeFormat('en-US', { year: 'numeric', month: 'short', day: 'numeric' }).format(date);
+};
+
+const buildEmailTemplateVariables = ({ userName = 'Customer', userEmail = '', createdDate = new Date().toISOString(), appName = APP_NAME } = {}) => ({
+    APP_NAME: String(appName || APP_NAME).trim() || APP_NAME,
+    CREATED_DATE: formatDisplayDate(createdDate),
+    USER_EMAIL: String(userEmail || '').trim(),
+    USER_NAME: String(userName || 'Customer').trim() || 'Customer',
+    YEAR: Number(new Date().getFullYear()),
+    WEBSITE_URL: 'https://mithilachitrakalastore.com.np',
+    SUPPORT_EMAIL: 'support@mithilachitrakalastore.com.np',
+    PRIVACY: 'https://mithilachitrakalastore.com.np/privacy',
+});
+
+const getNameFromEmailAddress = (email) => {
+    const localPart = String(email || '').split('@')[0] || '';
+    const readableName = localPart
+        .replace(/[._+-]+/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim()
+        .replace(/\b[a-z]/g, (letter) => letter.toUpperCase());
+    return readableName || 'Customer';
+};
+
+const buildBrandHtml = () => `
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse; background:#f8f4ee;">
+      <tr>
+        <td style="padding:28px 32px 18px; text-align:center;">
+          <div style="display:inline-block; background:#fff; border:1px solid #e9dfd4; border-radius:16px; padding:12px 18px; box-shadow:0 8px 20px rgba(42,39,35,0.04);">
+            <div style="font-size:11px; letter-spacing:3px; color:#8d6a56; text-transform:uppercase; font-weight:700;">Mithila Chitrakala</div>
+            <div style="font-size:22px; line-height:1.2; color:#2a2723; font-weight:700;">Store</div>
+          </div>
+        </td>
+      </tr>
+    </table>
+`;
+
+const buildEmailLayout = ({ title, intro, bodyHtml, ctaLabel, ctaUrl, footerText, previewText, createdDate, userEmail, userName, appName = APP_NAME }) => {
+    const templateVars = buildEmailTemplateVariables({ userName, userEmail, createdDate, appName });
+    const resolvedCtaLabel = ctaLabel || 'Visit Store';
+    const resolvedFooterText = footerText || `Thank you for choosing ${escapeHtml(appName)}.`;
+    const safePreview = escapeHtml(previewText || `${appName} — ${title}`);
+    return `
+        <!DOCTYPE html>
+        <html lang="en">
+        <head>
+          <meta charset="UTF-8" />
+          <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+          <title>${escapeHtml(title)}</title>
+        </head>
+        <body style="margin:0; padding:0; background:#f4efe8; font-family:Arial, Helvetica, sans-serif; color:#2a2723;">
+          <div style="display:none; max-height:0; overflow:hidden; opacity:0; mso-hide:all;">${safePreview}</div>
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%; background:#f4efe8; border-collapse:collapse;">
+            <tr>
+              <td align="center" style="padding:32px 16px;">
+                <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:640px; width:100%; border-collapse:collapse; background:#fffdfb; border:1px solid #ece2d7; border-radius:20px; overflow:hidden; box-shadow:0 10px 30px rgba(42,39,35,0.05);">
+                  ${buildBrandHtml()}
+                  <tr>
+                    <td style="padding:0 36px 8px; font-size:12px; letter-spacing:2.4px; text-transform:uppercase; color:#8a7c6d; font-weight:700;">
+                      ${escapeHtml(appName)}
+                    </td>
+                  </tr>
+                  <tr>
+                    <td style="padding:10px 36px 20px;">
+                      <h1 style="margin:0; font-size:30px; line-height:1.2; color:#2a2723; font-weight:700;">${escapeHtml(title)}</h1>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td style="padding:0 36px 18px;">
+                      <p style="margin:0; font-size:15px; line-height:1.7; color:#514b46;">${escapeHtml(intro)}</p>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td style="padding:0 36px 26px;">
+                      <div style="background:#f7f3ee; border:1px solid #e8dfd4; border-radius:14px; padding:22px 20px; color:#2a2723;">
+                        ${bodyHtml}
+                      </div>
+                    </td>
+                  </tr>
+                  ${ctaLabel && ctaUrl ? `
+                  <tr>
+                    <td style="padding:0 36px 28px; text-align:center;">
+                      <a href="${escapeHtml(ctaUrl)}" style="display:inline-block; background:#5c1111; color:#ffffff; text-decoration:none; border-radius:999px; padding:14px 24px; font-size:14px; font-weight:700; letter-spacing:0.04em; text-transform:uppercase;">${escapeHtml(resolvedCtaLabel)}</a>
+                    </td>
+                  </tr>
+                  ` : ''}
+                  <tr>
+                    <td style="padding:0 36px 26px; border-top:1px solid #ece2d7;">
+                      <p style="margin:14px 0 0; font-size:12px; line-height:1.7; color:#726b65;">${escapeHtml(resolvedFooterText)}<br />${escapeHtml(appName)} · ${templateVars.YEAR}</p>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td style="padding:0 36px 28px; text-align:center;">
+                      <a href="${escapeHtml(process.env.PUBLIC_FRONTEND_URL || process.env.VITE_APP_URL || 'https://mithilachitrakalastore.com.np')}" style="color:#5c1111; text-decoration:none; font-size:13px; font-weight:700;">mithilachitrakalastore.com.np</a>
+                    </td>
+                  </tr>
+                </table>
+              </td>
+            </tr>
+          </table>
+        </body>
+        </html>
+    `;
+};
+
+const normalizeRecipientList = (recipients) => {
+    const values = Array.isArray(recipients) ? recipients : [recipients];
+    return values
+        .map((value) => String(value || '').trim().toLowerCase())
+        .filter(Boolean)
+        .filter((value) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value));
+};
+
+const sendEmail = async ({
+    to,
+    from,
+    replyTo,
+    subject,
+    html,
+    text,
+    category = 'general',
+    idempotencyKey,
+    variables,
+    template,
+}) => {
+    const recipients = normalizeRecipientList(to);
+    if (!recipients.length) {
+        throw new Error('A valid recipient email is required.');
+    }
+
+    if (!resend || !process.env.RESEND_API_KEY) {
+        console.warn('[email] Resend is not configured. Skipping email delivery.', {
+            category,
+            recipients,
+            subject,
+        });
+        return {
+            success: false,
+            skipped: true,
+            reason: 'missing_resend_api_key',
+        };
+    }
+
+    const senderAddress = from || EMAIL_SENDERS.hello;
+    const replyAddress = replyTo || EMAIL_SENDERS.hello;
+
+    try {
+        const payload = {
+            from: `${APP_NAME} <${senderAddress}>`,
+            to: recipients,
+            reply_to: replyAddress,
+            subject,
+            tags: [{ name: 'category', value: category }],
+        };
+
+        if (template) {
+            payload.template = {
+                id: template,
+                ...(variables && typeof variables === 'object' && !Array.isArray(variables) ? { variables } : {}),
+            };
+        } else {
+            payload.html = html;
+            payload.text = text || String(html || '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+        }
+
+        if (idempotencyKey) {
+            payload.idempotencyKey = idempotencyKey;
+        }
+
+        const response = await resend.emails.send(payload);
+        if (response?.error) {
+            const resendError = new Error(response.error.message || String(response.error));
+            resendError.statusCode = response.error.statusCode;
+            throw resendError;
+        }
+        console.log(`[email:${category}] sent via Resend successfully to ${recipients.join(', ')}`, response?.id ? { id: response.id } : {});
+        return { success: true, response, recipients };
+    } catch (error) {
+        const statusCode = error?.statusCode || error?.status || 'unknown';
+        const errorMessage = error?.message || 'Unknown email sending error';
+        console.error(`[email:${category}] Resend delivery failed`, {
+            statusCode,
+            message: errorMessage,
+            recipients,
+            subject,
+        });
+        return {
+            success: false,
+            error: errorMessage,
+            statusCode,
+            recipients,
+        };
+    }
+};
+
+const sendWelcomeEmail = async ({ to, name, userEmail, appName = APP_NAME, websiteUrl = process.env.PUBLIC_FRONTEND_URL || process.env.VITE_APP_URL || 'https://mithilachitrakalastore.com.np' }) => {
+    const recipient = to || userEmail;
+    const customerName = String(name || 'Customer').trim() || 'Customer';
+    const emailHtml = buildEmailLayout({
+        title: 'Welcome to Mithila Chitrakala Store',
+        intro: `Hello ${customerName}, welcome to the Mithila Chitrakala Store family.`,
+        bodyHtml: `
+            <p style="margin:0 0 14px; font-size:15px; line-height:1.7; color:#2a2723;"><strong>Your account has been successfully created.</strong> We are delighted to have you with us.</p>
+            <p style="margin:0 0 14px; font-size:15px; line-height:1.7; color:#2a2723;">At Mithila Chitrakala Store, we bring you authentic handcrafted art, meaningful gifting, and a curated collection inspired by tradition and craftsmanship.</p>
+            <p style="margin:0; font-size:15px; line-height:1.7; color:#2a2723;">You can now explore the collection and manage your account from the store. We look forward to helping you discover pieces that feel personal and timeless.</p>
+        `,
+        ctaLabel: 'Visit Your Account',
+        ctaUrl: websiteUrl,
+        footerText: `Your account is ready and we are here to help with every step of your shopping journey.`,
+        previewText: `Welcome to ${appName}`,
+        createdDate: new Date().toISOString(),
+        userEmail: recipient,
+        userName: customerName,
+        appName,
+    });
+
+    const templateVars = buildEmailTemplateVariables({ userName: customerName, userEmail: recipient, createdDate: new Date().toISOString(), appName });
+    return sendEmail({
+        to: recipient,
+        from: EMAIL_SENDERS.hello,
+        replyTo: EMAIL_SENDERS.hello,
+        subject: `Welcome to ${appName}`,
+        html: emailHtml,
+        category: 'welcome',
+        idempotencyKey: recipient ? `welcome:${String(recipient).toLowerCase()}` : undefined,
+        variables: templateVars,
+        template: RESEND_TEMPLATES.welcome || undefined,
+    });
+};
+
+const sendEmailVerification = async ({ to, name, verificationUrl, expiresIn, userEmail, appName = APP_NAME }) => {
+    const recipient = to || userEmail;
+    const customerName = String(name || 'Customer').trim() || 'Customer';
+    const securityUrl = verificationUrl || `${process.env.PUBLIC_FRONTEND_URL || process.env.VITE_APP_URL || 'https://mithilachitrakalastore.com.np'}/verify-email`;
+    const expirationNote = expiresIn ? `This link expires in ${expiresIn}.` : 'This verification link expires shortly for your security.';
+
+    const emailHtml = buildEmailLayout({
+        title: 'Verify Your Email Address',
+        intro: `Hello ${customerName}, we need to confirm your email address before continuing.`,
+        bodyHtml: `
+            <p style="margin:0 0 14px; font-size:15px; line-height:1.7; color:#2a2723;">Please verify your email to secure your account and keep your order updates, account activity, and important notifications protected.</p>
+            <p style="margin:0 0 14px; font-size:15px; line-height:1.7; color:#2a2723;">${escapeHtml(expirationNote)}</p>
+            <p style="margin:0; font-size:15px; line-height:1.7; color:#2a2723;">For your security, never share this link with anyone.</p>
+        `,
+        ctaLabel: 'Verify My Email',
+        ctaUrl: securityUrl,
+        footerText: `If you did not create this account, please ignore this message and contact our support team immediately.`,
+        previewText: `Verify your email at ${appName}`,
+        createdDate: new Date().toISOString(),
+        userEmail: recipient,
+        userName: customerName,
+        appName,
+    });
+
+    const templateVars = buildEmailTemplateVariables({ userName: customerName, userEmail: recipient, createdDate: new Date().toISOString(), appName });
+    return sendEmail({
+        to: recipient,
+        from: EMAIL_SENDERS.security,
+        replyTo: EMAIL_SENDERS.support,
+        subject: `Verify your ${appName} account`,
+        html: emailHtml,
+        category: 'security',
+        idempotencyKey: recipient ? `verify-email:${String(recipient).toLowerCase()}` : undefined,
+        variables: templateVars,
+        template: RESEND_TEMPLATES.verification || undefined,
+    });
+};
+
+const sendPasswordResetEmail = async ({ to, name, resetUrl, expiresIn, userEmail, appName = APP_NAME }) => {
+    const recipient = to || userEmail;
+    const customerName = String(name || 'Customer').trim() || 'Customer';
+    const passwordResetUrl = resetUrl || `${process.env.PUBLIC_FRONTEND_URL || process.env.VITE_APP_URL || 'https://mithilachitrakalastore.com.np'}/reset-password`;
+    const expirationNote = expiresIn ? `This password reset link expires in ${expiresIn}.` : 'This password reset link expires shortly for your protection.';
+
+    const emailHtml = buildEmailLayout({
+        title: 'Reset Your Password',
+        intro: `Hello ${customerName}, a password reset for your account was requested.`,
+        bodyHtml: `
+            <p style="margin:0 0 14px; font-size:15px; line-height:1.7; color:#2a2723;">Use the secure link below to create a new password for your ${appName} account.</p>
+            <p style="margin:0 0 14px; font-size:15px; line-height:1.7; color:#2a2723;">${escapeHtml(expirationNote)}</p>
+            <p style="margin:0; font-size:15px; line-height:1.7; color:#2a2723;">If you did not request this reset, you can ignore this email and your current password will remain unchanged.</p>
+        `,
+        ctaLabel: 'Reset My Password',
+        ctaUrl: passwordResetUrl,
+        footerText: `For your security, never share this link or your password with anyone.`,
+        previewText: `Reset your ${appName} password`,
+        createdDate: new Date().toISOString(),
+        userEmail: recipient,
+        userName: customerName,
+        appName,
+    });
+
+    const templateVars = buildEmailTemplateVariables({ userName: customerName, userEmail: recipient, createdDate: new Date().toISOString(), appName });
+    return sendEmail({
+        to: recipient,
+        from: EMAIL_SENDERS.security,
+        replyTo: EMAIL_SENDERS.support,
+        subject: `Reset your ${appName} password`,
+        html: emailHtml,
+        category: 'security',
+        idempotencyKey: recipient ? `password-reset:${String(recipient).toLowerCase()}` : undefined,
+        variables: templateVars,
+        template: RESEND_TEMPLATES.passwordReset || undefined,
+    });
+};
+
+const sendOrderConfirmationEmail = async ({ to, name, userEmail, order, appName = APP_NAME }) => {
+    const recipient = to || userEmail || order?.customer?.email || order?.customer_email;
+    const customerName = String(name || order?.customer?.name || 'Customer').trim() || 'Customer';
+    const items = Array.isArray(order?.items) ? order.items : [];
+    const subtotal = Number(order?.subtotal ?? items.reduce((sum, item) => sum + (Number(item.price || 0) * Number(item.quantity || 0)), 0));
+    const shippingFee = Number(order?.shipping_fee ?? order?.delivery_fee ?? 0);
+    const orderTotal = Number(order?.total ?? subtotal + shippingFee);
+    const orderDate = order?.date ? formatDisplayDate(order.date) : formatDisplayDate(new Date().toISOString());
+    const orderNumber = order?.id || order?.invoice_no || 'N/A';
+    const productRows = items.map((item) => `
+        <tr>
+          <td style="padding:10px 0; border-bottom:1px solid #ece2d7; font-size:14px; color:#2a2723;">${escapeHtml(item.name || 'Art piece')}</td>
+          <td style="padding:10px 0; border-bottom:1px solid #ece2d7; font-size:14px; color:#2a2723; text-align:center;">${escapeHtml(item.quantity ?? 1)}</td>
+          <td style="padding:10px 0; border-bottom:1px solid #ece2d7; font-size:14px; color:#2a2723; text-align:right;">${escapeHtml(Number(item.price || 0).toLocaleString('en-US', { maximumFractionDigits: 2 }))}</td>
+        </tr>
+    `).join('');
+    const orderLink = `${process.env.PUBLIC_FRONTEND_URL || process.env.VITE_APP_URL || 'https://mithilachitrakalastore.com.np'}/profile`;
+
+    const emailHtml = buildEmailLayout({
+        title: 'Your Order Is Confirmed',
+        intro: `Hello ${customerName}, thank you for shopping with ${appName}.`,
+        bodyHtml: `
+            <p style="margin:0 0 14px; font-size:15px; line-height:1.7; color:#2a2723;"><strong>Order number:</strong> ${escapeHtml(orderNumber)}</p>
+            <p style="margin:0 0 14px; font-size:15px; line-height:1.7; color:#2a2723;"><strong>Order date:</strong> ${escapeHtml(orderDate)}</p>
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%; border-collapse:collapse; margin:20px 0;">
+              <thead>
+                <tr>
+                  <th style="padding:8px 0; text-align:left; font-size:12px; text-transform:uppercase; letter-spacing:0.08em; color:#766e62; border-bottom:1px solid #ece2d7;">Item</th>
+                  <th style="padding:8px 0; text-align:center; font-size:12px; text-transform:uppercase; letter-spacing:0.08em; color:#766e62; border-bottom:1px solid #ece2d7;">Qty</th>
+                  <th style="padding:8px 0; text-align:right; font-size:12px; text-transform:uppercase; letter-spacing:0.08em; color:#766e62; border-bottom:1px solid #ece2d7;">Price</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${productRows || '<tr><td colspan="3" style="padding:12px 0; font-size:14px; color:#514b46;">Your order details are being prepared.</td></tr>'}
+              </tbody>
+            </table>
+            <p style="margin:0 0 8px; font-size:14px; line-height:1.7; color:#2a2723; text-align:right;"><strong>Subtotal:</strong> NPR ${Number(subtotal).toLocaleString('en-US', { maximumFractionDigits: 2 })}</p>
+            <p style="margin:0 0 8px; font-size:14px; line-height:1.7; color:#2a2723; text-align:right;"><strong>Shipping:</strong> NPR ${Number(shippingFee).toLocaleString('en-US', { maximumFractionDigits: 2 })}</p>
+            <p style="margin:0; font-size:16px; line-height:1.7; color:#2a2723; text-align:right;"><strong>Total:</strong> NPR ${Number(orderTotal).toLocaleString('en-US', { maximumFractionDigits: 2 })}</p>
+            <p style="margin:18px 0 0; font-size:15px; line-height:1.7; color:#2a2723;"><strong>Payment status:</strong> ${escapeHtml(order?.customer_payment_status || order?.payment_status || 'pending')}</p>
+            ${(order?.customer?.address || order?.customer?.city) ? `<p style="margin:10px 0 0; font-size:15px; line-height:1.7; color:#2a2723;"><strong>Delivery address:</strong> ${escapeHtml([order.customer.address, order.customer.city].filter(Boolean).join(', '))}</p>` : ''}
+        `,
+        ctaLabel: 'View Order',
+        ctaUrl: orderLink,
+        footerText: `We will keep you updated on your order as it moves through our process.`,
+        previewText: `Order confirmed for ${customerName}`,
+        createdDate: order?.date || new Date().toISOString(),
+        userEmail: recipient,
+        userName: customerName,
+        appName,
+    });
+
+    const templateVars = buildEmailTemplateVariables({ userName: customerName, userEmail: recipient, createdDate: order?.date || new Date().toISOString(), appName });
+    return sendEmail({
+        to: recipient,
+        from: EMAIL_SENDERS.orders,
+        replyTo: EMAIL_SENDERS.support,
+        subject: `Order confirmation #${orderNumber}`,
+        html: emailHtml,
+        category: 'orders',
+        idempotencyKey: orderNumber ? `order-confirmation:${String(orderNumber)}` : undefined,
+        variables: templateVars,
+        template: RESEND_TEMPLATES.orderConfirmation || undefined,
+    });
+};
+
+const sendOrderStatusEmail = async ({ to, name, userEmail, order, previousStatus, newStatus, appName = APP_NAME }) => {
+    const recipient = to || userEmail || order?.customer?.email || order?.customer_email;
+    const customerName = String(name || order?.customer?.name || 'Customer').trim() || 'Customer';
+    const orderNumber = order?.id || order?.invoice_no || 'N/A';
+    const finalStatus = String(newStatus || order?.status || 'pending').trim();
+    const oldStatus = previousStatus || order?.previous_status || 'Pending';
+    const emailHtml = buildEmailLayout({
+        title: 'Order Status Update',
+        intro: `Hello ${customerName}, the status of your order has changed.`,
+        bodyHtml: `
+            <p style="margin:0 0 14px; font-size:15px; line-height:1.7; color:#2a2723;"><strong>Order number:</strong> ${escapeHtml(orderNumber)}</p>
+            <p style="margin:0 0 14px; font-size:15px; line-height:1.7; color:#2a2723;"><strong>Previous status:</strong> ${escapeHtml(oldStatus)}</p>
+            <p style="margin:0 0 14px; font-size:15px; line-height:1.7; color:#2a2723;"><strong>New status:</strong> ${escapeHtml(finalStatus)}</p>
+            <p style="margin:0; font-size:15px; line-height:1.7; color:#2a2723;">We will keep you informed as your order moves through the next step. You can review your order details anytime in your account.</p>
+        `,
+        ctaLabel: 'View My Order',
+        ctaUrl: `${process.env.PUBLIC_FRONTEND_URL || process.env.VITE_APP_URL || 'https://mithilachitrakalastore.com.np'}/profile`,
+        footerText: `You can reply to this email if you need assistance with your order.`,
+        previewText: `Your order status changed to ${finalStatus}`,
+        createdDate: order?.date || new Date().toISOString(),
+        userEmail: recipient,
+        userName: customerName,
+        appName,
+    });
+
+    const templateVars = buildEmailTemplateVariables({ userName: customerName, userEmail: recipient, createdDate: order?.date || new Date().toISOString(), appName });
+    return sendEmail({
+        to: recipient,
+        from: EMAIL_SENDERS.orders,
+        replyTo: EMAIL_SENDERS.support,
+        subject: `Your order #${orderNumber} is now ${finalStatus}`,
+        html: emailHtml,
+        category: 'orders',
+        idempotencyKey: orderNumber ? `order-status:${String(orderNumber)}:${String(finalStatus).toLowerCase()}` : undefined,
+        variables: templateVars,
+        template: RESEND_TEMPLATES.orderStatus || undefined,
+    });
+};
+
+const sendShippingEmail = async ({ to, name, userEmail, order, shippingInfo, trackingNumber, trackingUrl, expectedDelivery, appName = APP_NAME }) => {
+    const recipient = to || userEmail || order?.customer?.email || order?.customer_email;
+    const customerName = String(name || order?.customer?.name || 'Customer').trim() || 'Customer';
+    const orderNumber = order?.id || order?.invoice_no || 'N/A';
+    const trackingText = trackingNumber ? `Tracking number: ${trackingNumber}` : 'Tracking number: not provided yet';
+    const trackingLink = trackingUrl || `${process.env.PUBLIC_FRONTEND_URL || process.env.VITE_APP_URL || 'https://mithilachitrakalastore.com.np'}/profile`;
+    const expectedText = expectedDelivery ? `Expected delivery: ${expectedDelivery}` : 'Expected delivery details will be shared once the courier confirms the shipment.';
+
+    const emailHtml = buildEmailLayout({
+        title: 'Your Order Has Shipped',
+        intro: `Hello ${customerName}, your order is on its way.`,
+        bodyHtml: `
+            <p style="margin:0 0 14px; font-size:15px; line-height:1.7; color:#2a2723;"><strong>Order number:</strong> ${escapeHtml(orderNumber)}</p>
+            <p style="margin:0 0 14px; font-size:15px; line-height:1.7; color:#2a2723;"><strong>Shipping information:</strong> ${escapeHtml(shippingInfo || 'Your courier is preparing the shipment.')}</p>
+            <p style="margin:0 0 14px; font-size:15px; line-height:1.7; color:#2a2723;"><strong>${escapeHtml(trackingText)}</strong></p>
+            <p style="margin:0 0 14px; font-size:15px; line-height:1.7; color:#2a2723;">${escapeHtml(expectedText)}</p>
+        `,
+        ctaLabel: 'Track My Order',
+        ctaUrl: trackingLink,
+        footerText: `Please keep an eye on your inbox for the final delivery update.`,
+        previewText: `Your ${appName} order is on the way`,
+        createdDate: order?.date || new Date().toISOString(),
+        userEmail: recipient,
+        userName: customerName,
+        appName,
+    });
+
+    const templateVars = buildEmailTemplateVariables({ userName: customerName, userEmail: recipient, createdDate: order?.date || new Date().toISOString(), appName });
+    return sendEmail({
+        to: recipient,
+        from: EMAIL_SENDERS.orders,
+        replyTo: EMAIL_SENDERS.support,
+        subject: `Your order #${orderNumber} has shipped`,
+        html: emailHtml,
+        category: 'orders',
+        idempotencyKey: orderNumber ? `order-shipping:${String(orderNumber)}` : undefined,
+        variables: templateVars,
+        template: RESEND_TEMPLATES.shipping || undefined,
+    });
+};
+
+const sendSupportNotification = async ({ name, email, subject, message, orderNumber, appName = APP_NAME }) => {
+    const customerName = String(name || 'Customer').trim() || 'Customer';
+    const customerEmail = String(email || '').trim().toLowerCase();
+    const ticketSubject = String(subject || 'Customer support request').trim() || 'Customer support request';
+    const orderRef = String(orderNumber || '').trim();
+    const emailHtml = buildEmailLayout({
+        title: 'New Customer Support Request',
+        intro: `A new message has been submitted from ${customerName}.`,
+        bodyHtml: `
+            <p style="margin:0 0 12px; font-size:15px; line-height:1.7; color:#2a2723;"><strong>Name:</strong> ${escapeHtml(customerName)}</p>
+            <p style="margin:0 0 12px; font-size:15px; line-height:1.7; color:#2a2723;"><strong>Email:</strong> ${escapeHtml(customerEmail)}</p>
+            <p style="margin:0 0 12px; font-size:15px; line-height:1.7; color:#2a2723;"><strong>Subject:</strong> ${escapeHtml(ticketSubject)}</p>
+            ${orderRef ? `<p style="margin:0 0 12px; font-size:15px; line-height:1.7; color:#2a2723;"><strong>Order number:</strong> ${escapeHtml(orderRef)}</p>` : ''}
+            <p style="margin:0; font-size:15px; line-height:1.7; color:#2a2723;"><strong>Message:</strong><br />${escapeHtml(message || 'No message text provided.')}</p>
+        `,
+        ctaLabel: 'Reply to Customer',
+        ctaUrl: `mailto:${customerEmail}`,
+        footerText: `This request was submitted through ${appName}.`,
+        previewText: `Support request from ${customerName}`,
+        createdDate: new Date().toISOString(),
+        userEmail: customerEmail,
+        userName: customerName,
+        appName,
+    });
+
+    const templateVars = buildEmailTemplateVariables({ userName: customerName, userEmail: customerEmail, createdDate: new Date().toISOString(), appName });
+    return sendEmail({
+        to: EMAIL_SENDERS.support,
+        from: EMAIL_SENDERS.support,
+        replyTo: customerEmail || EMAIL_SENDERS.support,
+        subject: `Support request: ${ticketSubject}`,
+        html: emailHtml,
+        category: 'support',
+        idempotencyKey: customerEmail ? `support:${String(customerEmail).toLowerCase()}:${String(ticketSubject).toLowerCase()}` : undefined,
+        variables: templateVars,
+        template: RESEND_TEMPLATES.support || undefined,
+    });
 };
 
 const getMetaAvailability = (product = {}) => {
@@ -298,7 +880,9 @@ app.post('/api/db', async (req, res) => {
                 if (!matchesPassword || !data || data.status !== 'active') {
                     result = null;
                 } else {
-                    result = data;
+                    result = data.role === 'admin'
+                        ? { ...data, emailAdminToken: createAdminEmailToken(data.id) || undefined }
+                        : data;
                 }
                 break;
             }
@@ -332,6 +916,18 @@ app.post('/api/db', async (req, res) => {
                     const { data, fallbackError } = await supabase.from('users').insert([fallbackUser]).select();
                     if (fallbackError) throw new Error(fallbackError.message);
                     result = (data && data.length > 0) ? data[0] : fallbackUser;
+                }
+
+                if (result?.email) {
+                    try {
+                        await sendWelcomeEmail({
+                            to: result.email,
+                            name: result.name || result.username || 'Customer',
+                            userEmail: result.email,
+                        });
+                    } catch (error) {
+                        console.error('Welcome email failed after registration:', error.message || error);
+                    }
                 }
                 break;
             }
@@ -400,6 +996,18 @@ app.post('/api/db', async (req, res) => {
                     const { data, error } = await supabase.from('users').insert([newUser]).select().single();
                     if (error) throw new Error(describeSupabaseError(error));
                     result = data;
+                }
+
+                if (result?.email) {
+                    try {
+                        await sendWelcomeEmail({
+                            to: result.email,
+                            name: result.name || result.username || 'Customer',
+                            userEmail: result.email,
+                        });
+                    } catch (error) {
+                        console.error('Google welcome email failed:', error.message || error);
+                    }
                 }
                 break;
             }
@@ -679,10 +1287,24 @@ app.post('/api/db', async (req, res) => {
                 const { data, error } = await supabase.from('orders').insert([orderData]).select();
                 if (error) throw new Error(error.message);
                 result = data[0];
+
+                if (result?.customer?.email || result?.customer_email) {
+                    try {
+                        await sendOrderConfirmationEmail({
+                            to: result.customer?.email || result.customer_email,
+                            name: result.customer?.name || 'Customer',
+                            order: result,
+                        });
+                    } catch (error) {
+                        console.error('Order confirmation email failed:', error.message || error);
+                    }
+                }
                 break;
             }
             case 'updateOrderStatus': {
                 const { id, status, role, userId } = payload;
+                const previousOrder = id ? await supabase.from('orders').select('*').eq('id', id).maybeSingle() : { data: null };
+                const previousStatus = previousOrder?.data?.status || 'pending';
                 let updateData = { status };
                 if (status === 'cancelled') {
                     updateData.payment_status = 'cancelled';
@@ -691,6 +1313,24 @@ app.post('/api/db', async (req, res) => {
                 const { error } = await supabase.from('orders').update(updateData).eq('id', id);
                 if (error) throw new Error(error.message);
                 if (role === 'admin') await logAction(`Admin forced status ${status} on order ${id}`, userId);
+
+                if (id) {
+                    const { data: refreshedOrder } = await supabase.from('orders').select('*').eq('id', id).maybeSingle();
+                    const customerEmail = refreshedOrder?.customer?.email || refreshedOrder?.customer_email;
+                    if (customerEmail) {
+                        try {
+                            await sendOrderStatusEmail({
+                                to: customerEmail,
+                                name: refreshedOrder?.customer?.name || 'Customer',
+                                order: refreshedOrder,
+                                previousStatus,
+                                newStatus: status,
+                            });
+                        } catch (emailError) {
+                            console.error('Order status email failed:', emailError.message || emailError);
+                        }
+                    }
+                }
                 result = { success: true };
                 break;
             }
@@ -897,6 +1537,329 @@ app.post('/api/db', async (req, res) => {
     } catch (error) {
         console.error("DB Service Error:", error);
         res.status(400).json({ error: error.message });
+    }
+});
+
+app.post('/api/support', async (req, res) => {
+    try {
+        const { name, email, subject, message, orderNumber } = req.body || {};
+        const trimmedName = String(name || '').trim();
+        const trimmedEmail = String(email || '').trim();
+        const trimmedSubject = String(subject || 'Customer support request').trim();
+        const trimmedMessage = String(message || '').trim();
+
+        if (!trimmedName || !trimmedEmail || !trimmedMessage) {
+            return res.status(400).json({ error: 'Name, email, and message are required.' });
+        }
+
+        const result = await sendSupportNotification({
+            name: trimmedName,
+            email: trimmedEmail,
+            subject: trimmedSubject,
+            message: trimmedMessage,
+            orderNumber: String(orderNumber || '').trim(),
+        });
+
+        if (result?.success === false) {
+            return res.status(500).json({
+                error: 'The support message could not be delivered right now. Please try again later.',
+                details: result.error || 'Unknown email error',
+            });
+        }
+
+        return res.json({ success: true, message: 'Your message has been sent to the support team.' });
+    } catch (error) {
+        console.error('Support route error:', error);
+        return res.status(500).json({ error: 'Unable to send the support message right now.' });
+    }
+});
+
+app.post('/api/email/manual', async (req, res) => {
+    try {
+        const {
+            to,
+            name,
+            subject,
+            message,
+            category = 'general',
+            sender = 'hello',
+            replyTo = 'support',
+            template = '',
+            templateMode = 'custom',
+            templateVariables = {},
+            isHtml = false,
+        } = req.body || {};
+
+        const recipient = String(to || '').trim();
+        let customerName = String(name || '').trim();
+        const emailSubject = String(subject || '').trim();
+        const emailBody = String(message || '').trim();
+        const templateId = String(template || '').trim();
+
+        const authorization = await getActiveAdminForEmailRequest(req);
+        if (authorization.error) return res.status(authorization.status).json({ error: authorization.error });
+
+        if (!recipient || (templateMode === 'template' ? !templateId : !emailSubject || !emailBody)) {
+            return res.status(400).json({ error: 'Recipient, subject, and the selected email content are required.' });
+        }
+
+        const selectedSender = EMAIL_SENDERS[sender] || EMAIL_SENDERS.hello;
+        const selectedReply = EMAIL_SENDERS[replyTo] || EMAIL_SENDERS.support;
+
+        if (templateMode === 'template' && templateId) {
+            if (!resend) {
+                return res.status(503).json({ error: 'Resend is not configured on the server.' });
+            }
+
+            if (!customerName) {
+                const { data: customerProfile, error: customerLookupError } = await supabase
+                    .from('users')
+                    .select('name, username')
+                    .eq('email', recipient.toLowerCase())
+                    .maybeSingle();
+                if (customerLookupError) {
+                    console.warn('[email] Could not resolve recipient profile name:', customerLookupError.message);
+                }
+                customerName = String(customerProfile?.name || customerProfile?.username || getNameFromEmailAddress(recipient)).trim();
+            }
+
+            const { data: templateDetails, error: templateError } = await resend.templates.get(templateId);
+            if (templateError) {
+                return res.status(502).json({ error: templateError.message || 'Unable to retrieve the selected Resend template.' });
+            }
+            if (templateDetails?.status !== 'published') {
+                return res.status(400).json({ error: 'The selected Resend template must be published before it can be sent.' });
+            }
+
+            const defaultVariables = buildEmailTemplateVariables({
+                userName: customerName,
+                userEmail: recipient,
+                createdDate: new Date().toISOString(),
+                appName: APP_NAME,
+            });
+            const requestedVariables = templateVariables && typeof templateVariables === 'object' && !Array.isArray(templateVariables)
+                ? templateVariables
+                : {};
+            const variables = {};
+
+            for (const variable of templateDetails.variables || []) {
+                const isAutomaticVariable = ['USER_NAME', 'USER_EMAIL', 'APP_NAME', 'CREATED_DATE', 'YEAR'].includes(variable.key);
+                const providedValue = isAutomaticVariable ? undefined : requestedVariables[variable.key];
+                const fallbackValue = defaultVariables[variable.key] ?? variable.fallback_value;
+                const value = providedValue === undefined || providedValue === '' ? fallbackValue : providedValue;
+
+                if (value === undefined || value === null || value === '') {
+                    return res.status(400).json({ error: `Enter a value for template variable "${variable.key}".` });
+                }
+
+                if (variable.type === 'number') {
+                    const numericValue = Number(value);
+                    if (!Number.isFinite(numericValue)) {
+                        return res.status(400).json({ error: `Template variable "${variable.key}" must be a number.` });
+                    }
+                    variables[variable.key] = numericValue;
+                } else {
+                    variables[variable.key] = String(value);
+                }
+            }
+
+            const result = await sendEmail({
+                to: recipient,
+                from: selectedSender,
+                replyTo: selectedReply,
+                subject: emailSubject || undefined,
+                category: String(category || 'general').trim() || 'general',
+                template: templateId,
+                variables,
+            });
+
+            if (result?.success === false) {
+                return res.status(500).json({ error: result.error || 'Unable to send the selected template email.' });
+            }
+
+            return res.json({ success: true, message: 'Template email sent successfully.' });
+        }
+
+        const html = isHtml ? emailBody : buildEmailLayout({
+            title: emailSubject,
+            intro: `Hello ${customerName},`,
+            bodyHtml: `<p style="margin:0; font-size:15px; line-height:1.8; color:#2a2723;">${escapeHtml(emailBody).replace(/\n/g, '<br />')}</p>`,
+            footerText: 'This message was sent manually from the Mithila Chitrakala Store admin console.',
+            previewText: emailSubject,
+            createdDate: new Date().toISOString(),
+            userEmail: recipient,
+            userName: customerName,
+            appName: APP_NAME,
+        });
+
+        const result = await sendEmail({
+            to: recipient,
+            from: selectedSender,
+            replyTo: selectedReply,
+            subject: emailSubject,
+            html,
+            text: isHtml ? htmlToPlainText(html) : emailBody,
+            category: String(category || 'general').trim() || 'general',
+        });
+
+        if (result?.success === false) {
+            return res.status(500).json({ error: result.error || 'Unable to send the custom email.' });
+        }
+
+        return res.json({ success: true, message: 'Manual email sent successfully.' });
+    } catch (error) {
+        console.error('Manual email route error:', error);
+        return res.status(500).json({ error: error.message || 'Unable to send the manual email.' });
+    }
+});
+
+app.post('/api/email/admin-session', async (req, res) => {
+    try {
+        if (!ADMIN_EMAIL_TOKEN_SECRET) {
+            return res.status(503).json({ error: 'Admin email signing is not configured on the server.' });
+        }
+
+        const supabaseAccessToken = String(req.body?.supabaseAccessToken || '').trim();
+        if (!supabaseAccessToken) {
+            return res.status(401).json({ error: 'A valid Supabase sign-in session is required.' });
+        }
+
+        const { data: authData, error: authError } = await supabase.auth.getUser(supabaseAccessToken);
+        if (authError || !authData?.user?.email) {
+            return res.status(401).json({ error: 'The Supabase sign-in session is invalid or expired.' });
+        }
+
+        const { data: admin, error: adminError } = await supabase
+            .from('users')
+            .select('id, role, status')
+            .eq('email', authData.user.email)
+            .maybeSingle();
+
+        if (adminError) throw new Error(adminError.message);
+        if (!admin || admin.role !== 'admin' || admin.status !== 'active') {
+            return res.status(403).json({ error: 'Only active administrators can use manual email tools.' });
+        }
+
+        return res.json({ emailAdminToken: createAdminEmailToken(admin.id) });
+    } catch (error) {
+        console.error('Admin email session exchange error:', error);
+        return res.status(500).json({ error: error.message || 'Unable to create the admin email session.' });
+    }
+});
+
+app.get('/api/email/templates', async (req, res) => {
+    try {
+        const authorization = await getActiveAdminForEmailRequest(req);
+        if (authorization.error) return res.status(authorization.status).json({ error: authorization.error });
+        if (!resend) {
+            return res.status(503).json({ error: 'Resend is not configured on the server.' });
+        }
+
+        const { data, error } = await resend.templates.list({ limit: 100 });
+        if (error) {
+            return res.status(502).json({ error: error.message || 'Unable to retrieve Resend templates.' });
+        }
+
+        return res.json({ templates: (data?.data || []).filter((template) => template.status === 'published') });
+    } catch (error) {
+        console.error('Resend template list error:', error);
+        return res.status(500).json({ error: error.message || 'Unable to retrieve Resend templates.' });
+    }
+});
+
+app.get('/api/email/templates/:templateId', async (req, res) => {
+    try {
+        const authorization = await getActiveAdminForEmailRequest(req);
+        if (authorization.error) return res.status(authorization.status).json({ error: authorization.error });
+        if (!resend) {
+            return res.status(503).json({ error: 'Resend is not configured on the server.' });
+        }
+
+        const { data, error } = await resend.templates.get(String(req.params.templateId || '').trim());
+        if (error) return res.status(502).json({ error: error.message || 'Unable to retrieve the Resend template.' });
+        if (data?.status !== 'published') {
+            return res.status(400).json({ error: 'Only published Resend templates can be sent.' });
+        }
+
+        return res.json({ template: data });
+    } catch (error) {
+        console.error('Resend template detail error:', error);
+        return res.status(500).json({ error: error.message || 'Unable to retrieve the Resend template.' });
+    }
+});
+
+app.post('/api/email/test', async (req, res) => {
+    try {
+        if (process.env.NODE_ENV === 'production' && process.env.ENABLE_EMAIL_TESTS !== 'true') {
+            return res.status(403).json({ error: 'Email testing is disabled in production.' });
+        }
+
+        const { type = 'welcome', to, name, email, verificationUrl, resetUrl, order, previousStatus, newStatus, subject, message, orderNumber } = req.body || {};
+        const recipient = String(to || email || '').trim();
+        const customerName = String(name || 'Test Customer').trim();
+
+        if (!recipient && !['welcome', 'verification', 'reset', 'order-confirmation', 'order-status', 'shipping', 'support'].includes(type)) {
+            return res.status(400).json({ error: 'A valid recipient email address is required for the selected test type.' });
+        }
+
+        const handlers = {
+            welcome: () => sendWelcomeEmail({ to: recipient || 'hello@mithilachitrakalastore.com.np', name: customerName }),
+            verification: () => sendEmailVerification({ to: recipient || 'hello@mithilachitrakalastore.com.np', name: customerName, verificationUrl: verificationUrl || 'https://mithilachitrakalastore.com.np/verify-email', expiresIn: '30 minutes' }),
+            reset: () => sendPasswordResetEmail({ to: recipient || 'hello@mithilachitrakalastore.com.np', name: customerName, resetUrl: resetUrl || 'https://mithilachitrakalastore.com.np/reset-password', expiresIn: '30 minutes' }),
+            'order-confirmation': () => sendOrderConfirmationEmail({
+                to: recipient || 'hello@mithilachitrakalastore.com.np',
+                name: customerName,
+                order: order || {
+                    id: 'TEST-ORDER-001',
+                    date: new Date().toISOString(),
+                    customer: { name: customerName, email: recipient || 'hello@mithilachitrakalastore.com.np', address: 'Kathmandu, Nepal', city: 'Kathmandu' },
+                    items: [{ name: 'Mithila Art Print', quantity: 1, price: 3500 }],
+                    subtotal: 3500,
+                    shipping_fee: 250,
+                    total: 3750,
+                    customer_payment_status: 'pending',
+                },
+            }),
+            'order-status': () => sendOrderStatusEmail({
+                to: recipient || 'hello@mithilachitrakalastore.com.np',
+                name: customerName,
+                order: order || { id: 'TEST-ORDER-001', date: new Date().toISOString(), customer: { name: customerName, email: recipient || 'hello@mithilachitrakalastore.com.np' }, status: 'processing' },
+                previousStatus: previousStatus || 'pending',
+                newStatus: newStatus || 'processing',
+            }),
+            shipping: () => sendShippingEmail({
+                to: recipient || 'hello@mithilachitrakalastore.com.np',
+                name: customerName,
+                order: order || { id: 'TEST-ORDER-001', date: new Date().toISOString(), customer: { name: customerName, email: recipient || 'hello@mithilachitrakalastore.com.np' } },
+                shippingInfo: 'Courier handoff to Araniko Logistics',
+                trackingNumber: 'MCS-TRK-TEST-001',
+                trackingUrl: 'https://mithilachitrakalastore.com.np/profile',
+                expectedDelivery: '3–5 business days',
+            }),
+            support: () => sendSupportNotification({
+                name: customerName,
+                email: recipient || 'hello@mithilachitrakalastore.com.np',
+                subject: subject || 'Test support request',
+                message: message || 'This is a test support email from the local development environment.',
+                orderNumber: orderNumber || 'TEST-ORDER-001',
+            }),
+        };
+
+        const handler = handlers[type];
+        if (!handler) {
+            return res.status(400).json({ error: 'Unsupported email test type.' });
+        }
+
+        const result = await handler();
+        return res.json({
+            success: result?.success !== false,
+            type,
+            result,
+            note: 'Email test sent only in non-production environments or when ENABLE_EMAIL_TESTS=true.',
+        });
+    } catch (error) {
+        console.error('Email test endpoint error:', error);
+        return res.status(500).json({ error: error.message || 'Unable to send the email test.' });
     }
 });
 

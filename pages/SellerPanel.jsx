@@ -3,7 +3,7 @@ import {
     Package, Plus, Trash2, Box, TrendingUp, ShoppingBag, 
     Printer, Eye, X, Wallet, Shield, Users, AlertCircle,
     LayoutDashboard, MapPin, Search, ChevronRight, Settings, Info, Download,
-    Check, UserX, ShieldCheck, Heart, RotateCcw, Filter, Pencil, ChevronDown
+    Check, UserX, ShieldCheck, Heart, RotateCcw, Filter, Pencil, ChevronDown, Mail
 } from 'lucide-react';
 import { dbService } from '../services/dbservices';
 import { SectionHeading } from '../components/SectionHeading';
@@ -14,6 +14,7 @@ const splitProductCategories = (value) => String(value || '')
     .split(',')
     .map((category) => category.trim())
     .filter(Boolean);
+const AUTO_EMAIL_TEMPLATE_VARIABLES = new Set(['USER_NAME', 'USER_EMAIL', 'APP_NAME', 'CREATED_DATE', 'YEAR']);
 
 let chartLibraryPromise;
 
@@ -45,6 +46,37 @@ const TabBtn = ({ children, active, onClick, icon }) => (
     </button>
 );
 
+const EmailSenderFields = ({ manualEmail, setManualEmail }) => (
+    <>
+        <div>
+            <label className="block text-[10px] font-black uppercase tracking-widest text-stone-500 mb-2">From</label>
+            <select
+                value={manualEmail.sender}
+                onChange={(e) => setManualEmail((prev) => ({ ...prev, sender: e.target.value }))}
+                className="w-full px-4 py-3 bg-stone-50 border border-stone-200 rounded-xl outline-none focus:ring-2 focus:ring-[#5c1111]/20"
+            >
+                <option value="hello">hello@mithilachitrakalastore.com.np</option>
+                <option value="orders">orders@mithilachitrakalastore.com.np</option>
+                <option value="support">support@mithilachitrakalastore.com.np</option>
+                <option value="security">security@mithilachitrakalastore.com.np</option>
+            </select>
+        </div>
+        <div>
+            <label className="block text-[10px] font-black uppercase tracking-widest text-stone-500 mb-2">Reply-to</label>
+            <select
+                value={manualEmail.replyTo}
+                onChange={(e) => setManualEmail((prev) => ({ ...prev, replyTo: e.target.value }))}
+                className="w-full px-4 py-3 bg-stone-50 border border-stone-200 rounded-xl outline-none focus:ring-2 focus:ring-[#5c1111]/20"
+            >
+                <option value="hello">hello@mithilachitrakalastore.com.np</option>
+                <option value="orders">orders@mithilachitrakalastore.com.np</option>
+                <option value="support">support@mithilachitrakalastore.com.np</option>
+                <option value="security">security@mithilachitrakalastore.com.np</option>
+            </select>
+        </div>
+    </>
+);
+
 // Helper Component for Metric Cards
 const StatCard = ({ label, value, sub, color = "text-stone-900" }) => (
     <div className="bg-white p-5 sm:p-8 rounded-[1rem] sm:rounded-[2.5rem] border border-stone-100 shadow-sm space-y-2 relative overflow-hidden group">
@@ -57,7 +89,7 @@ const StatCard = ({ label, value, sub, color = "text-stone-900" }) => (
 
 export const SellerPanel = ({ currentUser }) => {
     const isAdmin = currentUser?.role === 'admin';
-    const adminTabs = new Set(['admin_users', 'admin_hero', 'admin_blog', 'admin_config', 'admin_logs']);
+    const adminTabs = new Set(['admin_users', 'admin_hero', 'admin_blog', 'admin_email', 'admin_config', 'admin_logs']);
     const [products, setProducts] = useState([]);
     const [orders, setOrders] = useState([]);
     const [allUsers, setAllUsers] = useState([]);
@@ -103,6 +135,25 @@ export const SellerPanel = ({ currentUser }) => {
         visible_to_users: false
     });
 
+    const [manualEmail, setManualEmail] = useState({
+        mode: 'custom',
+        sender: 'hello',
+        replyTo: 'support',
+        category: 'security',
+        to: '',
+        subject: '',
+        template: '',
+        templateVariables: {},
+        contentType: 'text',
+        message: '',
+        sending: false,
+    });
+    const [resendTemplates, setResendTemplates] = useState([]);
+    const [selectedResendTemplate, setSelectedResendTemplate] = useState(null);
+    const [templatesLoading, setTemplatesLoading] = useState(false);
+    const [templatesError, setTemplatesError] = useState('');
+    const [templateDetailsLoading, setTemplateDetailsLoading] = useState(false);
+    const [templateDetailsError, setTemplateDetailsError] = useState('');
     const [heroSlides, setHeroSlides] = useState([]);
     const [heroDraft, setHeroDraft] = useState({
         id: null,
@@ -158,6 +209,51 @@ export const SellerPanel = ({ currentUser }) => {
 
     useEffect(() => { loadData(); }, [activeTab, currentUser]);
     useEffect(() => { if (activeTab === 'dashboard' && !loading) renderCharts(); }, [activeTab, orders, loading]);
+    useEffect(() => {
+        if (activeTab !== 'admin_email' || !isAdmin) return;
+
+        let isCurrent = true;
+        setTemplatesLoading(true);
+        setTemplatesError('');
+        dbService.getResendTemplates(currentUser.emailAdminToken)
+            .then((templates) => {
+                if (isCurrent) setResendTemplates(templates);
+            })
+            .catch((error) => {
+                if (isCurrent) setTemplatesError(error.message || 'Unable to load Resend templates.');
+            })
+            .finally(() => {
+                if (isCurrent) setTemplatesLoading(false);
+            });
+
+        return () => { isCurrent = false; };
+    }, [activeTab, currentUser, isAdmin]);
+    useEffect(() => {
+        if (manualEmail.mode !== 'template' || !manualEmail.template) {
+            setSelectedResendTemplate(null);
+            setTemplateDetailsError('');
+            return;
+        }
+
+        let isCurrent = true;
+        setTemplateDetailsLoading(true);
+        setTemplateDetailsError('');
+        dbService.getResendTemplate(manualEmail.template, currentUser.emailAdminToken)
+            .then((template) => {
+                if (isCurrent) setSelectedResendTemplate(template);
+            })
+            .catch((error) => {
+                if (isCurrent) {
+                    setSelectedResendTemplate(null);
+                    setTemplateDetailsError(error.message || 'Unable to load template details.');
+                }
+            })
+            .finally(() => {
+                if (isCurrent) setTemplateDetailsLoading(false);
+            });
+
+        return () => { isCurrent = false; };
+    }, [manualEmail.mode, manualEmail.template, currentUser.emailAdminToken]);
 
     const loadData = async () => {
         if (!refreshing) setLoading(true);
@@ -573,6 +669,55 @@ export const SellerPanel = ({ currentUser }) => {
         }
     };
 
+    const handleSendManualEmail = async () => {
+        if (!currentUser || currentUser.role !== 'admin') return;
+        const to = String(manualEmail.to || '').trim();
+        const subject = String(manualEmail.subject || '').trim();
+        const message = String(manualEmail.message || '').trim();
+        const template = String(manualEmail.template || '').trim();
+
+        if (!to || (manualEmail.mode === 'custom' && !subject) || (manualEmail.mode === 'custom' && !message) || (manualEmail.mode === 'template' && !template)) {
+            window.alert('Please complete the recipient, subject, and required email content before sending.');
+            return;
+        }
+
+        setManualEmail((previous) => ({ ...previous, sending: true }));
+
+        try {
+            const result = await dbService.sendManualEmail({
+                to,
+                subject,
+                message,
+                isHtml: manualEmail.contentType === 'html',
+                category: manualEmail.category,
+                sender: manualEmail.sender,
+                replyTo: manualEmail.replyTo,
+                template: manualEmail.mode === 'template' ? template : '',
+                templateMode: manualEmail.mode,
+                templateVariables: manualEmail.templateVariables,
+            }, currentUser.emailAdminToken);
+
+            window.alert(result?.message || 'Email queued successfully.');
+            setManualEmail({
+                mode: 'custom',
+                sender: 'hello',
+                replyTo: 'support',
+                category: 'security',
+                to: '',
+                subject: '',
+                template: '',
+                templateVariables: {},
+                contentType: 'text',
+                message: '',
+                sending: false,
+            });
+        } catch (error) {
+            console.error('Manual email send failed:', error);
+            window.alert(error.message || 'Unable to send the email.');
+            setManualEmail((previous) => ({ ...previous, sending: false }));
+        }
+    };
+
     const handleOpenNewHero = () => {
         handleResetHeroDraft();
         setActiveTab('admin_hero');
@@ -655,6 +800,7 @@ export const SellerPanel = ({ currentUser }) => {
                                 <TabBtn active={activeTab === 'admin_users'} onClick={() => setActiveTab('admin_users')} icon={<Users size={14}/>}>Artisans</TabBtn>
                                 <TabBtn active={activeTab === 'admin_hero'} onClick={() => setActiveTab('admin_hero')} icon={<Pencil size={14}/>}>Hero</TabBtn>
                                 <TabBtn active={activeTab === 'admin_blog'} onClick={() => setActiveTab('admin_blog')} icon={<Pencil size={14}/>}>Blog</TabBtn>
+                                <TabBtn active={activeTab === 'admin_email'} onClick={() => setActiveTab('admin_email')} icon={<Mail size={14}/>}>Email</TabBtn>
                                 <TabBtn active={activeTab === 'admin_config'} onClick={() => setActiveTab('admin_config')} icon={<TrendingUp size={14}/>}>Policy</TabBtn>
                                 <TabBtn active={activeTab === 'admin_logs'} onClick={() => setActiveTab('admin_logs')} icon={<Shield size={14}/>}>Audit</TabBtn>
                             </>
@@ -1358,6 +1504,176 @@ export const SellerPanel = ({ currentUser }) => {
                                             </label>
                                         </div>
                                     </div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {activeTab === 'admin_email' && currentUser.role === 'admin' && (
+                        <div className="space-y-6 animate-in fade-in duration-300">
+                            <div className="bg-white rounded-[1rem] sm:rounded-[3rem] border border-stone-100 shadow-sm p-4 sm:p-8">
+                                <div className="flex items-center justify-between gap-4 mb-6">
+                                    <h3 className="font-playfair text-2xl font-black text-stone-900 border-l-4 border-[#5c1111] pl-6 italic">Compose Email</h3>
+                                </div>
+
+                                <div className="mb-6 flex w-full max-w-sm rounded-2xl bg-stone-100 p-1">
+                                    <button
+                                        type="button"
+                                        onClick={() => setManualEmail((prev) => ({ ...prev, mode: 'custom' }))}
+                                        className={`flex-1 rounded-xl px-4 py-3 text-xs font-bold transition-colors ${manualEmail.mode === 'custom' ? 'bg-white text-[#5c1111] shadow-sm' : 'text-stone-500 hover:text-stone-800'}`}
+                                    >Custom</button>
+                                    <button
+                                        type="button"
+                                        onClick={() => setManualEmail((prev) => ({ ...prev, mode: 'template' }))}
+                                        className={`flex-1 rounded-xl px-4 py-3 text-xs font-bold transition-colors ${manualEmail.mode === 'template' ? 'bg-white text-[#5c1111] shadow-sm' : 'text-stone-500 hover:text-stone-800'}`}
+                                    >Resend template</button>
+                                </div>
+
+                                <div className="grid grid-cols-1 md:grid-cols-[minmax(0,2fr)_minmax(220px,1fr)] gap-4 mb-6">
+                                    <div>
+                                        <label className="block text-[10px] font-black uppercase tracking-widest text-stone-500 mb-2">To</label>
+                                        <input
+                                            type="email"
+                                            value={manualEmail.to}
+                                            onChange={(e) => setManualEmail((prev) => ({ ...prev, to: e.target.value }))}
+                                            placeholder="customer@example.com"
+                                            className="w-full px-4 py-3 bg-stone-50 border border-stone-200 rounded-xl outline-none focus:ring-2 focus:ring-[#5c1111]/20"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-[10px] font-black uppercase tracking-widest text-stone-500 mb-2">Category</label>
+                                        <select
+                                            value={manualEmail.category}
+                                            onChange={(e) => setManualEmail((prev) => ({ ...prev, category: e.target.value }))}
+                                            className="w-full px-4 py-3 bg-stone-50 border border-stone-200 rounded-xl outline-none focus:ring-2 focus:ring-[#5c1111]/20"
+                                        >
+                                            <option value="security">Security</option>
+                                            <option value="support">Support</option>
+                                            <option value="general">General</option>
+                                            <option value="orders">Orders</option>
+                                            <option value="welcome">Welcome</option>
+                                        </select>
+                                    </div>
+                                </div>
+
+                                {manualEmail.mode === 'template' ? (
+                                    <div className="space-y-5">
+                                        <div>
+                                            <label className="block text-[10px] font-black uppercase tracking-widest text-stone-500 mb-2">Published template</label>
+                                            <select
+                                                value={manualEmail.template}
+                                                onChange={(e) => setManualEmail((prev) => ({ ...prev, template: e.target.value, templateVariables: {} }))}
+                                                className="w-full px-4 py-3 bg-stone-50 border border-stone-200 rounded-xl outline-none focus:ring-2 focus:ring-[#5c1111]/20"
+                                            >
+                                                <option value="">{templatesLoading ? 'Loading templates...' : 'Choose a template'}</option>
+                                                {resendTemplates.map((template) => (
+                                                    <option key={template.id} value={template.id}>{template.name}</option>
+                                                ))}
+                                            </select>
+                                            {templatesError && <p className="mt-2 text-xs text-red-700">{templatesError}</p>}
+                                            {!templatesLoading && !templatesError && resendTemplates.length === 0 && (
+                                                <p className="mt-2 text-xs text-stone-500">No published templates available.</p>
+                                            )}
+                                        </div>
+
+                                        {templateDetailsLoading && <p className="text-xs text-stone-500">Loading template fields...</p>}
+                                        {templateDetailsError && <p className="text-xs text-red-700">{templateDetailsError}</p>}
+                                        {selectedResendTemplate?.variables?.some((variable) => AUTO_EMAIL_TEMPLATE_VARIABLES.has(variable.key)) && (
+                                            <p className="text-xs text-stone-500">
+                                                USER_NAME is resolved from the recipient's customer profile, or from their email address. USER_EMAIL and standard store values are filled automatically.
+                                            </p>
+                                        )}
+                                        {selectedResendTemplate?.variables?.length > 0 && (
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 border-t border-stone-100 pt-5">
+                                                {selectedResendTemplate.variables.filter((variable) => !AUTO_EMAIL_TEMPLATE_VARIABLES.has(variable.key)).map((variable) => (
+                                                    <div key={variable.key}>
+                                                        <label className="block text-[10px] font-black uppercase tracking-widest text-stone-500 mb-2">
+                                                            {variable.key} <span className="font-medium normal-case tracking-normal text-stone-400">({variable.type})</span>
+                                                        </label>
+                                                        <input
+                                                            type={variable.type === 'number' ? 'number' : 'text'}
+                                                            step={variable.type === 'number' ? 'any' : undefined}
+                                                            value={manualEmail.templateVariables[variable.key] ?? (variable.fallback_value == null ? '' : String(variable.fallback_value))}
+                                                            onChange={(e) => setManualEmail((prev) => ({
+                                                                ...prev,
+                                                                templateVariables: { ...prev.templateVariables, [variable.key]: e.target.value },
+                                                            }))}
+                                                            placeholder={`Value for ${variable.key}`}
+                                                            className="w-full px-4 py-3 bg-stone-50 border border-stone-200 rounded-xl outline-none focus:ring-2 focus:ring-[#5c1111]/20"
+                                                        />
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        )}
+
+                                        {selectedResendTemplate && !selectedResendTemplate.variables?.length && (
+                                            <p className="text-xs text-stone-500">This template needs no additional values.</p>
+                                        )}
+                                        {selectedResendTemplate?.variables?.length > 0 && selectedResendTemplate.variables.every((variable) => AUTO_EMAIL_TEMPLATE_VARIABLES.has(variable.key)) && (
+                                            <p className="text-xs text-stone-500">This template's values are filled automatically from the recipient and store.</p>
+                                        )}
+
+                                        <details className="border-t border-stone-100 pt-4">
+                                            <summary className="cursor-pointer text-xs font-bold text-stone-600">Advanced settings</summary>
+                                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-4">
+                                                <div className="md:col-span-1">
+                                                    <label className="block text-[10px] font-black uppercase tracking-widest text-stone-500 mb-2">Subject override</label>
+                                                    <input
+                                                        type="text"
+                                                        value={manualEmail.subject}
+                                                        onChange={(e) => setManualEmail((prev) => ({ ...prev, subject: e.target.value }))}
+                                                        placeholder={selectedResendTemplate?.subject || 'Use template subject'}
+                                                        className="w-full px-4 py-3 bg-stone-50 border border-stone-200 rounded-xl outline-none focus:ring-2 focus:ring-[#5c1111]/20"
+                                                    />
+                                                </div>
+                                                <EmailSenderFields manualEmail={manualEmail} setManualEmail={setManualEmail} />
+                                            </div>
+                                        </details>
+                                    </div>
+                                ) : (
+                                    <div className="space-y-5">
+                                        <div>
+                                            <label className="block text-[10px] font-black uppercase tracking-widest text-stone-500 mb-2">Subject</label>
+                                            <input
+                                                type="text"
+                                                value={manualEmail.subject}
+                                                onChange={(e) => setManualEmail((prev) => ({ ...prev, subject: e.target.value }))}
+                                                placeholder="Email subject"
+                                                className="w-full px-4 py-3 bg-stone-50 border border-stone-200 rounded-xl outline-none focus:ring-2 focus:ring-[#5c1111]/20"
+                                            />
+                                        </div>
+                                        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                                            <label className="block text-[10px] font-black uppercase tracking-widest text-stone-500">Message</label>
+                                            <div className="inline-flex rounded-xl bg-stone-100 p-1 self-start">
+                                                <button type="button" onClick={() => setManualEmail((prev) => ({ ...prev, contentType: 'text' }))} className={`px-3 py-2 rounded-lg text-[11px] font-bold ${manualEmail.contentType === 'text' ? 'bg-white text-[#5c1111] shadow-sm' : 'text-stone-500'}`}>Text</button>
+                                                <button type="button" onClick={() => setManualEmail((prev) => ({ ...prev, contentType: 'html' }))} className={`px-3 py-2 rounded-lg text-[11px] font-bold ${manualEmail.contentType === 'html' ? 'bg-white text-[#5c1111] shadow-sm' : 'text-stone-500'}`}>HTML</button>
+                                            </div>
+                                        </div>
+                                        <textarea
+                                            rows={12}
+                                            value={manualEmail.message}
+                                            onChange={(e) => setManualEmail((prev) => ({ ...prev, message: e.target.value }))}
+                                            placeholder={manualEmail.contentType === 'html' ? '<html>...</html>' : 'Write your message'}
+                                            spellCheck={manualEmail.contentType !== 'html'}
+                                            className="w-full px-4 py-3 bg-stone-50 border border-stone-200 rounded-xl outline-none focus:ring-2 focus:ring-[#5c1111]/20 font-mono text-xs"
+                                        />
+                                        <details className="border-t border-stone-100 pt-4">
+                                            <summary className="cursor-pointer text-xs font-bold text-stone-600">Advanced settings</summary>
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4">
+                                                <EmailSenderFields manualEmail={manualEmail} setManualEmail={setManualEmail} />
+                                            </div>
+                                        </details>
+                                    </div>
+                                )}
+
+                                <div className="mt-6 flex justify-end">
+                                    <button
+                                        onClick={handleSendManualEmail}
+                                        disabled={manualEmail.sending || templateDetailsLoading || (manualEmail.mode === 'template' && Boolean(templateDetailsError))}
+                                        className="px-6 py-3 rounded-full bg-[#5c1111] text-white text-[10px] font-black uppercase tracking-widest disabled:opacity-60"
+                                    >
+                                        {manualEmail.sending ? 'Sending...' : 'Send Email'}
+                                    </button>
                                 </div>
                             </div>
                         </div>
