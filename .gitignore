@@ -13,6 +13,7 @@ dist-ssr
 *.local
 .env
 *.sql
+!supabase/migrations/*.sql
 sql
 
 # Editor directories and files

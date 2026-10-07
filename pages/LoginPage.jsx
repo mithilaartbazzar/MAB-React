@@ -13,6 +13,8 @@ export const LoginPage = ({ onLogin }) => {
     const [phone, setPhone] = useState('');
     const [address, setAddress] = useState('');
     const [city, setCity] = useState('');
+    const [age, setAge] = useState('');
+    const [gender, setGender] = useState('');
     const [role, setRole] = useState('customer');
     const [storeName, setStoreName] = useState('');
     const [error, setError] = useState('');
@@ -20,41 +22,29 @@ export const LoginPage = ({ onLogin }) => {
     const sessionHandled = useRef(false);
 
     useEffect(() => {
+        const callbackParams = new URLSearchParams(window.location.search);
+        const oauthError = callbackParams.get('error_description') || callbackParams.get('error');
+        if (oauthError) setError(oauthError);
+
+        const processSession = (session) => {
+            if (session) window.setTimeout(() => handleGoogleSession(session), 0);
+        };
+        const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
+            if (event === 'INITIAL_SESSION' || event === 'SIGNED_IN') processSession(session);
+        });
+
         const checkSession = async () => {
-            let sessionData = null;
-
-            // Handle HashRouter OAuth callback issue (e.g. #/login#access_token=...)
-            if (window.location.hash.includes('access_token=')) {
-                const hashStr = window.location.hash;
-                const tokenPart = hashStr.substring(hashStr.indexOf('access_token='));
-                const params = new URLSearchParams(tokenPart);
-                const access_token = params.get('access_token');
-                const refresh_token = params.get('refresh_token');
-
-                if (access_token && refresh_token) {
-                    const { data } = await supabase.auth.setSession({
-                        access_token,
-                        refresh_token
-                    });
-                    sessionData = data.session;
-                    // Clean up URL AFTER we have the session
-                    window.history.replaceState(null, '', window.location.pathname + '#/login');
-                }
-            }
-
-            if (!sessionData) {
-                const { data } = await supabase.auth.getSession();
-                sessionData = data.session;
-            }
-
-            if (sessionData) {
-                await handleGoogleSession(sessionData);
+            try {
+                const { data, error: sessionError } = await supabase.auth.getSession();
+                if (sessionError) throw sessionError;
+                processSession(data.session);
+            } catch (sessionError) {
+                console.error('Unable to restore Google sign-in session:', sessionError);
+                setError('Unable to complete Google sign-in. Please try again.');
             }
         };
         checkSession();
-
-        // No onAuthStateChange listener needed — checkSession handles everything
-        // This prevents double-firing which was stripping avatar_url
+        return () => authListener.subscription.unsubscribe();
     }, []);
 
     const handleGoogleSession = async (session) => {
@@ -64,27 +54,33 @@ export const LoginPage = ({ onLogin }) => {
 
         try {
             const email = session.user.email;
+            if (!email) throw new Error('Google did not provide an email address.');
             const name = session.user.user_metadata?.full_name || session.user.user_metadata?.name || session.user.email;
             const avatar_url = session.user.user_metadata?.avatar_url || session.user.user_metadata?.picture;
 
             console.log("Google avatar_url detected:", avatar_url);
 
             const existingUser = await dbService.getUserByEmail(email);
-            if (existingUser) {
+            const profileNeedsCompletion = !existingUser?.name || !existingUser?.address ||
+                !existingUser?.age || !existingUser?.gender;
+            if (existingUser && !profileNeedsCompletion) {
                 await supabase.auth.signOut();
                 const userWithAvatar = { ...existingUser, avatar_url };
                 console.log("Logging in with user:", userWithAvatar);
                 onLogin(userWithAvatar);
             } else {
                 setAuthMode('completeProfile');
-                setName(name);
+                setName(existingUser?.name || name);
                 setEmail(email);
-                setGoogleProfile({ email, name, avatar_url });
+                setAddress(existingUser?.address || '');
+                setAge(existingUser?.age ? String(existingUser.age) : '');
+                setGender(existingUser?.gender || '');
+                setGoogleProfile({ email, name: existingUser?.name || name, avatar_url });
             }
         } catch (err) {
-            console.error("Error handling Google session:", err);
+            console.error('Error handling Google session:', err);
             sessionHandled.current = false; // Allow retry on error
-            setError("Failed to verify Google account.");
+            setError(err.message || 'Failed to verify Google account.');
         }
     };
 
@@ -93,13 +89,12 @@ export const LoginPage = ({ onLogin }) => {
             const { error } = await supabase.auth.signInWithOAuth({
                 provider: 'google',
                 options: {
-                    // Redirect back to login page
-                    redirectTo: window.location.origin + window.location.pathname + '#/login'
+                    redirectTo: new URL('/login', window.location.origin).toString()
                 }
             });
             if (error) throw error;
         } catch (err) {
-            setError(err.message);
+            setError(err.message || 'Unable to start Google sign-in. Please try again.');
         }
     };
 
@@ -113,6 +108,10 @@ export const LoginPage = ({ onLogin }) => {
                 if (user) onLogin(user);
                 else setError('Invalid credentials or inactive account.');
             } else if (authMode === 'register') {
+                if (role === 'customer' && !gender) {
+                    setError('Please select your gender.');
+                    return;
+                }
                 const newUser = await dbService.register({
                     username,
                     password,
@@ -122,6 +121,7 @@ export const LoginPage = ({ onLogin }) => {
                     phone: phone || undefined,
                     address: address || undefined,
                     city: city || undefined,
+                    gender: role === 'customer' ? gender : undefined,
                     storeName: role === 'seller' ? storeName : undefined
                 });
                 if (newUser.status === 'disabled') {
@@ -131,8 +131,13 @@ export const LoginPage = ({ onLogin }) => {
                     onLogin(newUser);
                 }
             } else if (authMode === 'completeProfile') {
-                if (!phone || !address || !city) {
-                    setError('Please fill in contact details.');
+                if (!googleProfile || !name.trim() || !address.trim() || !age || !gender) {
+                    setError('Please enter your full name, address, age, and gender.');
+                    return;
+                }
+                const numericAge = Number(age);
+                if (!Number.isInteger(numericAge) || numericAge < 13 || numericAge > 120) {
+                    setError('Please enter an age between 13 and 120.');
                     return;
                 }
                 const randomPart = Math.random().toString(36).substr(2, 4);
@@ -141,15 +146,17 @@ export const LoginPage = ({ onLogin }) => {
                 const newUser = await dbService.registerGoogleUser({
                     picture: googleProfile.avatar_url,
                     email: googleProfile.email,
-                    name: googleProfile.name,
-                    phone,
-                    address,
-                    city,
+                    name: name.trim(),
+                    phone: phone.trim(),
+                    address: address.trim(),
+                    city: city.trim(),
+                    age: numericAge,
+                    gender,
                     username: generatedUsername,
                     // No password needed for Google users
                 });
 
-                console.log("New User after registration:", newUser);
+                if (!newUser?.id) throw new Error('Your profile was not saved. Please try again.');
                 await supabase.auth.signOut();
                 onLogin(newUser);
             }
@@ -234,8 +241,12 @@ export const LoginPage = ({ onLogin }) => {
                                 <label className="text-[10px] font-black uppercase text-stone-400 pl-4">Your Full Name</label>
                                 <div className="relative">
                                     <UserIcon size={16} className="absolute left-5 top-1/2 -translate-y-1/2 text-stone-300" />
-                                    <input required readOnly value={name} type="text" className="w-full pl-12 pr-6 py-4 bg-[#efece6] opacity-70 rounded-2xl outline-none font-medium cursor-not-allowed" />
+                                    <input required value={name} onChange={e => setName(e.target.value)} autoComplete="name" type="text" className="w-full pl-12 pr-6 py-4 bg-[#efece6] rounded-2xl outline-none focus:bg-white border border-transparent focus:border-[#5c1111]/20 transition-all font-medium" />
                                 </div>
+                            </div>
+                            <div className="space-y-2">
+                                <label htmlFor="google-age" className="text-[10px] font-black uppercase text-stone-400 pl-4">Age</label>
+                                <input id="google-age" required value={age} onChange={e => setAge(e.target.value)} min="13" max="120" step="1" type="number" inputMode="numeric" className="w-full rounded-2xl border border-transparent bg-[#efece6] px-5 py-4 font-medium outline-none transition-all focus:border-[#5c1111]/20 focus:bg-white" />
                             </div>
                             <div className="space-y-2">
                                 <label className="text-[10px] font-black uppercase text-stone-400 pl-4">Phone Number</label>
@@ -257,6 +268,17 @@ export const LoginPage = ({ onLogin }) => {
                                     <MapPin size={16} className="absolute left-5 top-1/2 -translate-y-1/2 text-stone-300" />
                                     <input required value={city} title='Enter Your City' onChange={e => setCity(e.target.value)} type="text" className="w-full pl-12 pr-6 py-4 bg-[#efece6] rounded-2xl outline-none focus:bg-white border border-transparent focus:border-[#5c1111]/20 transition-all font-medium" />
                                 </div>
+                            </div>
+                            <div className="space-y-2">
+                                <label htmlFor="google-gender" className="text-[10px] font-black uppercase text-stone-400 pl-4">Gender</label>
+                                <select id="google-gender" required value={gender} onChange={e => setGender(e.target.value)} className="w-full rounded-2xl border border-transparent bg-[#efece6] px-5 py-4 font-medium outline-none transition-all focus:border-[#5c1111]/20 focus:bg-white">
+                                    <option value="">Select your gender</option>
+                                    <option value="female">Female</option>
+                                    <option value="male">Male</option>
+                                    <option value="non-binary">Non-binary</option>
+                                    <option value="prefer-not-to-say">Prefer not to say</option>
+                                </select>
+                                <p className="px-1 text-[9px] text-stone-400">You can change this later in your profile.</p>
                             </div>
 
                             <button type="submit" className="w-full bg-[#5c1111] text-white py-6 rounded-[2rem] font-black text-[12px] uppercase tracking-[0.3em] shadow-2xl premium-shadow hover:bg-[#2a2723] hover:-translate-y-1 transition-all">
@@ -283,6 +305,19 @@ export const LoginPage = ({ onLogin }) => {
                                             <input required value={email} title='Enter Your E-mail Address' onChange={e => setEmail(e.target.value)} type="email" className="w-full pl-12 pr-6 py-4 bg-[#efece6] rounded-2xl outline-none focus:bg-white border border-transparent focus:border-[#5c1111]/20 transition-all font-medium" />
                                         </div>
                                     </div>
+                                    {role === 'customer' && (
+                                        <div className="space-y-2">
+                                            <label htmlFor="signup-gender" className="text-[10px] font-black uppercase text-stone-400 pl-4">Gender</label>
+                                            <select id="signup-gender" required value={gender} onChange={e => setGender(e.target.value)} className="w-full rounded-2xl border border-transparent bg-[#efece6] px-5 py-4 font-medium outline-none transition-all focus:border-[#5c1111]/20 focus:bg-white">
+                                                <option value="">Select your gender</option>
+                                                <option value="female">Female</option>
+                                                <option value="male">Male</option>
+                                                <option value="non-binary">Non-binary</option>
+                                                <option value="prefer-not-to-say">Prefer not to say</option>
+                                            </select>
+                                            <p className="px-1 text-[9px] text-stone-400">You can change this later in your profile.</p>
+                                        </div>
+                                    )}
                                     {role === 'customer' && (
                                         <>
                                             <div className="space-y-2">

@@ -10,6 +10,26 @@ const statusStyles = {
 };
 
 const formatStatus = (status = 'pending') => status.charAt(0).toUpperCase() + status.slice(1);
+const SHOPPING_PREFERENCES = [
+    { value: 'female', label: 'Female' },
+    { value: 'male', label: 'Male' },
+    { value: 'non-binary', label: 'Non-binary' },
+    { value: 'prefer-not-to-say', label: 'Prefer not to say' }
+];
+const SHOPPING_PREFERENCE_SYMBOLS = {
+    female: '♀',
+    male: '♂',
+    'non-binary': '⚧',
+    'prefer-not-to-say': '—'
+};
+const normalizeShoppingPreference = (value) => {
+    const normalized = String(value || '').toLowerCase().trim().replace(/[\s_]+/g, '-');
+    if (['female', 'women', "women's", 'woman'].includes(normalized)) return 'female';
+    if (['male', 'men', "men's", 'man'].includes(normalized)) return 'male';
+    if (['nonbinary', 'non-binary', 'other'].includes(normalized)) return 'non-binary';
+    if (['prefer-not-to-say', 'prefer-not-say'].includes(normalized)) return 'prefer-not-to-say';
+    return '';
+};
 const getDeliveryDate = (date) => {
     const deliveryDate = new Date(date || Date.now());
     deliveryDate.setDate(deliveryDate.getDate() + 7);
@@ -29,6 +49,7 @@ export const ProfilePage = ({ currentUser, setCurrentUser, wishlist, products, t
         phone: currentUser.phone || '',
         address: currentUser.address || '',
         city: currentUser.city || '',
+        gender: normalizeShoppingPreference(currentUser.gender),
         storeName: currentUser.storeName || ''
     });
 
@@ -39,6 +60,7 @@ export const ProfilePage = ({ currentUser, setCurrentUser, wishlist, products, t
             phone: currentUser.phone || '',
             address: currentUser.address || '',
             city: currentUser.city || '',
+            gender: normalizeShoppingPreference(currentUser.gender),
             storeName: currentUser.storeName || ''
         });
     }, [currentUser]);
@@ -133,7 +155,7 @@ const ProfilePanel = ({ currentUser, profile, setProfile, editing, setEditing, s
                 </div>
                 <button type="button" onClick={() => setEditing(true)} className="flex min-h-10 items-center gap-1 rounded border border-[#d7c8b6] px-3 text-xs font-semibold text-[#7c2020]"><Pencil size={13} /> Edit Profile</button>
             </div>
-            <div className="grid gap-4 sm:grid-cols-2">{!onlyAddress && <><Field label="Full name" value={profile.name} editing={editing} onChange={value => setProfile({ ...profile, name: value })} /><Field label="Username" value={profile.username} editing={editing} onChange={value => setProfile({ ...profile, username: value })} />{currentUser.role !== 'customer' && <Field label="Store name" value={visibleStoreName} editing={editing && canEditStoreName} onChange={value => setProfile({ ...profile, storeName: value })} disabled={!canEditStoreName} />}{currentUser.role !== 'customer' && currentUser.storeName_pending && <div className="sm:col-span-2 rounded border border-amber-200 bg-amber-50 p-3 text-xs font-semibold text-amber-800">Store name change is pending admin approval.</div>}{currentUser.role !== 'customer' && currentUser.storeName && !currentUser.storeName_pending && <div className="sm:col-span-2 rounded border border-stone-200 bg-[#f7efe7] p-3 text-xs font-semibold text-stone-700">Store name is approved. To request a change, contact the admin.</div>}<Field label="Email" value={currentUser.email} /><Field label="Phone" value={profile.phone} editing={editing} onChange={value => setProfile({ ...profile, phone: value })} /></>}{(onlyAddress || editing) && <><Field label="Address" value={profile.address} editing={editing} onChange={value => setProfile({ ...profile, address: value })} /><Field label="City / Province" value={profile.city} editing={editing} onChange={value => setProfile({ ...profile, city: value })} /></>}</div>{editing && <div className="mt-5 flex gap-2"><button type="button" disabled={saving} onClick={onSave} className="flex min-h-10 items-center gap-2 rounded bg-[#7c2020] px-4 text-xs font-semibold text-white disabled:opacity-60"><Save size={13} /> {saving ? 'Saving...' : 'Save changes'}</button><button type="button" onClick={() => setEditing(false)} className="flex min-h-10 items-center gap-2 rounded border border-[#d7c8b6] px-4 text-xs font-semibold"><X size={13} /> Cancel</button></div>}</section>
+            <div className="grid gap-4 sm:grid-cols-2">{!onlyAddress && <><Field label="Full name" value={profile.name} editing={editing} onChange={value => setProfile({ ...profile, name: value })} /><Field label="Username" value={profile.username} editing={editing} onChange={value => setProfile({ ...profile, username: value })} />{currentUser.role !== 'customer' && <Field label="Store name" value={visibleStoreName} editing={editing && canEditStoreName} onChange={value => setProfile({ ...profile, storeName: value })} disabled={!canEditStoreName} />}{currentUser.role !== 'customer' && currentUser.storeName_pending && <div className="sm:col-span-2 rounded border border-amber-200 bg-amber-50 p-3 text-xs font-semibold text-amber-800">Store name change is pending admin approval.</div>}{currentUser.role !== 'customer' && currentUser.storeName && !currentUser.storeName_pending && <div className="sm:col-span-2 rounded border border-stone-200 bg-[#f7efe7] p-3 text-xs font-semibold text-stone-700">Store name is approved. To request a change, contact the admin.</div>}<Field label="Email" value={currentUser.email} /><Field label="Phone" value={profile.phone} editing={editing} onChange={value => setProfile({ ...profile, phone: value })} />{currentUser.role === 'customer' && <label className="block"><span className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-[#8b8378]">Gender</span>{editing ? <><select value={normalizeShoppingPreference(profile.gender)} onChange={event => setProfile({ ...profile, gender: event.target.value })} className="w-full rounded border border-[#d7c8b6] bg-white px-3 py-2.5 text-sm"><option value="">Select your gender</option>{SHOPPING_PREFERENCES.map(option => <option key={option.value} value={option.value}>{SHOPPING_PREFERENCE_SYMBOLS[option.value]} {option.label}</option>)}</select><span className="mt-1 block text-[11px] text-[#8b8378]">Used to personalize product recommendations; all products remain available.</span></> : <span className="flex min-h-10 items-center gap-2 rounded bg-[#f5ead9] px-3 py-2.5 text-sm text-[#5e574e]"><span aria-hidden="true" className="text-lg text-[#7c2020]">{SHOPPING_PREFERENCE_SYMBOLS[normalizeShoppingPreference(profile.gender)] || '○'}</span>{SHOPPING_PREFERENCES.find(option => option.value === normalizeShoppingPreference(profile.gender))?.label || 'Not provided'}</span>}</label>}</>}{(onlyAddress || editing) && <><Field label="Address" value={profile.address} editing={editing} onChange={value => setProfile({ ...profile, address: value })} /><Field label="City / Province" value={profile.city} editing={editing} onChange={value => setProfile({ ...profile, city: value })} /></>}</div>{editing && <div className="mt-5 flex gap-2"><button type="button" disabled={saving} onClick={onSave} className="flex min-h-10 items-center gap-2 rounded bg-[#7c2020] px-4 text-xs font-semibold text-white disabled:opacity-60"><Save size={13} /> {saving ? 'Saving...' : 'Save changes'}</button><button type="button" onClick={() => setEditing(false)} className="flex min-h-10 items-center gap-2 rounded border border-[#d7c8b6] px-4 text-xs font-semibold"><X size={13} /> Cancel</button></div>}</section>
     );
 };
 

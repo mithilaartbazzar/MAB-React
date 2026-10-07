@@ -207,7 +207,7 @@ export default function App() {
                     <Suspense fallback={null}>
                     <Routes>
                         <Route path="/" element={<HomePage products={products} addToCart={addToCart} wishlist={wishlist} toggleWishlist={toggleWishlist} />} />
-                        <Route path="/products" element={<ProductsPage products={products} addToCart={addToCart} wishlist={wishlist} toggleWishlist={toggleWishlist} />} />
+                        <Route path="/products" element={<ProductsPage products={products} addToCart={addToCart} wishlist={wishlist} toggleWishlist={toggleWishlist} currentUser={currentUser} />} />
                         <Route path="/product/:slug" element={<ProductDetailPage products={products} addToCart={addToCart} wishlist={wishlist} toggleWishlist={toggleWishlist} />} />
                         <Route path="/cart" element={currentUser ? <CartPage cart={cart} updateQty={updateQty} remove={remove} clearCart={clearCart} currentUser={currentUser} /> : <Navigate to="/login" />} />
                         <Route path="/advice" element={<ArtAdvicePage />} />

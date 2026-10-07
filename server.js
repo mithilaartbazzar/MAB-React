@@ -344,17 +344,57 @@ app.post('/api/db', async (req, res) => {
             }
             case 'registerGoogleUser': {
                 const { picture, ...restUserData } = payload.userData;
-                const newUser = {
-                    id: `u-${Math.random().toString(36).substr(2, 9)}`,
-                    role: 'customer',
-                    status: 'active',
-                    avatar_url: picture,
-                    ...restUserData
+                const normalizedEmail = String(restUserData.email || '').trim().toLowerCase();
+                const normalizedName = String(restUserData.name || '').trim();
+                const normalizedAddress = String(restUserData.address || '').trim();
+                const age = Number(restUserData.age);
+                if (!normalizedEmail || !normalizedName || !normalizedAddress ||
+                    !Number.isInteger(age) || age < 13 || age > 120 ||
+                    !String(restUserData.gender || '').trim()) {
+                    throw new Error('Full name, email, address, age, and shopping preference are required.');
+                }
+
+                const { data: existingUser, error: lookupError } = await supabase
+                    .from('users')
+                    .select('*')
+                    .eq('email', normalizedEmail)
+                    .maybeSingle();
+                if (lookupError) throw new Error(lookupError.message);
+                if (existingUser && existingUser.status !== 'active') {
+                    throw new Error('This account is inactive. Please contact the store administrator.');
+                }
+
+                const profileData = {
+                    name: normalizedName,
+                    email: normalizedEmail,
+                    username: String(restUserData.username || '').trim(),
+                    phone: String(restUserData.phone || '').trim(),
+                    address: normalizedAddress,
+                    city: String(restUserData.city || '').trim(),
+                    age,
+                    gender: String(restUserData.gender).trim(),
+                    avatar_url: picture || ''
                 };
-                const { data, error } = await supabase.from('users').insert([newUser]).select();
-                if (error) throw new Error(error.message);
-                
-                result = (data && data.length > 0) ? data[0] : newUser;
+                if (existingUser) {
+                    const { data, error } = await supabase
+                        .from('users')
+                        .update(profileData)
+                        .eq('id', existingUser.id)
+                        .select()
+                        .single();
+                    if (error) throw new Error(error.message);
+                    result = data;
+                } else {
+                    const newUser = {
+                        id: `u-${crypto.randomUUID()}`,
+                        role: 'customer',
+                        status: 'active',
+                        ...profileData
+                    };
+                    const { data, error } = await supabase.from('users').insert([newUser]).select().single();
+                    if (error) throw new Error(error.message);
+                    result = data;
+                }
                 break;
             }
             case 'getUsers': {

@@ -1,9 +1,60 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { Search, Filter, X, ChevronDown, Heart, ShieldCheck, Truck } from 'lucide-react';
+import { Search, Filter, X, ChevronDown, Heart, ShieldCheck, Truck, Sparkles } from 'lucide-react';
 import { ProductCard } from '../components/ProductCard';
 import { Reveal } from '../components/Reveal';
 import { dbService } from '../services/dbservices';
+
+const SEARCH_SYNONYM_GROUPS = [
+    ['gift', 'gifts', 'present', 'presents', 'souvenir'],
+    ['home', 'house', 'living room', 'interior'],
+    ['decor', 'decoration', 'ornament', 'ornaments'],
+    ['painting', 'paintings', 'picture', 'pictures', 'artwork', 'canvas'],
+    ['clothing', 'clothes', 'apparel', 'wear', 'outfit', 'outfits'],
+    ['women', 'woman', 'womens', "women's", 'ladies', 'lady', 'female'],
+    ['men', 'man', 'mens', "men's", 'male'],
+    ['kids', 'children', 'child'],
+    ['festival', 'festive', 'celebration', 'occasion'],
+    ['handmade', 'handcrafted', 'artisan', 'artisanal'],
+    ['accessory', 'accessories', 'jewelry', 'jewellery'],
+    ['wall', 'walls', 'mural'],
+    ['textile', 'fabric', 'cloth'],
+    ['kurta', 'kurtas', 'ethnic wear'],
+    ['mother', 'mothers', 'mom', 'mum'],
+];
+
+const SEARCH_STOP_WORDS = new Set(['a', 'an', 'and', 'for', 'find', 'i', 'in', 'is', 'me', 'my', 'of', 'on', 'or', 'the', 'to', 'want', 'with']);
+const normalizeSearchText = (value) => String(value || '')
+    .normalize('NFKD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9\s']/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+const getSearchTerms = (query) => {
+    const normalizedQuery = normalizeSearchText(query);
+    const terms = new Set(normalizedQuery.split(' ').filter((term) => term && !SEARCH_STOP_WORDS.has(term)));
+
+    SEARCH_SYNONYM_GROUPS.forEach((group) => {
+        const normalizedGroup = group.map(normalizeSearchText);
+        if (normalizedGroup.some((term) => normalizedQuery.includes(term))) {
+            normalizedGroup.forEach((term) => {
+                terms.add(term);
+                term.split(' ').forEach((word) => {
+                    if (word && !SEARCH_STOP_WORDS.has(word)) terms.add(word);
+                });
+            });
+        }
+    });
+
+    return [...terms];
+};
+
+const getSearchScore = (product, terms) => {
+    const productText = normalizeSearchText(productSearchText(product));
+    return terms.reduce((score, term) => score + (productText.includes(term) ? Math.max(1, term.split(' ').length) : 0), 0);
+};
 
 const BASE_CATEGORY_LABELS = {
     'all': 'All Works',
@@ -63,14 +114,37 @@ const productSearchText = (product) => [
     product.style,
     product.theme,
     product.tags,
+    product.custom_tags,
     product.category,
     product.name,
     product.description,
+    product.key_features,
+    product.material,
+    product.product_code,
+    product.storeName,
 ].flat().filter(Boolean).join(' ').toLowerCase();
 
-export const ProductsPage = ({ products, addToCart, wishlist, toggleWishlist }) => {
+const audienceScore = (product, gender) => {
+    const preference = String(gender || '').toLowerCase();
+    if (preference !== 'female' && preference !== 'male') return 0;
+
+    const categories = productCategories(product.category).join(' ');
+    const isWomens = /\bwomen(?:'s)?\b|\bladies\b/.test(categories);
+    const isMens = /\bmen(?:'s)?\b/.test(categories);
+    const isUnisex = /\bunisex\b/.test(categories);
+    const matchesPreference = preference === 'female' ? isWomens : isMens;
+    const matchesOtherPreference = preference === 'female' ? isMens : isWomens;
+
+    if (matchesPreference) return 2;
+    if (isUnisex) return 1;
+    if (matchesOtherPreference) return -1;
+    return 0;
+};
+
+export const ProductsPage = ({ products, addToCart, wishlist, toggleWishlist, currentUser }) => {
     const [searchParams, setSearchParams] = useSearchParams();
     const [search, setSearch] = useState(() => searchParams.get('q') || '');
+    const [assistantSearch, setAssistantSearch] = useState('');
     const [sort, setSort] = useState('featured');
     const [filterOpen, setFilterOpen] = useState(false);
     const [selectedStyles, setSelectedStyles] = useState([]);
@@ -84,6 +158,7 @@ export const ProductsPage = ({ products, addToCart, wishlist, toggleWishlist }) 
 
     useEffect(() => {
         setSearch(searchParams.get('q') || '');
+        setAssistantSearch('');
     }, [searchParams]);
 
     useEffect(() => {
@@ -110,10 +185,17 @@ export const ProductsPage = ({ products, addToCart, wishlist, toggleWishlist }) 
 
     const clearFilters = () => {
         setSearch('');
+        setAssistantSearch('');
         setCategory('all');
         setSelectedStyles([]);
         setPriceLimit(null);
         setSort('featured');
+    };
+
+    const handleAssistantSearch = (event) => {
+        event.preventDefault();
+        const query = search.trim();
+        if (query) setAssistantSearch(query);
     };
 
     const categoryCounts = useMemo(() => {
@@ -161,11 +243,18 @@ export const ProductsPage = ({ products, addToCart, wishlist, toggleWishlist }) 
     }, [products, savedCategories]);
 
     const filtered = useMemo(() => {
+        const activeAssistantSearch = assistantSearch && assistantSearch === search.trim()
+            ? getSearchTerms(assistantSearch)
+            : null;
         const list = products.filter(p => {
             const q = search.toLowerCase();
-            const matchesSearch = p.name.toLowerCase().includes(q) || p.description.toLowerCase().includes(q) || (p.storeName || '').toLowerCase().includes(q);
-            const matchesCategory = selectedCategory === 'all' || productCategories(p.category).includes(selectedCategory);
             const productText = productSearchText(p);
+            const matchesSearch = activeAssistantSearch
+                ? getSearchScore(p, activeAssistantSearch) > 0
+                : String(p.name || '').toLowerCase().includes(q) ||
+                    String(p.description || '').toLowerCase().includes(q) ||
+                    String(p.storeName || '').toLowerCase().includes(q);
+            const matchesCategory = selectedCategory === 'all' || productCategories(p.category).includes(selectedCategory);
             const matchesStyle = selectedStyles.length === 0 || selectedStyles.some((styleKey) => {
                 const style = styleOptions.find((option) => option.key === styleKey);
                 return style?.terms.some((term) => productText.includes(term));
@@ -178,9 +267,13 @@ export const ProductsPage = ({ products, addToCart, wishlist, toggleWishlist }) 
             case 'price-desc': return [...list].sort((a, b) => b.price - a.price);
             case 'rating': return [...list].sort((a, b) => (b.rating || 0) - (a.rating || 0));
             case 'name': return [...list].sort((a, b) => a.name.localeCompare(b.name));
-            default: return [...list].sort((a, b) => (b.featured === true) - (a.featured === true));
+            default: return [...list].sort((a, b) =>
+                (activeAssistantSearch ? getSearchScore(b, activeAssistantSearch) - getSearchScore(a, activeAssistantSearch) : 0) ||
+                audienceScore(b, currentUser?.gender) - audienceScore(a, currentUser?.gender) ||
+                (b.featured === true) - (a.featured === true)
+            );
         }
-    }, [products, search, selectedCategory, selectedStyles, activePriceLimit, sort]);
+    }, [products, search, assistantSearch, selectedCategory, selectedStyles, activePriceLimit, sort, currentUser?.gender]);
 
     return (
         <div className="min-h-screen bg-[#f5f1e9] pb-20 pt-[5.8rem] text-[#292621] sm:pb-28 sm:pt-[6.6rem]">
@@ -198,6 +291,7 @@ export const ProductsPage = ({ products, addToCart, wishlist, toggleWishlist }) 
 
             <div className="mx-auto max-w-[1280px] px-4 sm:px-8 lg:px-10">
                 <div className="flex items-center gap-2 py-4 text-[10px] text-[#81786d] sm:py-5"><span>Home</span><span>/</span><span className="text-[#292621]">Shop</span></div>
+                {currentUser?.role === 'customer' && currentUser.gender && <p className="mb-4 text-xs text-[#71695e]">Recommendations are personalized to your shopping preference. You can still browse every product.</p>}
                 <div className="mb-5 flex items-center justify-between border-y border-[#ded7ca] py-3 sm:mb-7">
                     <button type="button" onClick={() => setFilterOpen(!filterOpen)} className="inline-flex min-h-10 items-center gap-2 border border-[#cfc6b8] bg-[#fbf9f5] px-4 text-[10px] font-bold uppercase tracking-[0.16em] text-[#292621] lg:hidden"><Filter size={13} /> Filter</button>
                     <p className="hidden text-[10px] text-[#81786d] sm:block">Showing <strong className="text-[#292621]">1–{filtered.length}</strong> of {products.length} products</p>
@@ -223,7 +317,30 @@ export const ProductsPage = ({ products, addToCart, wishlist, toggleWishlist }) 
                     </aside>
 
                     <main>
-                        <div className="mb-4 flex items-center justify-between"><p className="text-[10px] text-[#81786d] sm:hidden">{filtered.length} {filtered.length === 1 ? 'piece' : 'pieces'}</p><div className="relative ml-auto w-full max-w-[265px]"><Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#9c9387]" /><input type="search" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search products..." className="w-full border-b border-[#cfc6b8] bg-transparent py-2 pl-8 pr-7 text-[11px] outline-none placeholder:text-[#a59c90] focus:border-[#7c2020]" />{search && <button type="button" onClick={() => setSearch('')} className="absolute right-1 top-1/2 -translate-y-1/2 text-[#81786d]" aria-label="Clear search"><X size={13} /></button>}</div></div>
+                        <div className="mb-4 flex items-center justify-between gap-3">
+                            <p className="text-[10px] text-[#81786d] sm:hidden">{filtered.length} {filtered.length === 1 ? 'piece' : 'pieces'}</p>
+                            <form onSubmit={handleAssistantSearch} className="ml-auto flex w-full max-w-[430px] items-center gap-2">
+                                <div className="relative min-w-0 flex-1">
+                                    <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#9c9387]" />
+                                    <input
+                                        type="search"
+                                        value={search}
+                                        onChange={(event) => {
+                                            setSearch(event.target.value);
+                                            setAssistantSearch('');
+                                        }}
+                                        placeholder="Search products..."
+                                        className="w-full border-b border-[#cfc6b8] bg-transparent py-2 pl-8 pr-7 text-[11px] outline-none placeholder:text-[#a59c90] focus:border-[#7c2020]"
+                                        aria-label="Search products"
+                                    />
+                                    {search && <button type="button" onClick={() => { setSearch(''); setAssistantSearch(''); }} className="absolute right-1 top-1/2 -translate-y-1/2 text-[#81786d]" aria-label="Clear search"><X size={13} /></button>}
+                                </div>
+                                <button type="submit" disabled={!search.trim()} className="inline-flex min-h-9 shrink-0 items-center gap-1.5 rounded bg-[#7c2020] px-3 text-[9px] font-bold uppercase tracking-wide text-white transition-colors hover:bg-[#5c1111] disabled:cursor-not-allowed disabled:opacity-50">
+                                    <Sparkles size={13} /> Find products
+                                </button>
+                            </form>
+                        </div>
+                        {assistantSearch === search.trim() && assistantSearch && <p className="mb-4 text-xs text-[#71695e]" role="status">Product finder matched {filtered.length} {filtered.length === 1 ? 'product' : 'products'} using related words, categories and product details.</p>}
                         {filtered.length > 0 ? <div className="grid grid-cols-2 gap-x-3 gap-y-6 sm:grid-cols-2 sm:gap-x-3 sm:gap-y-6 xl:grid-cols-4">{filtered.map((p, i) => <Reveal key={p.id} delay={(i % 3) * 55}><ProductCard product={p} addToCart={addToCart} isWishlisted={wishlist.includes(p.id)} toggleWishlist={toggleWishlist} /></Reveal>)}</div> : <div className="border border-dashed border-[#cfc6b8] bg-[#fbf9f5] px-6 py-24 text-center"><Filter size={28} className="mx-auto mb-5 text-[#b8aea0]" /><h3 className="font-playfair text-2xl font-bold">No works found</h3><p className="mt-2 text-sm text-[#81786d]">Try another search or clear your filters.</p><button onClick={clearFilters} className="mt-6 bg-[#7c2020] px-5 py-3 text-[9px] font-bold uppercase tracking-widest text-white">Clear Filters</button></div>}
                     </main>
                 </div>
