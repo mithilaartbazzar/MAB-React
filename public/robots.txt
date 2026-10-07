@@ -1,3 +1,4 @@
 User-agent: *
 Allow: /
 Sitemap: https://mithilachitrakalastore.com.np/sitemap.xml
+Agentmap: https://mithilachitrakalastore.com.np/ai-catalog.json
