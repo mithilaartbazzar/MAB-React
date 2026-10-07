@@ -41,6 +41,12 @@ const supabase = createClient(supabaseUrl, supabaseKey);
 const genAI = new GoogleGenAI({ apiKey: geminiApiKey });
 
 const hashPassword = (pwd) => btoa(`mcs-salt-${pwd}`);
+const describeSupabaseError = (error) => [
+    error.message,
+    error.code ? `Code: ${error.code}` : '',
+    error.details ? `Details: ${error.details}` : '',
+    error.hint ? `Hint: ${error.hint}` : ''
+].filter(Boolean).join(' ');
 
 const createSlug = (value) => String(value || '')
     .toLowerCase()
@@ -351,7 +357,7 @@ app.post('/api/db', async (req, res) => {
                 if (!normalizedEmail || !normalizedName || !normalizedAddress ||
                     !Number.isInteger(age) || age < 13 || age > 120 ||
                     !String(restUserData.gender || '').trim()) {
-                    throw new Error('Full name, email, address, age, and shopping preference are required.');
+                    throw new Error('Full name, email, address, age, and gender are required.');
                 }
 
                 const { data: existingUser, error: lookupError } = await supabase
@@ -359,7 +365,7 @@ app.post('/api/db', async (req, res) => {
                     .select('*')
                     .eq('email', normalizedEmail)
                     .maybeSingle();
-                if (lookupError) throw new Error(lookupError.message);
+                if (lookupError) throw new Error(describeSupabaseError(lookupError));
                 if (existingUser && existingUser.status !== 'active') {
                     throw new Error('This account is inactive. Please contact the store administrator.');
                 }
@@ -382,7 +388,7 @@ app.post('/api/db', async (req, res) => {
                         .eq('id', existingUser.id)
                         .select()
                         .single();
-                    if (error) throw new Error(error.message);
+                    if (error) throw new Error(describeSupabaseError(error));
                     result = data;
                 } else {
                     const newUser = {
@@ -392,7 +398,7 @@ app.post('/api/db', async (req, res) => {
                         ...profileData
                     };
                     const { data, error } = await supabase.from('users').insert([newUser]).select().single();
-                    if (error) throw new Error(error.message);
+                    if (error) throw new Error(describeSupabaseError(error));
                     result = data;
                 }
                 break;

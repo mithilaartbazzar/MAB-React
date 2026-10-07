@@ -58,15 +58,12 @@ export const LoginPage = ({ onLogin }) => {
             const name = session.user.user_metadata?.full_name || session.user.user_metadata?.name || session.user.email;
             const avatar_url = session.user.user_metadata?.avatar_url || session.user.user_metadata?.picture;
 
-            console.log("Google avatar_url detected:", avatar_url);
-
             const existingUser = await dbService.getUserByEmail(email);
             const profileNeedsCompletion = !existingUser?.name || !existingUser?.address ||
                 !existingUser?.age || !existingUser?.gender;
             if (existingUser && !profileNeedsCompletion) {
                 await supabase.auth.signOut();
                 const userWithAvatar = { ...existingUser, avatar_url };
-                console.log("Logging in with user:", userWithAvatar);
                 onLogin(userWithAvatar);
             } else {
                 setAuthMode('completeProfile');
