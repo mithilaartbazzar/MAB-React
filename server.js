@@ -34,6 +34,10 @@ const RESEND_TEMPLATES = {
 };
 const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
 const ADMIN_EMAIL_TOKEN_SECRET = process.env.ADMIN_EMAIL_TOKEN_SECRET || process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_SERVICE_ROLE_KEY || '';
+const EMAIL_OTP_SECRET = process.env.EMAIL_OTP_SECRET || ADMIN_EMAIL_TOKEN_SECRET;
+const EMAIL_OTP_TTL_MINUTES = 10;
+const EMAIL_OTP_RESEND_COOLDOWN_SECONDS = 60;
+const EMAIL_OTP_MAX_ATTEMPTS = 5;
 
 app.use(cors());
 app.use(express.json());
@@ -60,6 +64,10 @@ const supabase = createClient(supabaseUrl, supabaseKey);
 const genAI = new GoogleGenAI({ apiKey: geminiApiKey });
 
 const hashPassword = (pwd) => btoa(`mcs-salt-${pwd}`);
+const hashEmailVerificationCode = (userId, code) => crypto
+    .createHmac('sha256', EMAIL_OTP_SECRET)
+    .update(`${userId}:${code}`)
+    .digest('hex');
 const describeSupabaseError = (error) => [
     error.message,
     error.code ? `Code: ${error.code}` : '',
@@ -447,6 +455,81 @@ const sendEmailVerification = async ({ to, name, verificationUrl, expiresIn, use
         variables: templateVars,
         template: RESEND_TEMPLATES.verification || undefined,
     });
+};
+
+const sendEmailVerificationOtp = async ({ to, name, code }) => {
+    const customerName = String(name || 'Customer').trim() || 'Customer';
+    const expirationText = `${EMAIL_OTP_TTL_MINUTES} minutes`;
+    const emailHtml = buildEmailLayout({
+        title: 'Verify Your Email Address',
+        intro: `Hello ${customerName}, enter this one-time code to verify your email address.`,
+        bodyHtml: `<p style="margin:0; text-align:center; font-size:32px; line-height:1.4; letter-spacing:8px; font-weight:700; color:#5c1111;">${escapeHtml(code)}</p><p style="margin:14px 0 0; text-align:center; font-size:14px; color:#514b46;">This code expires in ${expirationText} and can only be used once.</p>`,
+        footerText: 'If you did not create an account, you can ignore this email.',
+        previewText: `Your ${APP_NAME} verification code`,
+        createdDate: new Date().toISOString(),
+        userEmail: to,
+        userName: customerName,
+    });
+    const result = await sendEmail({
+        to,
+        from: EMAIL_SENDERS.security,
+        replyTo: EMAIL_SENDERS.support,
+        subject: `Your ${APP_NAME} verification code`,
+        html: emailHtml,
+        text: `Your ${APP_NAME} verification code is ${code}. It expires in ${expirationText}.`,
+        category: 'security',
+    });
+    if (!result?.success) throw new Error(result?.error || 'Unable to deliver the verification code.');
+    return result;
+};
+
+const issueEmailVerificationCode = async (user, { enforceCooldown = true } = {}) => {
+    if (!EMAIL_OTP_SECRET) throw new Error('Email verification signing is not configured on the server.');
+    const email = String(user?.email || '').trim().toLowerCase();
+    if (!user?.id || !email) throw new Error('A registered email account is required.');
+    if (user.email_verified) return { alreadyVerified: true };
+
+    const { data: previousCode, error: lookupError } = await supabase
+        .from('email_verification_codes')
+        .select('last_sent_at')
+        .eq('user_id', user.id)
+        .maybeSingle();
+    if (lookupError) throw new Error(lookupError.message);
+
+    const now = new Date();
+    if (enforceCooldown && previousCode?.last_sent_at) {
+        const secondsSinceLastSend = (now.getTime() - new Date(previousCode.last_sent_at).getTime()) / 1000;
+        if (secondsSinceLastSend < EMAIL_OTP_RESEND_COOLDOWN_SECONDS) {
+            const waitSeconds = Math.ceil(EMAIL_OTP_RESEND_COOLDOWN_SECONDS - secondsSinceLastSend);
+            const error = new Error(`Please wait ${waitSeconds} seconds before requesting another code.`);
+            error.statusCode = 429;
+            throw error;
+        }
+    }
+
+    const code = String(crypto.randomInt(100000, 1000000));
+    const verificationRecord = {
+        user_id: user.id,
+        email,
+        code_hash: hashEmailVerificationCode(user.id, code),
+        expires_at: new Date(now.getTime() + EMAIL_OTP_TTL_MINUTES * 60 * 1000).toISOString(),
+        attempts: 0,
+        last_sent_at: now.toISOString(),
+        created_at: now.toISOString(),
+    };
+    const { error: saveError } = await supabase
+        .from('email_verification_codes')
+        .upsert(verificationRecord, { onConflict: 'user_id' });
+    if (saveError) throw new Error(saveError.message);
+
+    try {
+        await sendEmailVerificationOtp({ to: email, name: user.name || user.username, code });
+    } catch (error) {
+        await supabase.from('email_verification_codes').delete().eq('user_id', user.id);
+        throw error;
+    }
+
+    return { sent: true, expiresInMinutes: EMAIL_OTP_TTL_MINUTES };
 };
 
 const sendPasswordResetEmail = async ({ to, name, resetUrl, expiresIn, userEmail, appName = APP_NAME }) => {
@@ -877,7 +960,11 @@ app.post('/api/db', async (req, res) => {
                     data.password === password
                 );
 
-                if (!matchesPassword || !data || data.status !== 'active') {
+                if (!matchesPassword || !data) {
+                    result = null;
+                } else if (data.email_verified === false) {
+                    result = { requiresEmailVerification: true, email: data.email };
+                } else if (data.status !== 'active') {
                     result = null;
                 } else {
                     result = data.role === 'admin'
@@ -904,7 +991,8 @@ app.post('/api/db', async (req, res) => {
                     storeName_pending: '',
                     ...sanitizedUserData,
                     password: plainPassword,
-                    password_hash: hashPassword(plainPassword)
+                    password_hash: hashPassword(plainPassword),
+                    email_verified: false,
                 };
                 try {
                     const { data, error } = await supabase.from('users').insert([newUser]).select();
@@ -919,15 +1007,24 @@ app.post('/api/db', async (req, res) => {
                 }
 
                 if (result?.email) {
+                    const createdUser = result;
                     try {
                         await sendWelcomeEmail({
-                            to: result.email,
-                            name: result.name || result.username || 'Customer',
-                            userEmail: result.email,
+                            to: createdUser.email,
+                            name: createdUser.name || createdUser.username || 'Customer',
+                            userEmail: createdUser.email,
                         });
                     } catch (error) {
                         console.error('Welcome email failed after registration:', error.message || error);
                     }
+                    let verificationEmailSent = false;
+                    try {
+                        await issueEmailVerificationCode(createdUser);
+                        verificationEmailSent = true;
+                    } catch (error) {
+                        console.error('Verification code email failed after registration:', error.message || error);
+                    }
+                    result = { ...createdUser, emailVerificationRequired: true, verificationEmailSent };
                 }
                 break;
             }
@@ -969,6 +1066,7 @@ app.post('/api/db', async (req, res) => {
                 const profileData = {
                     name: normalizedName,
                     email: normalizedEmail,
+                    email_verified: true,
                     username: String(restUserData.username || '').trim(),
                     phone: String(restUserData.phone || '').trim(),
                     address: normalizedAddress,
@@ -991,6 +1089,7 @@ app.post('/api/db', async (req, res) => {
                         id: `u-${crypto.randomUUID()}`,
                         role: 'customer',
                         status: 'active',
+                        email_verified: true,
                         ...profileData
                     };
                     const { data, error } = await supabase.from('users').insert([newUser]).select().single();
@@ -1317,15 +1416,27 @@ app.post('/api/db', async (req, res) => {
                 if (id) {
                     const { data: refreshedOrder } = await supabase.from('orders').select('*').eq('id', id).maybeSingle();
                     const customerEmail = refreshedOrder?.customer?.email || refreshedOrder?.customer_email;
-                    if (customerEmail) {
+                    const normalizedStatus = String(status || '').trim().toLowerCase();
+                    if (customerEmail && previousStatus !== status) {
                         try {
-                            await sendOrderStatusEmail({
-                                to: customerEmail,
-                                name: refreshedOrder?.customer?.name || 'Customer',
-                                order: refreshedOrder,
-                                previousStatus,
-                                newStatus: status,
-                            });
+                            if (normalizedStatus === 'shipped') {
+                                await sendShippingEmail({
+                                    to: customerEmail,
+                                    name: refreshedOrder?.customer?.name || 'Customer',
+                                    order: refreshedOrder,
+                                    shippingInfo: refreshedOrder?.shipping_info || 'Your order has been dispatched.',
+                                    trackingNumber: refreshedOrder?.tracking_id || refreshedOrder?.tracking_number,
+                                    trackingUrl: `${process.env.PUBLIC_FRONTEND_URL || process.env.VITE_APP_URL || 'https://mithilachitrakalastore.com.np'}/profile`,
+                                });
+                            } else {
+                                await sendOrderStatusEmail({
+                                    to: customerEmail,
+                                    name: refreshedOrder?.customer?.name || 'Customer',
+                                    order: refreshedOrder,
+                                    previousStatus,
+                                    newStatus: status,
+                                });
+                            }
                         } catch (emailError) {
                             console.error('Order status email failed:', emailError.message || emailError);
                         }
@@ -1537,6 +1648,96 @@ app.post('/api/db', async (req, res) => {
     } catch (error) {
         console.error("DB Service Error:", error);
         res.status(400).json({ error: error.message });
+    }
+});
+
+app.post('/api/email/verify-otp', async (req, res) => {
+    try {
+        const email = String(req.body?.email || '').trim().toLowerCase();
+        const code = String(req.body?.code || '').trim();
+        if (!email || !/^\d{6}$/.test(code)) {
+            return res.status(400).json({ error: 'Enter the email address and six-digit verification code.' });
+        }
+
+        const { data: user, error: userError } = await supabase
+            .from('users')
+            .select('*')
+            .eq('email', email)
+            .maybeSingle();
+        if (userError) throw new Error(userError.message);
+        if (!user) return res.status(400).json({ error: 'The verification code is invalid or expired.' });
+        if (user.email_verified) return res.status(400).json({ error: 'This email address is already verified. Please sign in.' });
+
+        const { data: verification, error: verificationError } = await supabase
+            .from('email_verification_codes')
+            .select('*')
+            .eq('user_id', user.id)
+            .maybeSingle();
+        if (verificationError) throw new Error(verificationError.message);
+        if (!verification) return res.status(400).json({ error: 'The verification code is invalid or expired. Request a new code.' });
+        if (verification.attempts >= EMAIL_OTP_MAX_ATTEMPTS) {
+            return res.status(429).json({ error: 'Too many incorrect attempts. Request a new verification code.' });
+        }
+
+        const expiresAt = new Date(verification.expires_at).getTime();
+        if (!Number.isFinite(expiresAt) || expiresAt <= Date.now()) {
+            await supabase.from('email_verification_codes').delete().eq('user_id', user.id);
+            return res.status(400).json({ error: 'The verification code has expired. Request a new code.' });
+        }
+
+        const expectedHash = Buffer.from(verification.code_hash, 'hex');
+        const providedHash = Buffer.from(hashEmailVerificationCode(user.id, code), 'hex');
+        if (expectedHash.length !== providedHash.length || !crypto.timingSafeEqual(expectedHash, providedHash)) {
+            const attempts = Number(verification.attempts || 0) + 1;
+            await supabase.from('email_verification_codes').update({ attempts }).eq('user_id', user.id);
+            return res.status(attempts >= EMAIL_OTP_MAX_ATTEMPTS ? 429 : 400).json({
+                error: attempts >= EMAIL_OTP_MAX_ATTEMPTS
+                    ? 'Too many incorrect attempts. Request a new verification code.'
+                    : 'That verification code is incorrect.',
+            });
+        }
+
+        const { data: verifiedUser, error: updateError } = await supabase
+            .from('users')
+            .update({ email_verified: true })
+            .eq('id', user.id)
+            .select('*')
+            .single();
+        if (updateError) throw new Error(updateError.message);
+        await supabase.from('email_verification_codes').delete().eq('user_id', user.id);
+
+        const { password, password_hash, ...safeUser } = verifiedUser;
+        return res.json({ success: true, user: safeUser });
+    } catch (error) {
+        console.error('Email OTP verification error:', error);
+        return res.status(500).json({ error: 'Unable to verify the email address right now.' });
+    }
+});
+
+app.post('/api/email/resend-otp', async (req, res) => {
+    try {
+        const email = String(req.body?.email || '').trim().toLowerCase();
+        if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+            return res.status(400).json({ error: 'Enter a valid email address.' });
+        }
+
+        const { data: user, error: userError } = await supabase
+            .from('users')
+            .select('id, email, email_verified, name, username')
+            .eq('email', email)
+            .maybeSingle();
+        if (userError) throw new Error(userError.message);
+
+        if (user && !user.email_verified) {
+            await issueEmailVerificationCode(user);
+        }
+        return res.json({ success: true, message: 'If the account needs verification, a new code has been sent.' });
+    } catch (error) {
+        if (error.statusCode === 429) {
+            return res.status(429).json({ error: error.message });
+        }
+        console.error('Email OTP resend error:', error);
+        return res.status(500).json({ error: 'Unable to send a verification code right now.' });
     }
 });
 

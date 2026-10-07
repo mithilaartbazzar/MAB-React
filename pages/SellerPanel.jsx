@@ -945,7 +945,7 @@ export const SellerPanel = ({ currentUser }) => {
                                         className="pl-9 pr-8 py-3 bg-white border border-stone-200 rounded-2xl focus:ring-2 focus:ring-[#5c1111]/20 focus:border-[#5c1111] outline-none transition-all text-xs font-medium appearance-none"
                                     >
                                         <option value="all">All Status</option>
-                                        {['pending', 'confirmed', 'packing', 'billing', 'arrived', 'delivered', 'cancelled'].map(s => (
+                                        {['pending', 'confirmed', 'packing', 'billing', 'shipped', 'arrived', 'delivered', 'cancelled'].map(s => (
                                             <option key={s} value={s}>{s}</option>
                                         ))}
                                     </select>
@@ -1102,7 +1102,7 @@ export const SellerPanel = ({ currentUser }) => {
                                                 disabled={currentUser.role !== 'admin' && ['billing', 'arrived', 'delivered'].includes(o.status)}
                                             >
                                                 {currentUser.role === 'admin' 
-                                                    ? ['pending', 'confirmed', 'packing', 'billing', 'arrived', 'delivered', 'cancelled'].map(s => <option key={s} value={s}>{s}</option>)
+                                                    ? ['pending', 'confirmed', 'packing', 'billing', 'shipped', 'arrived', 'delivered', 'cancelled'].map(s => <option key={s} value={s}>{s}</option>)
                                                     : ['pending', 'confirmed', 'packing'].map(s => <option key={s} value={s}>{s}</option>)
                                                 }
                                             </select>

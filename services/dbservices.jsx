@@ -33,6 +33,26 @@ const callDbService = async (action, payload = {}) => {
 
 export const dbService = {
     login: (username, password) => callDbService('login', { username, password }),
+    verifyEmailOtp: async (email, code) => {
+        const response = await fetch(`${API_BASE_URL}/email/verify-otp`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email, code }),
+        });
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(data.error || `Server returned ${response.status}`);
+        return data.user;
+    },
+    resendEmailOtp: async (email) => {
+        const response = await fetch(`${API_BASE_URL}/email/resend-otp`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email }),
+        });
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(data.error || `Server returned ${response.status}`);
+        return data;
+    },
     getUserByEmail: (email) => callDbService('getUserByEmail', { email }),
     register: (userData) => callDbService('register', { userData }),
     registerGoogleUser: (userData) => callDbService('registerGoogleUser', { userData }),

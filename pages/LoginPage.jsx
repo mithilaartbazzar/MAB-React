@@ -18,6 +18,10 @@ export const LoginPage = ({ onLogin }) => {
     const [role, setRole] = useState('customer');
     const [storeName, setStoreName] = useState('');
     const [error, setError] = useState('');
+    const [pendingVerificationEmail, setPendingVerificationEmail] = useState('');
+    const [verificationCode, setVerificationCode] = useState('');
+    const [verificationMessage, setVerificationMessage] = useState('');
+    const [resendingVerificationCode, setResendingVerificationCode] = useState(false);
     const [googleProfile, setGoogleProfile] = useState(null);
     const sessionHandled = useRef(false);
 
@@ -62,11 +66,24 @@ export const LoginPage = ({ onLogin }) => {
             const profileNeedsCompletion = !existingUser?.name || !existingUser?.address ||
                 !existingUser?.age || !existingUser?.gender;
             if (existingUser && !profileNeedsCompletion) {
+                const verifiedUser = existingUser.email_verified === false
+                    ? await dbService.registerGoogleUser({
+                        email,
+                        name: existingUser.name,
+                        phone: existingUser.phone || '',
+                        address: existingUser.address,
+                        city: existingUser.city || '',
+                        age: existingUser.age,
+                        gender: existingUser.gender,
+                        username: existingUser.username,
+                        picture: avatar_url,
+                    })
+                    : existingUser;
                 const emailAdminToken = existingUser.role === 'admin'
                     ? await dbService.createAdminEmailSession(session.access_token)
                     : undefined;
                 await supabase.auth.signOut();
-                const userWithAvatar = { ...existingUser, avatar_url, emailAdminToken };
+                const userWithAvatar = { ...verifiedUser, avatar_url, emailAdminToken };
                 onLogin(userWithAvatar);
             } else {
                 setAuthMode('completeProfile');
@@ -103,9 +120,23 @@ export const LoginPage = ({ onLogin }) => {
         setError('');
 
         try {
-            if (authMode === 'login') {
+            if (authMode === 'verifyEmail') {
+                const verifiedUser = await dbService.verifyEmailOtp(pendingVerificationEmail, verificationCode);
+                setVerificationMessage('');
+                if (verifiedUser?.status === 'disabled') {
+                    alert('Email verified. Your artisan account is waiting for administrator approval.');
+                    setAuthMode('login');
+                    return;
+                }
+                onLogin(verifiedUser);
+            } else if (authMode === 'login') {
                 const user = await dbService.login(username, password);
-                if (user) onLogin(user);
+                if (user?.requiresEmailVerification) {
+                    setPendingVerificationEmail(user.email || username);
+                    setVerificationCode('');
+                    setVerificationMessage('Your account needs email verification. Enter the six-digit code we sent you.');
+                    setAuthMode('verifyEmail');
+                } else if (user) onLogin(user);
                 else setError('Invalid credentials or inactive account.');
             } else if (authMode === 'register') {
                 if (role === 'customer' && !gender) {
@@ -125,8 +156,19 @@ export const LoginPage = ({ onLogin }) => {
                     storeName: role === 'seller' ? storeName : undefined
                 });
                 if (newUser.status === 'disabled') {
-                    alert('Registration successful! Your seller account is deactivated by default. Contact admin to activate.');
-                    setAuthMode('login');
+                    setPendingVerificationEmail(newUser.email || email);
+                    setVerificationCode('');
+                    setVerificationMessage(newUser.verificationEmailSent
+                        ? 'Enter the six-digit verification code sent to your email. Your artisan account will still need administrator approval.'
+                        : 'Your account was created, but the verification email could not be sent. You can try resending the code below.');
+                    setAuthMode('verifyEmail');
+                } else if (newUser.emailVerificationRequired) {
+                    setPendingVerificationEmail(newUser.email || email);
+                    setVerificationCode('');
+                    setVerificationMessage(newUser.verificationEmailSent
+                        ? 'Enter the six-digit verification code sent to your email.'
+                        : 'Your account was created, but the verification email could not be sent. You can try resending the code below.');
+                    setAuthMode('verifyEmail');
                 } else {
                     onLogin(newUser);
                 }
@@ -165,6 +207,19 @@ export const LoginPage = ({ onLogin }) => {
         }
     };
 
+    const handleResendVerificationCode = async () => {
+        setResendingVerificationCode(true);
+        setError('');
+        try {
+            const result = await dbService.resendEmailOtp(pendingVerificationEmail);
+            setVerificationMessage(result.message || 'If the account needs verification, a new code has been sent.');
+        } catch (resendError) {
+            setError(resendError.message || 'Unable to resend the verification code.');
+        } finally {
+            setResendingVerificationCode(false);
+        }
+    };
+
     const isLogin = authMode === 'login';
     const isRegister = authMode === 'register';
     const welcomeCopy = isLogin
@@ -183,12 +238,18 @@ export const LoginPage = ({ onLogin }) => {
                 heading: 'Start your Mithila journey',
                 subheading: 'Create an account and become part of our heritage community.'
             }
-            : {
+            : authMode === 'completeProfile' ? {
                 eyebrow: 'One step from home',
                 title: <>Complete your<br /><em>heritage profile</em></>,
                 intro: <>Tell us a little more about<br className="hidden sm:block" /> yourself so your Mithila journey<br className="hidden sm:block" /> can begin.</>,
                 heading: 'Complete your profile',
                 subheading: 'A few more details and your heritage profile is ready.'
+            } : {
+                eyebrow: 'One final step',
+                title: <>Verify your<br /><em>email address</em></>,
+                intro: <>A secure six-digit code is on its way<br className="hidden sm:block" /> to your inbox.</>,
+                heading: 'Verify your email',
+                subheading: `Enter the code sent to ${pendingVerificationEmail || 'your email address'}.`,
             };
 
     return (
@@ -217,7 +278,7 @@ export const LoginPage = ({ onLogin }) => {
                         <small>Store</small>
                     </div>
 
-                    {authMode !== 'completeProfile' && (
+                    {(isLogin || isRegister) && (
                         <div className="login-page__tabs" role="tablist" aria-label="Account access">
                             <button type="button" className={isLogin ? 'is-active' : ''} onClick={() => { setAuthMode('login'); setError(''); }}>Sign In</button>
                             <button type="button" className={isRegister ? 'is-active' : ''} onClick={() => { setAuthMode('register'); setError(''); }}>Create Account</button>
@@ -230,6 +291,7 @@ export const LoginPage = ({ onLogin }) => {
                     </div>
 
                     {error && <p className="login-page__error" role="alert">{error}</p>}
+                    {verificationMessage && <p className="text-center text-sm text-stone-600" role="status">{verificationMessage}</p>}
 
                     <form onSubmit={handleSubmit} className="login-page__form space-y-6">
                     {authMode === 'completeProfile' && (
@@ -287,7 +349,40 @@ export const LoginPage = ({ onLogin }) => {
                         </div>
                     )}
 
-                    {authMode !== 'completeProfile' && (
+                    {authMode === 'verifyEmail' && (
+                        <div className="space-y-6">
+                            <div className="space-y-2">
+                                <label htmlFor="email-verification-code" className="text-[10px] font-black uppercase text-stone-400 pl-4">Six-digit code</label>
+                                <input
+                                    id="email-verification-code"
+                                    required
+                                    value={verificationCode}
+                                    onChange={(event) => setVerificationCode(event.target.value.replace(/\D/g, '').slice(0, 6))}
+                                    type="text"
+                                    inputMode="numeric"
+                                    autoComplete="one-time-code"
+                                    pattern="[0-9]{6}"
+                                    maxLength={6}
+                                    placeholder="000000"
+                                    className="w-full rounded-2xl border border-transparent bg-[#efece6] px-5 py-4 text-center font-mono text-2xl tracking-[0.4em] outline-none transition-all focus:border-[#5c1111]/20 focus:bg-white"
+                                />
+                                <p className="px-1 text-xs text-stone-500">The code expires in 10 minutes.</p>
+                            </div>
+                            <button type="submit" className="w-full bg-[#5c1111] text-white py-5 rounded-2xl font-black text-xs uppercase tracking-[0.2em] shadow-lg hover:bg-[#2a2723] transition-colors">
+                                Verify Email
+                            </button>
+                            <div className="flex flex-wrap items-center justify-between gap-3 text-xs">
+                                <button type="button" onClick={handleResendVerificationCode} disabled={resendingVerificationCode} className="font-bold text-[#5c1111] disabled:opacity-50">
+                                    {resendingVerificationCode ? 'Sending code...' : 'Resend code'}
+                                </button>
+                                <button type="button" onClick={() => { setAuthMode('login'); setError(''); setVerificationMessage(''); }} className="text-stone-500 hover:text-stone-900">
+                                    Use another account
+                                </button>
+                            </div>
+                        </div>
+                    )}
+
+                    {(isLogin || isRegister) && (
                         <>
                             {authMode === 'register' && (
                                 <>
