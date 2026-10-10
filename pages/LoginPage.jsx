@@ -155,7 +155,12 @@ export const LoginPage = ({ onLogin }) => {
                     gender: role === 'customer' ? gender : undefined,
                     storeName: role === 'seller' ? storeName : undefined
                 });
-                if (newUser.status === 'disabled') {
+                if (newUser.sellerApplicationPending && !newUser.emailVerificationRequired) {
+                    setUsername(newUser.username || username);
+                    setPassword('');
+                    setVerificationMessage('Your customer account is now set to seller access and is waiting for administrator approval. Sign in after it is activated.');
+                    setAuthMode('login');
+                } else if (newUser.status === 'disabled') {
                     setPendingVerificationEmail(newUser.email || email);
                     setVerificationCode('');
                     setVerificationMessage(newUser.verificationEmailSent

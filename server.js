@@ -984,11 +984,83 @@ app.post('/api/db', async (req, res) => {
 
                 const { data: existingEmail, error: emailLookupError } = await supabase
                     .from('users')
-                    .select('id')
+                    .select('id, username, role, status, password, password_hash, email_verified, storeName')
                     .eq('email', sanitizedUserData.email)
                     .maybeSingle();
                 if (emailLookupError) throw new Error(`Unable to check email availability: ${emailLookupError.message}`);
-                if (existingEmail) throw new Error('An account with this email already exists. Sign in or use a different email address.');
+                if (existingEmail) {
+                    if (sanitizedUserData.role !== 'seller' || existingEmail.role !== 'customer') {
+                        throw new Error('An account with this email already exists. Sign in or use a different email address.');
+                    }
+                    if (existingEmail.status !== 'active') {
+                        throw new Error('This customer account is not active and cannot be converted. Contact store support.');
+                    }
+                    const passwordMatches = Boolean(plainPassword) && (
+                        existingEmail.password_hash === hashPassword(plainPassword) ||
+                        existingEmail.password === plainPassword
+                    );
+                    if (!passwordMatches) {
+                        throw new Error('This email belongs to a customer account. Enter that account’s current password to request seller access.');
+                    }
+
+                    const requestedStoreName = String(sanitizedUserData.storeName || '').trim();
+                    const conversion = {
+                        role: 'seller',
+                        status: 'disabled',
+                        storeName: existingEmail.storeName || '',
+                        ...(requestedStoreName ? {
+                            storeName_pending: requestedStoreName,
+                            storeName_change_requested_at: new Date().toISOString(),
+                        } : {}),
+                    };
+                    let convertedUser;
+                    try {
+                        const { data, error } = await supabase
+                            .from('users')
+                            .update(conversion)
+                            .eq('id', existingEmail.id)
+                            .eq('role', 'customer')
+                            .select()
+                            .maybeSingle();
+                        if (error) throw error;
+                        convertedUser = data;
+                    } catch (error) {
+                        if (!isStoreApprovalSchemaError(error.message)) throw error;
+                        const fallbackConversion = stripStoreApprovalFields(conversion);
+                        const { data, error: fallbackError } = await supabase
+                            .from('users')
+                            .update(fallbackConversion)
+                            .eq('id', existingEmail.id)
+                            .eq('role', 'customer')
+                            .select()
+                            .maybeSingle();
+                        if (fallbackError) throw new Error(fallbackError.message);
+                        convertedUser = data;
+                    }
+                    if (!convertedUser) {
+                        throw new Error('This customer account has already changed. Sign in to check its current status.');
+                    }
+
+                    let verificationEmailSent = false;
+                    if (!convertedUser.email_verified) {
+                        try {
+                            await issueEmailVerificationCode(convertedUser);
+                            verificationEmailSent = true;
+                        } catch (error) {
+                            console.error('Seller conversion verification email failed:', error.message || error);
+                        }
+                    }
+                    const safeConvertedUser = { ...convertedUser };
+                    delete safeConvertedUser.password;
+                    delete safeConvertedUser.password_hash;
+                    result = {
+                        ...safeConvertedUser,
+                        sellerApplicationPending: true,
+                        emailVerificationRequired: !convertedUser.email_verified,
+                        verificationEmailSent,
+                    };
+                    break;
+                }
 
                 if (sanitizedUserData.role === 'seller') {
                     delete sanitizedUserData.storeName;
@@ -1042,7 +1114,10 @@ app.post('/api/db', async (req, res) => {
                     } catch (error) {
                         console.error('Verification code email failed after registration:', error.message || error);
                     }
-                    result = { ...createdUser, emailVerificationRequired: true, verificationEmailSent };
+                    const safeCreatedUser = { ...createdUser };
+                    delete safeCreatedUser.password;
+                    delete safeCreatedUser.password_hash;
+                    result = { ...safeCreatedUser, emailVerificationRequired: true, verificationEmailSent };
                 }
                 break;
             }
