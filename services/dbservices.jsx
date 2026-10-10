@@ -20,6 +20,17 @@ const callDbService = async (action, payload = {}) => {
             const errorData = await response.json().catch(() => ({}));
             const isLastAttempt = attempt === DB_REQUEST_RETRIES;
             if (!TRANSIENT_DB_STATUSES.has(response.status) || isLastAttempt) {
+                if (response.status === 429 && !errorData.error) {
+                    const retryAfterHeader = response.headers.get('Retry-After');
+                    const retryAfterSeconds = Number(retryAfterHeader);
+                    const retryAtSeconds = retryAfterHeader && !Number.isFinite(retryAfterSeconds)
+                        ? Math.ceil((Date.parse(retryAfterHeader) - Date.now()) / 1000)
+                        : retryAfterSeconds;
+                    const retryMessage = Number.isFinite(retryAtSeconds) && retryAtSeconds > 0
+                        ? ` Please wait about ${retryAtSeconds} seconds before trying again.`
+                        : ' Please wait a short while before trying again.';
+                    throw new Error(`Too many requests reached the server.${retryMessage}`);
+                }
                 throw new Error(errorData.error || `Server returned ${response.status}`);
             }
 

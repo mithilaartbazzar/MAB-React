@@ -22,8 +22,10 @@ export const LoginPage = ({ onLogin }) => {
     const [verificationCode, setVerificationCode] = useState('');
     const [verificationMessage, setVerificationMessage] = useState('');
     const [resendingVerificationCode, setResendingVerificationCode] = useState(false);
+    const [isSubmitting, setIsSubmitting] = useState(false);
     const [googleProfile, setGoogleProfile] = useState(null);
     const sessionHandled = useRef(false);
+    const submitInProgress = useRef(false);
 
     useEffect(() => {
         const callbackParams = new URLSearchParams(window.location.search);
@@ -117,6 +119,9 @@ export const LoginPage = ({ onLogin }) => {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
+        if (submitInProgress.current) return;
+        submitInProgress.current = true;
+        setIsSubmitting(true);
         setError('');
 
         try {
@@ -209,6 +214,9 @@ export const LoginPage = ({ onLogin }) => {
             }
         } catch (err) {
             setError(err.message || 'An error occurred.');
+        } finally {
+            submitInProgress.current = false;
+            setIsSubmitting(false);
         }
     };
 
@@ -348,7 +356,7 @@ export const LoginPage = ({ onLogin }) => {
                                 <p className="px-1 text-[9px] text-stone-400">You can change this later in your profile.</p>
                             </div>
 
-                            <button type="submit" className="w-full bg-[#5c1111] text-white py-6 rounded-[2rem] font-black text-[12px] uppercase tracking-[0.3em] shadow-2xl premium-shadow hover:bg-[#2a2723] hover:-translate-y-1 transition-all">
+                            <button type="submit" disabled={isSubmitting} className="w-full bg-[#5c1111] text-white py-6 rounded-[2rem] font-black text-[12px] uppercase tracking-[0.3em] shadow-2xl premium-shadow hover:bg-[#2a2723] hover:-translate-y-1 transition-all disabled:cursor-wait disabled:opacity-60">
                                 Establish Heritage
                             </button>
                         </div>
@@ -373,7 +381,7 @@ export const LoginPage = ({ onLogin }) => {
                                 />
                                 <p className="px-1 text-xs text-stone-500">The code expires in 10 minutes.</p>
                             </div>
-                            <button type="submit" className="w-full bg-[#5c1111] text-white py-5 rounded-2xl font-black text-xs uppercase tracking-[0.2em] shadow-lg hover:bg-[#2a2723] transition-colors">
+                            <button type="submit" disabled={isSubmitting} className="w-full bg-[#5c1111] text-white py-5 rounded-2xl font-black text-xs uppercase tracking-[0.2em] shadow-lg hover:bg-[#2a2723] transition-colors disabled:cursor-wait disabled:opacity-60">
                                 Verify Email
                             </button>
                             <div className="flex flex-wrap items-center justify-between gap-3 text-xs">
@@ -505,7 +513,7 @@ export const LoginPage = ({ onLogin }) => {
                                 </div>
                             )}
 
-                            <button type="submit" className="w-full bg-[#5c1111] text-white py-6 rounded-[2rem] font-black text-[12px] uppercase tracking-[0.3em] shadow-2xl premium-shadow hover:bg-[#2a2723] hover:-translate-y-1 transition-all">
+                            <button type="submit" disabled={isSubmitting} className="w-full bg-[#5c1111] text-white py-6 rounded-[2rem] font-black text-[12px] uppercase tracking-[0.3em] shadow-2xl premium-shadow hover:bg-[#2a2723] hover:-translate-y-1 transition-all disabled:cursor-wait disabled:opacity-60">
                                 {authMode === 'login' ? "Authorize Entry" : "Establish Heritage"}
                             </button>
 
