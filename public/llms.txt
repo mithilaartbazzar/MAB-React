@@ -95,7 +95,7 @@ The store is intended for customers looking for:
 
 ## Policies
 
-- [Privacy Policy](https://mithilachitrakalastore.com.np/privacy-policy): Information about privacy and data handling.
+- [Privacy Policy](https://mithilachitrakalastore.com.np/privacy): Information about privacy and data handling.
 - [Terms of Service](https://mithilachitrakalastore.com.np/terms-of-service): Terms governing use of the store and its services.
 
 ## Contact

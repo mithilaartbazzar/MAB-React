@@ -111,7 +111,7 @@ export const Footer = () => {
                                 <h4 className="mb-3 font-playfair text-base font-black text-stone-100 sm:text-lg">Customer Care</h4>
                                 <ul className="space-y-2.5 text-[10px] font-black uppercase tracking-[0.14em] text-stone-300 sm:space-y-3 sm:text-[11px]">
                                     <li><Link to="/profile" className="transition-colors hover:text-white">Track Collection</Link></li>
-                                    <li><Link to="/privacy-policy" className="transition-colors hover:text-white">Privacy Policy</Link></li>
+                                    <li><Link to="/privacy" className="transition-colors hover:text-white">Privacy Policy</Link></li>
                                     <li><Link to="/terms-of-service" className="transition-colors hover:text-white">Terms of Service</Link></li>
                                 </ul>
                             </div>
