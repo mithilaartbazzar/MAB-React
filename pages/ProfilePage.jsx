@@ -50,6 +50,10 @@ export const ProfilePage = ({ currentUser, setCurrentUser, wishlist, products, t
     const [activeView, setActiveView] = useState('dashboard');
     const [isEditing, setIsEditing] = useState(false);
     const [saving, setSaving] = useState(false);
+    const [sellerStoreName, setSellerStoreName] = useState('');
+    const [sellerPassword, setSellerPassword] = useState('');
+    const [sellerRequesting, setSellerRequesting] = useState(false);
+    const [sellerRequestError, setSellerRequestError] = useState('');
     const [profile, setProfile] = useState({
         name: currentUser.name || '',
         username: currentUser.username || '',
@@ -118,6 +122,20 @@ export const ProfilePage = ({ currentUser, setCurrentUser, wishlist, products, t
             setSaving(false);
         }
     };
+    const requestSellerConversion = async () => {
+        setSellerRequesting(true);
+        setSellerRequestError('');
+        try {
+            const updatedUser = await dbService.requestSellerConversion(currentUser.id, sellerPassword, sellerStoreName);
+            setCurrentUser(updatedUser);
+            setSellerPassword('');
+            setSellerStoreName('');
+        } catch (error) {
+            setSellerRequestError(error.message || 'Unable to submit your seller application.');
+        } finally {
+            setSellerRequesting(false);
+        }
+    };
     const saveOrderDetails = async (orderId, customer) => {
         setSaving(true);
         try {
@@ -131,6 +149,7 @@ export const ProfilePage = ({ currentUser, setCurrentUser, wishlist, products, t
         { id: 'dashboard', label: 'Dashboard', icon: User }, { id: 'orders', label: 'My Orders', icon: ShoppingBag },
         { id: 'wishlist', label: 'Wishlist', icon: Heart, count: wishlist.length }, { id: 'profile', label: 'Profile Information', icon: User }, { id: 'address', label: 'Saved Address', icon: MapPin }
     ];
+    const showSellerDashboardLink = currentUser.role === 'admin' || (currentUser.role === 'seller' && currentUser.status === 'active');
 
     return (
         <main className="min-h-screen bg-[#fcf8f0] px-4 pb-32 pt-28 text-[#29251f] sm:px-6 lg:px-5 lg:pt-32">
@@ -140,11 +159,34 @@ export const ProfilePage = ({ currentUser, setCurrentUser, wishlist, products, t
                     <div className="relative flex items-center gap-4 sm:gap-6"><img src={currentUser.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(currentUser.name || 'User')}&background=7c2020&color=fff&size=96`} alt="" className="h-16 w-16 rounded-full border-4 border-white object-cover shadow-md sm:h-20 sm:w-20" /><div><p className="mb-1 text-xs font-semibold uppercase tracking-[0.18em] text-[#9b6c47]">Your heritage account</p><h1 className="font-playfair text-2xl font-bold sm:text-3xl">Welcome back, {currentUser.name || 'Art Lover'}{currentUser.role === 'customer' && normalizeShoppingPreference(currentUser.gender) && <span aria-label={`${SHOPPING_PREFERENCES.find(option => option.value === normalizeShoppingPreference(currentUser.gender))?.label} gender`} className={`ml-2 inline-block font-black ${SHOPPING_PREFERENCE_COLORS[normalizeShoppingPreference(currentUser.gender)]}`} style={{ WebkitTextStroke: '0.7px currentColor' }}>{SHOPPING_PREFERENCE_SYMBOLS[normalizeShoppingPreference(currentUser.gender)]}</span>}</h1><p className="mt-1 text-xs text-[#766e62]">Manage your orders, wishlist, profile and saved addresses.</p><p className="mt-2 flex items-center gap-1.5 text-xs text-[#766e62]"><Mail size={12} /> {currentUser.email}</p></div></div>
                 </header>
                 <div className="grid gap-5 lg:grid-cols-[300px_1fr]">
-                    <aside className="rounded border border-[#e5dccd] bg-[#fffaf0] p-2"><nav aria-label="Account navigation" className="grid grid-cols-2 gap-1 lg:grid-cols-1">{navItems.map(({ id, label, icon: Icon, count }) => <button key={id} type="button" onClick={() => setActiveView(id)} className={`flex min-h-10 items-center gap-2 rounded px-3 py-2 text-left text-xs font-semibold ${activeView === id ? 'bg-[#29251f] text-white' : 'text-[#5e574e] hover:bg-[#f0e8db]'}`}><Icon size={14} /><span className="flex-1">{label}</span>{count > 0 && <span>{count}</span>}</button>)}{currentUser.role !== 'customer' && <Link to="/seller" className="flex min-h-10 items-center gap-2 rounded px-3 py-2 text-xs font-semibold text-[#5e574e]"><Store size={14} /> Seller dashboard</Link>}<button type="button" onClick={() => setCurrentUser(null)} className="flex min-h-10 items-center gap-2 rounded px-3 py-2 text-left text-xs font-semibold text-[#7c2020]"><LogOut size={14} /> Logout</button></nav></aside>
+                    <aside className="rounded border border-[#e5dccd] bg-[#fffaf0] p-2">
+                        <nav aria-label="Account navigation" className="grid grid-cols-2 gap-1 lg:grid-cols-1">
+                            {navItems.map(({ id, label, icon: Icon, count }) => (
+                                <button key={id} type="button" onClick={() => setActiveView(id)} className={`flex min-h-10 items-center gap-2 rounded px-3 py-2 text-left text-xs font-semibold ${activeView === id ? 'bg-[#29251f] text-white' : 'text-[#5e574e] hover:bg-[#f0e8db]'}`}>
+                                    <Icon size={14} />
+                                    <span className="flex-1">{label}</span>
+                                    {count > 0 && <span>{count}</span>}
+                                </button>
+                            ))}
+                            {showSellerDashboardLink && (
+                                <Link to="/seller" className="flex min-h-10 items-center gap-2 rounded px-3 py-2 text-xs font-semibold text-[#5e574e]">
+                                    <Store size={14} /> Seller dashboard
+                                </Link>
+                            )}
+                            <button type="button" onClick={() => setCurrentUser(null)} className="flex min-h-10 items-center gap-2 rounded px-3 py-2 text-left text-xs font-semibold text-[#7c2020]">
+                                <LogOut size={14} /> Logout
+                            </button>
+                        </nav>
+                    </aside>
                     <div className="min-w-0 space-y-5">
                         {(activeView === 'dashboard' || activeView === 'orders') && <><div className="grid grid-cols-2 gap-3 sm:grid-cols-4">{[{ label: 'Orders', value: orders.length, icon: Package }, { label: 'Wishlist', value: wishlist.length, icon: Heart }, { label: 'Reviews', value: deliveredOrders, icon: CheckCircle }, { label: 'Reward Points', value: orders.length * 250, icon: Gift }].map(({ label, value, icon: Icon }) => <div key={label} className="flex items-center gap-3 rounded border border-[#e5dccd] bg-[#fffaf0] px-4 py-3"><span className="flex h-9 w-9 items-center justify-center rounded-full bg-[#f5ead9] text-[#9b5f30]"><Icon size={17} /></span><div><p className="text-[11px] font-semibold uppercase tracking-widest text-[#8b8378]">{label}</p><p className="font-playfair text-lg font-bold">{Number(value).toLocaleString()}</p></div></div>)}</div><OrderPanel orders={activeView === 'dashboard' ? orders.slice(0, 4) : orders} loading={loading} error={ordersError} onCancel={handleCancelOrder} onViewOrder={setSelectedOrder} onViewAll={() => setActiveView('orders')} />{activeView === 'dashboard' && <WishlistPanel products={wishlistProducts.slice(0, 2)} addToCart={addToCart} toggleWishlist={toggleWishlist} />}</>}
                         {activeView === 'wishlist' && <WishlistPanel products={wishlistProducts} addToCart={addToCart} toggleWishlist={toggleWishlist} expanded />}
-                        {(activeView === 'profile' || activeView === 'address') && <ProfilePanel currentUser={currentUser} profile={profile} setProfile={setProfile} editing={isEditing} setEditing={setIsEditing} saving={saving} onSave={saveProfile} onlyAddress={activeView === 'address'} />}
+                        {(activeView === 'profile' || activeView === 'address') && (
+                            <>
+                                <ProfilePanel currentUser={currentUser} profile={profile} setProfile={setProfile} editing={isEditing} setEditing={setIsEditing} saving={saving} onSave={saveProfile} onlyAddress={activeView === 'address'} />
+                                {activeView === 'profile' && <SellerApplicationPanel currentUser={currentUser} storeName={sellerStoreName} setStoreName={setSellerStoreName} password={sellerPassword} setPassword={setSellerPassword} submitting={sellerRequesting} error={sellerRequestError} onSubmit={requestSellerConversion} />}
+                            </>
+                        )}
                     </div>
                 </div>
             </div>
@@ -180,6 +222,46 @@ const ProfilePanel = ({ currentUser, profile, setProfile, editing, setEditing, s
                 <button type="button" onClick={() => setEditing(true)} className="flex min-h-10 items-center gap-1 rounded border border-[#d7c8b6] px-3 text-xs font-semibold text-[#7c2020]"><Pencil size={13} /> Edit Profile</button>
             </div>
             <div className="grid gap-4 sm:grid-cols-2">{!onlyAddress && <><Field label="Full name" value={profile.name} editing={editing} onChange={value => setProfile({ ...profile, name: value })} /><Field label="Username" value={profile.username} editing={editing} onChange={value => setProfile({ ...profile, username: value })} />{currentUser.role !== 'customer' && <Field label="Store name" value={visibleStoreName} editing={editing && canEditStoreName} onChange={value => setProfile({ ...profile, storeName: value })} disabled={!canEditStoreName} />}{currentUser.role !== 'customer' && currentUser.storeName_pending && <div className="sm:col-span-2 rounded border border-amber-200 bg-amber-50 p-3 text-xs font-semibold text-amber-800">Store name change is pending admin approval.</div>}{currentUser.role !== 'customer' && currentUser.storeName && !currentUser.storeName_pending && <div className="sm:col-span-2 rounded border border-stone-200 bg-[#f7efe7] p-3 text-xs font-semibold text-stone-700">Store name is approved. To request a change, contact the admin.</div>}<Field label="Email" value={currentUser.email} /><Field label="Phone" value={profile.phone} editing={editing} onChange={value => setProfile({ ...profile, phone: value })} />{currentUser.role === 'customer' && <label className="block"><span className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-[#8b8378]">Gender</span>{editing ? <><select value={normalizeShoppingPreference(profile.gender)} onChange={event => setProfile({ ...profile, gender: event.target.value })} className="w-full rounded border border-[#d7c8b6] bg-white px-3 py-2.5 text-sm"><option value="">Select your gender</option>{SHOPPING_PREFERENCES.map(option => <option key={option.value} value={option.value}>{SHOPPING_PREFERENCE_SYMBOLS[option.value]} {option.label}</option>)}</select><span className="mt-1 block text-[11px] text-[#8b8378]">Used to personalize product recommendations; all products remain available.</span></> : <span className="flex min-h-10 items-center gap-2 rounded bg-[#f5ead9] px-3 py-2.5 text-sm text-[#5e574e]"><span aria-hidden="true" className={`text-lg font-black ${SHOPPING_PREFERENCE_COLORS[normalizeShoppingPreference(profile.gender)] || 'text-stone-500'}`} style={{ WebkitTextStroke: '0.7px currentColor' }}>{SHOPPING_PREFERENCE_SYMBOLS[normalizeShoppingPreference(profile.gender)] || '○'}</span>{SHOPPING_PREFERENCES.find(option => option.value === normalizeShoppingPreference(profile.gender))?.label || 'Not provided'}</span>}</label>}</>}{(onlyAddress || editing) && <><Field label="Address" value={profile.address} editing={editing} onChange={value => setProfile({ ...profile, address: value })} /><Field label="City / Province" value={profile.city} editing={editing} onChange={value => setProfile({ ...profile, city: value })} /></>}</div>{editing && <div className="mt-5 flex gap-2"><button type="button" disabled={saving} onClick={onSave} className="flex min-h-10 items-center gap-2 rounded bg-[#7c2020] px-4 text-xs font-semibold text-white disabled:opacity-60"><Save size={13} /> {saving ? 'Saving...' : 'Save changes'}</button><button type="button" onClick={() => setEditing(false)} className="flex min-h-10 items-center gap-2 rounded border border-[#d7c8b6] px-4 text-xs font-semibold"><X size={13} /> Cancel</button></div>}</section>
+    );
+};
+
+const SellerApplicationPanel = ({ currentUser, storeName, setStoreName, password, setPassword, submitting, error, onSubmit }) => {
+    if (currentUser.role === 'seller') {
+        if (currentUser.status === 'active') return null;
+        return (
+            <section className="rounded border border-amber-200 bg-amber-50 p-5" role="status">
+                <h2 className="font-playfair text-lg font-bold text-amber-900">Artisan application pending</h2>
+                <p className="mt-1 text-sm text-amber-800">Your account is awaiting administrator approval. Seller tools will become available after approval.</p>
+            </section>
+        );
+    }
+    if (currentUser.role !== 'customer') return null;
+
+    return (
+        <section className="rounded border border-[#e5dccd] bg-[#fffaf0] p-5">
+            <div className="flex items-start gap-3">
+                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#f5ead9] text-[#7c2020]"><Store size={18} /></span>
+                <div>
+                    <p className="text-xs font-semibold uppercase tracking-widest text-[#9b6c47]">Artisan account</p>
+                    <h2 className="font-playfair text-xl font-bold">Switch to a seller account</h2>
+                    <p className="mt-1 text-sm leading-6 text-[#766e62]">Apply using your customer account. An administrator will review your studio before seller access is enabled.</p>
+                </div>
+            </div>
+            <div className="mt-5 grid gap-4 sm:grid-cols-2">
+                <label className="block">
+                    <span className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-[#8b8378]">Studio name</span>
+                    <input value={storeName} onChange={event => setStoreName(event.target.value)} required autoComplete="organization" className="w-full rounded border border-[#d7c8b6] bg-white px-3 py-2.5 text-sm" />
+                </label>
+                <label className="block">
+                    <span className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-[#8b8378]">Current password</span>
+                    <input type="password" autoComplete="current-password" value={password} onChange={event => setPassword(event.target.value)} required className="w-full rounded border border-[#d7c8b6] bg-white px-3 py-2.5 text-sm" />
+                </label>
+            </div>
+            {error && <p className="mt-3 text-sm font-semibold text-[#a64d43]" role="alert">{error}</p>}
+            <button type="button" disabled={submitting || !storeName.trim() || !password} onClick={onSubmit} className="mt-4 min-h-10 rounded bg-[#7c2020] px-4 text-xs font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60">
+                {submitting ? 'Submitting request...' : 'Request seller access'}
+            </button>
+        </section>
     );
 };
 

@@ -44,6 +44,7 @@ const callDbService = async (action, payload = {}) => {
 
 export const dbService = {
     login: (username, password) => callDbService('login', { username, password }),
+    requestSellerConversion: (userId, password, storeName) => callDbService('requestSellerConversion', { userId, password, storeName }),
     verifyEmailOtp: async (email, code) => {
         const response = await fetch(`${API_BASE_URL}/email/verify-otp`, {
             method: 'POST',

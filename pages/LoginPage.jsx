@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { dbService } from '../services/dbservices';
 import { supabase } from '../services/supabaseClient';
-import { Sparkles, Mail, ArrowRight, Lock, User as UserIcon, Store, Phone, MapPin } from 'lucide-react';
+import { Sparkles, Mail, ArrowRight, Lock, User as UserIcon, Phone, MapPin } from 'lucide-react';
 
 export const LoginPage = ({ onLogin }) => {
     const [authMode, setAuthMode] = useState('login'); // 'login', 'register', 'completeProfile'
@@ -15,8 +15,6 @@ export const LoginPage = ({ onLogin }) => {
     const [city, setCity] = useState('');
     const [age, setAge] = useState('');
     const [gender, setGender] = useState('');
-    const [role, setRole] = useState('customer');
-    const [storeName, setStoreName] = useState('');
     const [error, setError] = useState('');
     const [pendingVerificationEmail, setPendingVerificationEmail] = useState('');
     const [verificationCode, setVerificationCode] = useState('');
@@ -144,7 +142,7 @@ export const LoginPage = ({ onLogin }) => {
                 } else if (user) onLogin(user);
                 else setError('Invalid credentials or inactive account.');
             } else if (authMode === 'register') {
-                if (role === 'customer' && !gender) {
+                if (!gender) {
                     setError('Please select your gender.');
                     return;
                 }
@@ -153,19 +151,13 @@ export const LoginPage = ({ onLogin }) => {
                     password,
                     name,
                     email,
-                    role,
+                    role: 'customer',
                     phone: phone || undefined,
                     address: address || undefined,
                     city: city || undefined,
-                    gender: role === 'customer' ? gender : undefined,
-                    storeName: role === 'seller' ? storeName : undefined
+                    gender
                 });
-                if (newUser.sellerApplicationPending && !newUser.emailVerificationRequired) {
-                    setUsername(newUser.username || username);
-                    setPassword('');
-                    setVerificationMessage('Your customer account is now set to seller access and is waiting for administrator approval. Sign in after it is activated.');
-                    setAuthMode('login');
-                } else if (newUser.status === 'disabled') {
+                if (newUser.status === 'disabled') {
                     setPendingVerificationEmail(newUser.email || email);
                     setVerificationCode('');
                     setVerificationMessage(newUser.verificationEmailSent
@@ -413,44 +405,38 @@ export const LoginPage = ({ onLogin }) => {
                                             <input required value={email} title='Enter Your E-mail Address' onChange={e => setEmail(e.target.value)} type="email" className="w-full pl-12 pr-6 py-4 bg-[#efece6] rounded-2xl outline-none focus:bg-white border border-transparent focus:border-[#5c1111]/20 transition-all font-medium" />
                                         </div>
                                     </div>
-                                    {role === 'customer' && (
-                                        <div className="space-y-2">
-                                            <label htmlFor="signup-gender" className="text-[10px] font-black uppercase text-stone-400 pl-4">Gender</label>
-                                            <select id="signup-gender" required value={gender} onChange={e => setGender(e.target.value)} className="w-full rounded-2xl border border-transparent bg-[#efece6] px-5 py-4 font-medium outline-none transition-all focus:border-[#5c1111]/20 focus:bg-white">
-                                                <option value="">Select your gender</option>
-                                                <option value="female">Female</option>
-                                                <option value="male">Male</option>
-                                                <option value="non-binary">Non-binary</option>
-                                                <option value="prefer-not-to-say">Prefer not to say</option>
-                                            </select>
-                                            <p className="px-1 text-[9px] text-stone-400">You can change this later in your profile.</p>
+                                    <div className="space-y-2">
+                                        <label htmlFor="signup-gender" className="text-[10px] font-black uppercase text-stone-400 pl-4">Gender</label>
+                                        <select id="signup-gender" required value={gender} onChange={e => setGender(e.target.value)} className="w-full rounded-2xl border border-transparent bg-[#efece6] px-5 py-4 font-medium outline-none transition-all focus:border-[#5c1111]/20 focus:bg-white">
+                                            <option value="">Select your gender</option>
+                                            <option value="female">Female</option>
+                                            <option value="male">Male</option>
+                                            <option value="non-binary">Non-binary</option>
+                                            <option value="prefer-not-to-say">Prefer not to say</option>
+                                        </select>
+                                        <p className="px-1 text-[9px] text-stone-400">You can change this later in your profile.</p>
+                                    </div>
+                                    <div className="space-y-2">
+                                        <label className="text-[10px] font-black uppercase text-stone-400 pl-4">Phone Number</label>
+                                        <div className="relative">
+                                            <Phone size={16} className="absolute left-5 top-1/2 -translate-y-1/2 text-stone-300" />
+                                            <input value={phone} title='Enter Your Contact Number' onChange={e => setPhone(e.target.value)} type="tel" className="w-full pl-12 pr-6 py-4 bg-[#efece6] rounded-2xl outline-none focus:bg-white border border-transparent focus:border-[#5c1111]/20 transition-all font-medium" />
                                         </div>
-                                    )}
-                                    {role === 'customer' && (
-                                        <>
-                                            <div className="space-y-2">
-                                                <label className="text-[10px] font-black uppercase text-stone-400 pl-4">Phone Number</label>
-                                                <div className="relative">
-                                                    <Phone size={16} className="absolute left-5 top-1/2 -translate-y-1/2 text-stone-300" />
-                                                    <input value={phone} title='Enter Your Contact Number' onChange={e => setPhone(e.target.value)} type="tel" className="w-full pl-12 pr-6 py-4 bg-[#efece6] rounded-2xl outline-none focus:bg-white border border-transparent focus:border-[#5c1111]/20 transition-all font-medium" />
-                                                </div>
-                                            </div>
-                                            <div className="space-y-2">
-                                                <label className="text-[10px] font-black uppercase text-stone-400 pl-4">Address</label>
-                                                <div className="relative">
-                                                    <MapPin size={16} className="absolute left-5 top-1/2 -translate-y-1/2 text-stone-300" />
-                                                    <input value={address} title='Enter Your Address' onChange={e => setAddress(e.target.value)} type="text" className="w-full pl-12 pr-6 py-4 bg-[#efece6] rounded-2xl outline-none focus:bg-white border border-transparent focus:border-[#5c1111]/20 transition-all font-medium" />
-                                                </div>
-                                            </div>
-                                            <div className="space-y-2">
-                                                <label className="text-[10px] font-black uppercase text-stone-400 pl-4">City</label>
-                                                <div className="relative">
-                                                    <MapPin size={16} className="absolute left-5 top-1/2 -translate-y-1/2 text-stone-300" />
-                                                    <input value={city} title='Enter Your City' onChange={e => setCity(e.target.value)} type="text" className="w-full pl-12 pr-6 py-4 bg-[#efece6] rounded-2xl outline-none focus:bg-white border border-transparent focus:border-[#5c1111]/20 transition-all font-medium" />
-                                                </div>
-                                            </div>
-                                        </>
-                                    )}
+                                    </div>
+                                    <div className="space-y-2">
+                                        <label className="text-[10px] font-black uppercase text-stone-400 pl-4">Address</label>
+                                        <div className="relative">
+                                            <MapPin size={16} className="absolute left-5 top-1/2 -translate-y-1/2 text-stone-300" />
+                                            <input value={address} title='Enter Your Address' onChange={e => setAddress(e.target.value)} type="text" className="w-full pl-12 pr-6 py-4 bg-[#efece6] rounded-2xl outline-none focus:bg-white border border-transparent focus:border-[#5c1111]/20 transition-all font-medium" />
+                                        </div>
+                                    </div>
+                                    <div className="space-y-2">
+                                        <label className="text-[10px] font-black uppercase text-stone-400 pl-4">City</label>
+                                        <div className="relative">
+                                            <MapPin size={16} className="absolute left-5 top-1/2 -translate-y-1/2 text-stone-300" />
+                                            <input value={city} title='Enter Your City' onChange={e => setCity(e.target.value)} type="text" className="w-full pl-12 pr-6 py-4 bg-[#efece6] rounded-2xl outline-none focus:bg-white border border-transparent focus:border-[#5c1111]/20 transition-all font-medium" />
+                                        </div>
+                                    </div>
                                 </>
                             )}
 
@@ -470,55 +456,12 @@ export const LoginPage = ({ onLogin }) => {
                                 </div>
                             </div>
 
-                            {authMode === 'register' && (
-                                <div className="space-y-4 pt-4 border-t border-stone-200">
-                                    <label className="text-[10px] font-black uppercase text-stone-400 pl-4">Account Type</label>
-                                    <div className="flex gap-4">
-                                        <button type="button" onClick={() => setRole('customer')} className={`flex-1 py-4 rounded-2xl border text-[10px] font-black uppercase tracking-widest transition-all ${role === 'customer' ? 'bg-[#5c1111] text-white border-[#5c1111]' : 'bg-white text-stone-400 border-stone-200'}`}>Customer</button>
-                                        <button type="button" onClick={() => setRole('seller')} className={`flex-1 py-4 rounded-2xl border text-[10px] font-black uppercase tracking-widest transition-all ${role === 'seller' ? 'bg-[#5c1111] text-white border-[#5c1111]' : 'bg-white text-stone-400 border-stone-200'}`}>Artisan</button>
-                                    </div>
-                                    {role === 'seller' && (
-                                        <>
-                                            <div className="space-y-2 animate-in fade-in slide-in-from-top-2">
-                                                <label className="text-[10px] font-black uppercase text-stone-400 pl-4">Studio Name</label>
-                                                <div className="relative">
-                                                    <Store size={16} className="absolute left-5 top-1/2 -translate-y-1/2 text-stone-300" />
-                                                    <input value={storeName} placeholder="Set after admin approval" title='Enter Your Store Name' onChange={e => setStoreName(e.target.value)} type="text" className="w-full pl-12 pr-6 py-4 bg-[#efece6] rounded-2xl outline-none focus:bg-white border border-transparent focus:border-[#5c1111]/20 transition-all font-medium" />
-                                                </div>
-                                                <p className="px-1 text-[9px] font-bold uppercase tracking-widest text-stone-400">This is optional at signup. It will be reviewed by admin before approval.</p>
-                                            </div>
-                                            <div className="space-y-2 animate-in fade-in slide-in-from-top-2">
-                                                <label className="text-[10px] font-black uppercase text-stone-400 pl-4">Phone Number</label>
-                                                <div className="relative">
-                                                    <Phone size={16} className="absolute left-5 top-1/2 -translate-y-1/2 text-stone-300" />
-                                                    <input value={phone} title='Enter Your Store Contact Number' onChange={e => setPhone(e.target.value)} type="tel" className="w-full pl-12 pr-6 py-4 bg-[#efece6] rounded-2xl outline-none focus:bg-white border border-transparent focus:border-[#5c1111]/20 transition-all font-medium" />
-                                                </div>
-                                            </div>
-                                            <div className="space-y-2 animate-in fade-in slide-in-from-top-2">
-                                                <label className="text-[10px] font-black uppercase text-stone-400 pl-4">Address</label>
-                                                <div className="relative">
-                                                    <MapPin size={16} className="absolute left-5 top-1/2 -translate-y-1/2 text-stone-300" />
-                                                    <input value={address} title='Enter Your Store Address' onChange={e => setAddress(e.target.value)} type="text" className="w-full pl-12 pr-6 py-4 bg-[#efece6] rounded-2xl outline-none focus:bg-white border border-transparent focus:border-[#5c1111]/20 transition-all font-medium" />
-                                                </div>
-                                            </div>
-                                            <div className="space-y-2 animate-in fade-in slide-in-from-top-2">
-                                                <label className="text-[10px] font-black uppercase text-stone-400 pl-4">City</label>
-                                                <div className="relative">
-                                                    <MapPin size={16} className="absolute left-5 top-1/2 -translate-y-1/2 text-stone-300" />
-                                                    <input value={city} title='Enter Your Store Located City' onChange={e => setCity(e.target.value)} type="text" className="w-full pl-12 pr-6 py-4 bg-[#efece6] rounded-2xl outline-none focus:bg-white border border-transparent focus:border-[#5c1111]/20 transition-all font-medium" />
-                                                </div>
-                                            </div>
-                                        </>
-                                    )}
-                                </div>
-                            )}
-
                             <button type="submit" disabled={isSubmitting} className="w-full bg-[#5c1111] text-white py-6 rounded-[2rem] font-black text-[12px] uppercase tracking-[0.3em] shadow-2xl premium-shadow hover:bg-[#2a2723] hover:-translate-y-1 transition-all disabled:cursor-wait disabled:opacity-60">
                                 {authMode === 'login' ? "Authorize Entry" : "Establish Heritage"}
                             </button>
 
                             {/* Google Sign In option only for customer login or register */}
-                            {(authMode === 'login' || (authMode === 'register' && role === 'customer')) && (
+                            {(authMode === 'login' || authMode === 'register') && (
                                 <div className="pt-4 border-t border-stone-200 mt-4 flex flex-col items-center">
                                     <p className="text-[10px] font-black uppercase text-stone-400 mb-4">Or For Customers</p>
                                     <button
