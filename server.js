@@ -976,7 +976,19 @@ app.post('/api/db', async (req, res) => {
             case 'register': {
                 const { userData } = payload;
                 const plainPassword = userData.password;
-                const sanitizedUserData = { ...userData };
+                const sanitizedUserData = {
+                    ...userData,
+                    email: String(userData.email || '').trim().toLowerCase(),
+                };
+                if (!sanitizedUserData.email) throw new Error('Enter a valid email address.');
+
+                const { data: existingEmail, error: emailLookupError } = await supabase
+                    .from('users')
+                    .select('id')
+                    .eq('email', sanitizedUserData.email)
+                    .maybeSingle();
+                if (emailLookupError) throw new Error(`Unable to check email availability: ${emailLookupError.message}`);
+                if (existingEmail) throw new Error('An account with this email already exists. Sign in or use a different email address.');
 
                 if (sanitizedUserData.role === 'seller') {
                     delete sanitizedUserData.storeName;
@@ -994,15 +1006,21 @@ app.post('/api/db', async (req, res) => {
                     password_hash: hashPassword(plainPassword),
                     email_verified: false,
                 };
+                const throwRegistrationError = (error) => {
+                    if (error?.code === '23505' && error?.constraint === 'users_email_key') {
+                        throw new Error('An account with this email already exists. Sign in or use a different email address.');
+                    }
+                    throw new Error(error?.message || 'Unable to create your account.');
+                };
                 try {
                     const { data, error } = await supabase.from('users').insert([newUser]).select();
-                    if (error) throw new Error(error.message);
+                    if (error) throwRegistrationError(error);
                     result = (data && data.length > 0) ? data[0] : newUser;
                 } catch (error) {
                     if (!isStoreApprovalSchemaError(error.message)) throw error;
                     const fallbackUser = stripStoreApprovalFields(newUser);
                     const { data, fallbackError } = await supabase.from('users').insert([fallbackUser]).select();
-                    if (fallbackError) throw new Error(fallbackError.message);
+                    if (fallbackError) throwRegistrationError(fallbackError);
                     result = (data && data.length > 0) ? data[0] : fallbackUser;
                 }
 
