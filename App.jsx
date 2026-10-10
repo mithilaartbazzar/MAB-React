@@ -228,7 +228,7 @@ export default function App() {
                                 <Navigate to="/login" />
                             } 
                         />
-                        <Route path="/privacy-policy" element={<PrivacyPolicy />} />
+                        <Route path="/privacy" element={<PrivacyPolicy />} />
                         <Route path="/terms-of-service" element={<TermsOfService />} />
                         <Route path="/verify" element={<InvoiceVerificationPage />} />
                         <Route path="/verify/:invoiceNo" element={<InvoiceVerificationPage />} />
