@@ -15,6 +15,7 @@ dist-ssr
 *.sql
 !supabase/migrations/*.sql
 sql
+AI_Dashbord
 
 # Editor directories and files
 .vscode/*

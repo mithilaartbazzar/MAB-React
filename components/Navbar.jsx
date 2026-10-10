@@ -152,15 +152,15 @@ export const Navbar = ({ cartCount, currentUser, setCurrentUser }) => {
                             );
                         })}
                         {sellerLink && (
-                            <Link
-                                to="/seller"
+                            <a
+                                href="https://dash.mithilachitrakalastore.com.np"
                                 className={`inline-flex items-center gap-1.5 px-2.5 py-2 text-[13px] font-medium tracking-[0.02em] transition-colors ${
                                     location.pathname === '/seller' ? 'text-[#F3D9A8]' : 'text-[#F5EFE7]/90 hover:text-[#FFF9F2]'
                                 }`}
                             >
                                 {currentUser.role === 'admin' ? <Shield size={14} /> : <Store size={14} />}
-                                {currentUser.role === 'admin' ? 'Admin' : 'Seller'}
-                            </Link>
+                                {currentUser.role === 'admin' ? 'Admin Dashboard' : 'Seller Dashboard'}
+                            </a>
                         )}
                     </nav>
 

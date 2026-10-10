@@ -1,0 +1,220 @@
+# Mithila Chitrakala Store — Current Website Context and AI Automation Blueprint
+
+## Brand and Website
+
+Official website: https://mithilachitrakalastore.com.np/
+
+Mithila Chitrakala Store is a Nepal-based online store focused on authentic Mithila and Madhubani-inspired art, handcrafted goods, textiles, clothing, accessories, home décor, stationery, cultural gifts, and artisan-made products from the Mithila region.
+
+This website is the primary source of truth for the store's current products, prices, offers, policies, and customer information. Product pages, pricing, availability, and shipping details on the official site should be treated as the current authoritative source.
+
+## Current Site Structure
+
+The current website already includes these main user-facing areas:
+
+- Home: /
+- Products catalog: /products
+- Product detail pages: /product/:slug
+- Cart: /cart
+- Art Advice: /advice
+- Cultural Journal: /journal and /journal/:slug
+- User account / profile: /profile
+- Wishlist: /wishlist
+- Login: /login
+- Privacy Policy: /privacy
+- Terms of Service: /terms-of-service
+- Invoice verification: /verify and /verify/:invoiceNo
+- Seller/admin area: /seller (if enabled in the current deployment)
+
+The storefront is built around a product-driven shopping experience with search, filtering, wishlist, profile management, and local cart functionality. It supports a mix of art, home décor, crafts, gifts, clothing, and textile-inspired categories.
+
+## Existing Product Categories on the Website
+
+The storefront presents items across categories similar to:
+
+- Paintings
+- Handmade Crafts
+- Home Decor
+- Clothing and Textiles
+- Art Products
+- Cultural Gifts
+- Gift Items
+- Wall Art
+- Textile Art
+- Accessories
+
+Category labels and product types may vary by inventory and listing data, but the product catalog is the authoritative source for what is currently available.
+
+## Current Business Focus
+
+The store focuses on:
+
+- Authentic Mithila art and Madhubani-inspired art
+- Handmade and artisan-made products
+- Cultural heritage and traditional artistic storytelling
+- Decor and gifting products for homes, festivals, and special occasions
+- Traditional and contemporary visual expressions rooted in Nepali Mithila culture
+- Items described with artistic, cultural, and material details specific to each product
+
+The site is designed for customers who want to purchase culturally inspired artwork and handcrafted items, while the brand emphasizes authenticity, artisan support, and a strong storytelling experience around the Mithila tradition.
+
+## Contact and Location
+
+- Email: hello@mithilachitrakalastore.com.np
+- Location: Janakpur Dham, Nepal
+- Country: Nepal
+- Website: https://mithilachitrakalastore.com.np/
+
+## Policy and Trust Signals
+
+The website includes:
+
+- Privacy policy
+- Terms of service
+- Customer account and profile access
+- Secure ordering and protected payments
+- Nepal-wide delivery expectations
+- Support for artisan storytelling and cultural education
+
+The official website should therefore be treated as the trusted source for:
+
+- product descriptions
+- stock and pricing
+- fulfillment and shipping policy
+- policies and legal terms
+- store location, contact info, and brand identity
+
+## AI Automation System Requirement
+
+The website should be extended in a secure, structured way without rebuilding the storefront or replacing the existing data model. The existing customer-facing site and its inventory, product records, customer flows, and policies should remain the system of record.
+
+### Goal
+
+Build an AI-powered internal administration and automation layer that supports store operations with minimal manual effort while preserving the current storefront, URLs, SEO, customer experience, order workflow, and deployment setup.
+
+### Mandatory Principles
+
+- Extend the current website rather than replacing it.
+- Keep one source of truth for products, inventory, orders, and customers.
+- Do not invent product facts, stock, authenticity claims, or delivery guarantees.
+- Require explicit authorization for sensitive operations such as cancellations, refunds, payment-status updates, and major pricing changes.
+- Keep AI recommendations and automation in draft or review mode whenever content or business actions are not yet approved.
+- Never claim a task or action succeeded unless the backend confirms the result.
+
+## Functional Areas for the AI Admin Layer
+
+### 1. AI Command Center
+
+Create an admin-side assistant with:
+
+- natural language chat for store instructions
+- product and order context
+- action previews before execution
+- approval, rejection, editing, and retry flows
+- run logs and task status tracking
+- scheduled automation management
+- usage and cost monitoring
+- searchable action history
+
+Example administrator commands:
+
+- Summarize today's orders and revenue.
+- Find products with missing descriptions, tags, or SEO metadata.
+- Prepare product listings using uploaded product images.
+- Identify low-stock products.
+- Draft a festival promotion using in-stock items.
+- Highlight products that have not sold recently.
+- Generate a weekly business report.
+- Show pending tasks that require approval.
+
+### 2. Product Management AI
+
+The AI should be allowed to:
+
+- read product data and product metadata
+- draft names, descriptions, features, and tags
+- suggest categories, themes, materials, and care instructions
+- propose SEO titles and meta descriptions
+- flag missing values, duplicates, inconsistent pricing, and weak product content
+- check inventory before campaign inclusion
+- prepare draft product updates
+- update only validated and authorized fields
+
+It must not invent details that are not backed by the database or the product record itself.
+
+### 3. Inventory and Order Automation
+
+The AI system should help with:
+
+- available stock monitoring
+- low-stock alerting
+- restocking suggestions based on actual sales and inventory history
+- stock adjustment logs
+- negative-stock prevention
+- order summarization by status
+- fulfillment problem detection
+- customer notification drafts
+- payment verification checks
+
+Financial operations such as refunds, cancellations, and manual payment changes must require explicit approval.
+
+### 4. Customer Support Assistant
+
+Build a support assistant that can:
+
+- answer product questions
+- explain care, shipping, return, and customization policy
+- look up order data only after appropriate authentication
+- draft replies in English and Nepali, with Maithili support where practical
+- identify urgent or disputed customer issues
+- escalate uncertain cases to an admin
+- maintain support interaction records
+
+This assistant should never expose private customer information, credentials, or internal business records to unauthorized users.
+
+### 5. Marketing and SEO Automation
+
+Provide campaign and optimization tools for:
+
+- product SEO audits
+- missing metadata detection
+- internal link suggestions
+- social caption drafting
+- festival and campaign planning
+- promotional calendar generation
+- product recommendation logic using real stock and sales data
+- analytics and performance reporting
+
+Campaign drafts should remain unapproved by default. The AI must not trigger ad changes, content publishing, pricing changes, or discount publishing without proper admin approval and verified integrations.
+
+### 6. Scheduled Background Operations
+
+The system should support background jobs like:
+
+- daily sales summaries
+- low-stock monitoring
+- listing quality checks
+- weekly SEO reports
+- incomplete order alerts
+- failed integration checks
+- weekly business summaries
+
+All scheduled tasks should log results, support retries, and maintain clear action history.
+
+## Data and Security Expectations
+
+- Use the existing backend and database through authenticated, explicitly authorized functions.
+- Keep admin-only features protected behind permission checks.
+- Do not expose internal secrets, API keys, admin routes, or raw database access to unauthenticated users.
+- Validate all generated content against the real product schema and database constraints.
+- Preserve the existing storefront, URL structure, SEO setup, and user flows.
+
+## Website-specific Summary
+
+This website is a Nepal-based online art and lifestyle storefront specializing in Mithila-inspired handcrafted goods and cultural products. It includes a product catalog, editorial journal, art advice section, customer account profile, wishlist, legal pages, and a commerce flow for browsing and ordering. It should be extended with an admin-focused AI operations layer that enhances catalog quality, product management, order monitoring, customer support, and marketing automation without breaking the storefront or degrading customer trust.
+
+## Primary Source Priority
+
+For any factual information about the store, prefer the official website and current product pages over cached pages, third-party listings, or older references.
+
+The website's current product pages are the final authority for exactly what is available, how it is described, what it costs, and whether it is in stock.
