@@ -198,6 +198,13 @@ export default function App() {
 
     const remove = (id) => setCart(prev => prev.filter(i => i.id !== id));
     const clearCart = () => setCart([]);
+    const refreshProducts = async () => {
+        try {
+            setProducts(await dbService.getProducts());
+        } catch (error) {
+            console.error('Failed to refresh product inventory:', error);
+        }
+    };
     const cartCount = cart.reduce((acc, item) => acc + item.quantity, 0);
 
     return (
@@ -213,7 +220,7 @@ export default function App() {
                         <Route path="/" element={<HomePage products={products} addToCart={addToCart} wishlist={wishlist} toggleWishlist={toggleWishlist} />} />
                         <Route path="/products" element={<ProductsPage products={products} addToCart={addToCart} wishlist={wishlist} toggleWishlist={toggleWishlist} currentUser={currentUser} />} />
                         <Route path="/product/:slug" element={<ProductDetailPage products={products} addToCart={addToCart} wishlist={wishlist} toggleWishlist={toggleWishlist} />} />
-                        <Route path="/cart" element={currentUser ? <CartPage cart={cart} updateQty={updateQty} remove={remove} clearCart={clearCart} currentUser={currentUser} /> : <Navigate to="/login" />} />
+                        <Route path="/cart" element={currentUser ? <CartPage cart={cart} updateQty={updateQty} remove={remove} clearCart={clearCart} currentUser={currentUser} onOrderPlaced={refreshProducts} /> : <Navigate to="/login" />} />
                         <Route path="/advice" element={<ArtAdvicePage />} />
                         <Route path="/journal" element={<CulturalJournalPage />} />
                         <Route path="/journal/:slug" element={<CulturalJournalPage />} />

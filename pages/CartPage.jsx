@@ -24,7 +24,7 @@ const TrackingStep = ({ icon: Icon, label, status }) => (
     </div>
 );
 
-export const CartPage = ({ cart, updateQty, remove, clearCart, currentUser }) => {
+export const CartPage = ({ cart, updateQty, remove, clearCart, currentUser, onOrderPlaced }) => {
     const subtotal = cart.reduce((acc, item) => acc + item.price * item.quantity, 0);
     const shippingFee = subtotal > 5000 ? 0 : 250;
     const total = subtotal + shippingFee;
@@ -77,6 +77,11 @@ export const CartPage = ({ cart, updateQty, remove, clearCart, currentUser }) =>
                 orders.push(newOrder);
             }
 
+            try {
+                await onOrderPlaced?.();
+            } catch (error) {
+                console.error('Order was placed, but product inventory could not be refreshed:', error);
+            }
             setOrderInfos(orders);
             clearCart();
             setStep('tracking');
